@@ -7,12 +7,12 @@ Hệ thống web phân tích phổ điểm, so sánh đa chiều các lớp và 
 ## 🌟 Tính Năng Nổi Bật
 
 1. **🔐 Phân quyền & Phân cấp bộ môn**:
-   - **Tổ trưởng Tổ KHTN (`tamtt48@fpt.edu.vn`)**: Toàn quyền quản trị, chuyển đổi linh hoạt giữa 5 môn (Toán, Tin học, Sinh học, Hóa học, Vật lý) và xuất báo cáo tổng hợp toàn tổ.
-   - **Trưởng môn Toán (`chinh10@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Toán.
-   - **Trưởng môn Tin học (`hieutt85@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Tin học.
-   - **Trưởng môn Sinh học (`phuongtm30@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Sinh học.
-   - **Trưởng môn Hóa học (`muoint@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Hóa học.
-   - **Trưởng môn Vật lý (`duynva3@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Vật lý.
+   - **Tổ trưởng Tổ KHTN - Thầy Thạch Thanh Tâm (`tamtt48@fpt.edu.vn`)**: Toàn quyền quản trị, chuyển đổi linh hoạt giữa 5 môn (Toán, Tin học, Sinh học, Hóa học, Vật lý) và xuất báo cáo tổng hợp toàn tổ.
+   - **Trưởng môn Toán - Cô Nguyễn Hồng Chi (`chinh10@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Toán.
+   - **Trưởng môn Tin học - Thầy Trần Thanh Hiếu (`hieutt85@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Tin học.
+   - **Trưởng môn Sinh học - Cô Trương Minh Phương (`phuongtm30@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Sinh học.
+   - **Trưởng môn Hóa học - Cô Nguyễn Tuyền Muội (`muoint@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Hóa học.
+   - **Trưởng môn Vật lý - Thầy Nguyễn Võ Anh Duy (`duynva3@fpt.edu.vn`)**: Quản lý và lập báo cáo môn Vật lý.
 
 2. **📈 Thống kê & Phổ điểm trực quan (Chart.js)**:
    - Thống kê ĐTB, Trung vị, Min, Max, Độ lệch chuẩn (SD), Tỉ lệ đạt (≥ 5.0).
@@ -88,16 +88,16 @@ git push -u origin main
 
 ---
 
-## 👥 Danh Sách Tài Khoản Đăng Nhập Nhanh
+## 👥 Danh Sách Tài Khoản Phân Quyền Theo Bộ Môn
 
-| Vai trò | Họ tên | Email | Phạm vi môn học |
+| Vai trò | Họ và tên | Email | Phạm vi phụ trách & Quyền hạn |
 |---|---|---|---|
-| 👑 **Tổ trưởng Tổ KHTN** | Thầy/Cô Tâm | `tamtt48@fpt.edu.vn` | **Toàn quyền cả 5 môn** (Toán, Tin, Sinh, Hóa, Lý) |
-| 📐 **Trưởng môn Toán** | Thầy Chính | `chinh10@fpt.edu.vn` | Môn Toán |
-| 💻 **Trưởng môn Tin học** | Thầy Hiếu | `hieutt85@fpt.edu.vn` | Môn Tin học |
-| 🧬 **Trưởng môn Sinh học** | Cô Phương | `phuongtm30@fpt.edu.vn` | Môn Sinh học |
-| ⚗️ **Trưởng môn Hóa học** | Cô Muội | `muoint@fpt.edu.vn` | Môn Hóa học |
-| ⚡ **Trưởng môn Vật lý** | Thầy Duy | `duynva3@fpt.edu.vn` | Môn Vật lý |
+| 👑 **Tổ trưởng Tổ KHTN** | **Thầy Thạch Thanh Tâm** | `tamtt48@fpt.edu.vn` | **Toàn quyền cả 5 môn** (Toán, Tin học, Sinh học, Hóa học, Vật lý) & Xuất báo cáo tổng hợp |
+| 📐 **Trưởng môn Toán** | **Cô Nguyễn Hồng Chi** | `chinh10@fpt.edu.vn` | Quản lý & Lập báo cáo bộ môn Toán |
+| 💻 **Trưởng môn Tin học** | **Thầy Trần Thanh Hiếu** | `hieutt85@fpt.edu.vn` | Quản lý & Lập báo cáo bộ môn Tin học |
+| 🧬 **Trưởng môn Sinh học** | **Cô Trương Minh Phương** | `phuongtm30@fpt.edu.vn` | Quản lý & Lập báo cáo bộ môn Sinh học |
+| ⚗️ **Trưởng môn Hóa học** | **Cô Nguyễn Tuyền Muội** | `muoint@fpt.edu.vn` | Quản lý & Lập báo cáo bộ môn Hóa học |
+| ⚡ **Trưởng môn Vật lý** | **Thầy Nguyễn Võ Anh Duy** | `duynva3@fpt.edu.vn` | Quản lý & Lập báo cáo bộ môn Vật lý |
 
 ---
 

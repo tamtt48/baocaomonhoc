@@ -227,27 +227,27 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
       <h4>🏫 Phân quyền truy cập theo yêu cầu</h4>
       <button class="quick-btn" onclick="quickLogin('tamtt48@fpt.edu.vn')">
         <div style="font-size:22px">👑</div>
-        <div><div class="qn">Tổ trưởng KHTN – Thầy/Cô Tâm</div><div class="qr">tamtt48@fpt.edu.vn · Toàn quyền 5 môn</div></div>
+        <div><div class="qn">Tổ trưởng KHTN – Thầy Thạch Thanh Tâm</div><div class="qr">tamtt48@fpt.edu.vn · Toàn quyền 5 môn</div></div>
       </button>
       <button class="quick-btn" onclick="quickLogin('chinh10@fpt.edu.vn')">
         <div style="font-size:22px">📐</div>
-        <div><div class="qn">Trưởng môn Toán – Thầy Chính</div><div class="qr">chinh10@fpt.edu.vn · Môn Toán</div></div>
+        <div><div class="qn">Trưởng môn Toán – Cô Nguyễn Hồng Chi</div><div class="qr">chinh10@fpt.edu.vn · Môn Toán</div></div>
       </button>
       <button class="quick-btn" onclick="quickLogin('hieutt85@fpt.edu.vn')">
         <div style="font-size:22px">💻</div>
-        <div><div class="qn">Trưởng môn Tin học – Thầy Hiếu</div><div class="qr">hieutt85@fpt.edu.vn · Môn Tin học</div></div>
+        <div><div class="qn">Trưởng môn Tin học – Thầy Trần Thanh Hiếu</div><div class="qr">hieutt85@fpt.edu.vn · Môn Tin học</div></div>
       </button>
       <button class="quick-btn" onclick="quickLogin('phuongtm30@fpt.edu.vn')">
         <div style="font-size:22px">🧬</div>
-        <div><div class="qn">Trưởng môn Sinh học – Cô Phương</div><div class="qr">phuongtm30@fpt.edu.vn · Môn Sinh học</div></div>
+        <div><div class="qn">Trưởng môn Sinh học – Cô Trương Minh Phương</div><div class="qr">phuongtm30@fpt.edu.vn · Môn Sinh học</div></div>
       </button>
       <button class="quick-btn" onclick="quickLogin('muoint@fpt.edu.vn')">
         <div style="font-size:22px">⚗️</div>
-        <div><div class="qn">Trưởng môn Hóa học – Cô Muội</div><div class="qr">muoint@fpt.edu.vn · Môn Hóa học</div></div>
+        <div><div class="qn">Trưởng môn Hóa học – Cô Nguyễn Tuyền Muội</div><div class="qr">muoint@fpt.edu.vn · Môn Hóa học</div></div>
       </button>
       <button class="quick-btn" onclick="quickLogin('duynva3@fpt.edu.vn')">
         <div style="font-size:22px">⚡</div>
-        <div><div class="qn">Trưởng môn Vật lý – Thầy Duy</div><div class="qr">duynva3@fpt.edu.vn · Môn Vật lý</div></div>
+        <div><div class="qn">Trưởng môn Vật lý – Thầy Nguyễn Võ Anh Duy</div><div class="qr">duynva3@fpt.edu.vn · Môn Vật lý</div></div>
       </button>
     </div>
   </div>
@@ -368,48 +368,48 @@ const pc=x=>Math.round(x*100)+'%';
 // ===== 1. USER ACCOUNTS & PERMISSIONS =====
 const ACCOUNTS = {
   'tamtt48@fpt.edu.vn': {
-    name: 'Tâm',
-    fullName: 'Thầy/Cô Tâm (tamtt48@fpt.edu.vn)',
+    name: 'Thầy Thạch Thanh Tâm',
+    fullName: 'Thầy Thạch Thanh Tâm (tamtt48@fpt.edu.vn)',
     role: 'admin',
     roleLabel: 'Tổ trưởng Tổ KHTN',
     icon: '👑',
     subjects: ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý']
   },
   'chinh10@fpt.edu.vn': {
-    name: 'Thầy Chính',
-    fullName: 'Thầy Chính (chinh10@fpt.edu.vn)',
+    name: 'Cô Nguyễn Hồng Chi',
+    fullName: 'Cô Nguyễn Hồng Chi (chinh10@fpt.edu.vn)',
     role: 'truongmon',
     roleLabel: 'Trưởng môn Toán',
     icon: '📐',
     subjects: ['Toán']
   },
   'hieutt85@fpt.edu.vn': {
-    name: 'Thầy Hiếu',
-    fullName: 'Thầy Hiếu (hieutt85@fpt.edu.vn)',
+    name: 'Thầy Trần Thanh Hiếu',
+    fullName: 'Thầy Trần Thanh Hiếu (hieutt85@fpt.edu.vn)',
     role: 'truongmon',
     roleLabel: 'Trưởng môn Tin học',
     icon: '💻',
     subjects: ['Tin học']
   },
   'phuongtm30@fpt.edu.vn': {
-    name: 'Cô Phương',
-    fullName: 'Cô Phương (phuongtm30@fpt.edu.vn)',
+    name: 'Cô Trương Minh Phương',
+    fullName: 'Cô Trương Minh Phương (phuongtm30@fpt.edu.vn)',
     role: 'truongmon',
     roleLabel: 'Trưởng môn Sinh học',
     icon: '🧬',
     subjects: ['Sinh học']
   },
   'muoint@fpt.edu.vn': {
-    name: 'Cô Muội',
-    fullName: 'Cô Muội (muoint@fpt.edu.vn)',
+    name: 'Cô Nguyễn Tuyền Muội',
+    fullName: 'Cô Nguyễn Tuyền Muội (muoint@fpt.edu.vn)',
     role: 'truongmon',
     roleLabel: 'Trưởng môn Hóa học',
     icon: '⚗️',
     subjects: ['Hóa học']
   },
   'duynva3@fpt.edu.vn': {
-    name: 'Thầy Duy',
-    fullName: 'Thầy Duy (duynva3@fpt.edu.vn)',
+    name: 'Thầy Nguyễn Võ Anh Duy',
+    fullName: 'Thầy Nguyễn Võ Anh Duy (duynva3@fpt.edu.vn)',
     role: 'truongmon',
     roleLabel: 'Trưởng môn Vật lý',
     icon: '⚡',
@@ -1901,7 +1901,7 @@ window.exportWord = function(isAll) {
           <td style="width:50%;text-align:center;vertical-align:top">
             <strong>TỔ TRƯỞNG CHUYÊN MÔN KHTN</strong><br>
             <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
-            <strong>Tâm (tamtt48@fpt.edu.vn)</strong>
+            <strong>Thầy Thạch Thanh Tâm</strong>
           </td>
           <td style="width:50%;text-align:center;vertical-align:top">
             <em>Hà Nội, ngày ${dateStr}</em><br>
