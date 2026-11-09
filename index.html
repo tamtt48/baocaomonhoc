@@ -1,0 +1,2049 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EduReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Source+Serif+4:wght@500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --font-display:'Source Serif 4',Georgia,serif;
+  --font-body:'Be Vietnam Pro',system-ui,sans-serif;
+  --bg:#f3f5f8;--surface:#fff;--surface-2:#e9eef4;--ink:#15212e;--ink-2:#506072;--line:#d9e0e8;
+  --accent:#4636b8;--accent-ink:#fff;--band:#13233a;--band-ink:#eef3fa;--tabline:#b9afff;
+  --gioi:#0f8a5f;--gioi-bg:#dff5ec;--kha:#2563c9;--kha-bg:#e0ebfb;--tb:#a8680a;--tb-bg:#fbeccf;--yeu:#c0392b;--yeu-bg:#fbe1dd;
+  --vip:#7c3aed;--vip-bg:#ede9fe;--self:#0891b2;--self-bg:#e0f7fa;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font-body);font-size:14px;line-height:1.6;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2}
+.wrap{max-width:1280px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left))}
+
+/* LOGIN SCREEN */
+.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#312e81 100%);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.login-card{background:#fff;border-radius:18px;padding:36px;width:100%;max-width:460px;box-shadow:0 25px 60px rgba(0,0,0,.35)}
+.login-card h1{text-align:center;font-size:26px;margin:0 0 4px;color:#1e1b4b}
+.login-card .sub{text-align:center;color:var(--ink-2);font-size:13px;margin-bottom:24px}
+.login-card .logo-icon{text-align:center;font-size:46px;margin-bottom:8px}
+.login-card .field{margin-bottom:14px}
+.login-card .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+.login-card .field input{width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px}
+.login-card .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(70,54,184,.15);outline:none}
+.login-error{color:var(--yeu);font-size:13px;font-weight:600;margin-bottom:12px;display:none}
+.quick-accounts{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.quick-accounts h4{font-size:12px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px}
+.quick-btn{display:flex;align-items:center;gap:12px;width:100%;padding:9px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;margin-bottom:7px;text-align:left;transition:all .15s}
+.quick-btn:hover{border-color:var(--accent);background:#f5f3ff;transform:translateY(-1px)}
+.quick-btn .qn{font-weight:700;font-size:13px;color:#1e1b4b}
+.quick-btn .qr{font-size:11.5px;color:var(--ink-2)}
+
+/* HEADER / APP BAR */
+.band{background:var(--band);color:var(--band-ink);padding:16px 0 0}
+.band .top{display:flex;justify-content:space-between;align-items:center;gap:12px 24px;flex-wrap:wrap}
+.band h1{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:0}
+.band .sub{font-size:12.5px;opacity:.8}
+.band .user-info{display:flex;align-items:center;gap:10px;font-size:13px}
+.band .user-badge{background:rgba(255,255,255,.15);padding:4px 12px;border-radius:20px;font-weight:600;font-size:12px}
+.band .user-badge.admin{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff}
+
+.subject-toolbar{display:flex;align-items:center;gap:8px;margin-top:14px;padding:8px 12px;background:rgba(255,255,255,.07);border-radius:10px;font-size:13px;flex-wrap:wrap}
+.subject-toolbar .lbl{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;opacity:.8}
+.subj-pill{background:rgba(255,255,255,.12);border:1px solid transparent;color:#fff;padding:5px 14px;border-radius:20px;font-weight:600;font-size:12.5px;cursor:pointer;transition:all .15s}
+.subj-pill:hover{background:rgba(255,255,255,.25)}
+.subj-pill.active{background:#fff;color:#1e1b4b;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+
+nav.tabs{display:flex;gap:4px;margin-top:12px;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;color:var(--band-ink);opacity:.72;padding:10px 14px;font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+nav.tabs button:hover{opacity:1}
+nav.tabs button[aria-current="page"]{opacity:1;border-bottom-color:var(--tabline)}
+nav.tabs .n{font-size:11px;background:rgba(255,255,255,.16);border-radius:99px;padding:1px 8px;margin-left:6px}
+
+/* MAIN LAYOUT */
+main.wrap{padding:24px 0 56px;display:flex;flex-direction:column;gap:20px}
+.panel{display:flex;flex-direction:column;gap:20px;min-width:0}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.block>h3{font-size:17px;font-weight:700;margin:0 0 14px;color:#1e293b}
+.hint{font-size:12.5px;color:var(--ink-2)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:20px}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.panel-head h2{font-size:24px;font-weight:700;margin:0;color:#0f172a}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin:0}
+
+/* BUTTONS & CONTROLS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:13px;transition:all .15s}
+.btn:hover{border-color:var(--accent);background:#fafafa}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn-primary:hover{background:#3b2d9b}
+.btn-danger{color:var(--yeu);border-color:var(--yeu)}
+.btn-danger:hover{background:var(--yeu-bg)}
+.btn-success{background:var(--gioi);color:#fff;border-color:var(--gioi)}
+.btn-success:hover{background:#0b734e}
+.btn-vip{background:var(--vip);color:#fff;border-color:var(--vip)}
+.btn-export{background:#0f172a;color:#fff;border-color:#0f172a}
+.btn-export:hover{background:#1e293b}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.field input,.field select,.field textarea{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.field textarea{min-height:120px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:12px}
+
+/* UPLOAD */
+.dz{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;border:2px dashed var(--line);border-radius:12px;padding:28px 16px;cursor:pointer;background:var(--bg);transition:border-color .15s}
+.dz:hover,.dz.over{border-color:var(--accent);background:#fbfaff}
+.dz strong{font-size:15px;color:#1e293b}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border-radius:8px;padding:6px 12px;font-weight:600}
+.chip button{border:0;background:none;cursor:pointer;color:var(--ink-2);font-size:16px;padding:0 4px;line-height:1}
+.chip button:hover{color:var(--yeu)}
+
+/* STAT STRIP */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.strip>div{padding:16px 20px;border-left:1px solid var(--line)}
+.strip>div:first-child{border-left:0}
+.strip .l{font-size:12px;font-weight:600;color:var(--ink-2);margin:0}
+.strip .v{font-family:var(--font-display);font-size:28px;font-weight:700;line-height:1.2;margin:2px 0 0;color:#0f172a}
+.strip .s{font-size:12px;color:var(--ink-2);margin:2px 0 0}
+
+/* TIER VISUALS */
+.tbar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--surface-2)}
+.tbar.big{height:32px;border-radius:8px}
+.tbar span{display:block;height:100%}
+.s-gioi{background:var(--gioi)}.s-kha{background:var(--kha)}.s-tb{background:var(--tb)}.s-yeu{background:var(--yeu)}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+.legend .it{display:flex;gap:10px;align-items:flex-start}
+.legend i{width:12px;height:12px;border-radius:3px;margin-top:5px;flex:none}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.b-gioi{background:var(--gioi-bg);color:var(--gioi)}.b-kha{background:var(--kha-bg);color:var(--kha)}
+.b-tb{background:var(--tb-bg);color:var(--tb)}.b-yeu{background:var(--yeu-bg);color:var(--yeu)}
+.tiercard{border-radius:12px;padding:18px 20px;border:1px solid var(--line)}
+.tiercard.t-gioi{background:var(--gioi-bg);color:var(--gioi)}.tiercard.t-kha{background:var(--kha-bg);color:var(--kha)}
+.tiercard.t-tb{background:var(--tb-bg);color:var(--tb)}.tiercard.t-yeu{background:var(--yeu-bg);color:var(--yeu)}
+.tiercard .nm{font-weight:700;margin:0;font-size:14px}.tiercard .ct{font-family:var(--font-display);font-size:36px;font-weight:700;line-height:1.1;margin:4px 0}
+.tiercard .rg{font-size:12.5px;opacity:.9;margin:0}
+
+/* TABLES */
+.tw{overflow-x:auto;border-radius:8px}.tw.tall{max-height:460px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{background:var(--surface-2);text-align:left;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);padding:10px 12px;white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.n,th.n{text-align:right}
+tbody tr:hover{background:var(--surface-2)}
+tr.clk{cursor:pointer}
+tr.best td{background:var(--gioi-bg)}
+tr.worst td{background:var(--yeu-bg)}
+tr.total td{font-weight:700;border-top:2px solid var(--ink-2);background:#f1f5f9}
+details{border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:10px}
+details>summary{cursor:pointer;padding:12px 18px;font-weight:600;display:flex;gap:10px;align-items:center;user-select:none}
+details>.tw{padding:0 18px 16px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.filters .field{flex:1 1 170px}
+ul.ins{list-style:none;display:flex;flex-direction:column;gap:10px;padding:0;margin:0}
+ul.ins li{padding-left:18px;position:relative;max-width:70ch}
+ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+/* CHARTS */
+.cwrap{position:relative;height:300px}
+.cwrap.sm{height:210px}
+.minis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}
+.minis h4{font-size:14px;margin:0 0 6px}
+
+/* SOLUTION CARDS */
+.sol-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px}
+.sol-card{border-radius:12px;padding:22px;border:1.5px solid var(--line);transition:transform .15s}
+.sol-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.07)}
+.sol-card.vip{border-color:#c4b5fd;background:var(--vip-bg)}
+.sol-card.phu-dao{border-color:#fca5a5;background:var(--yeu-bg)}
+.sol-card.kem11{border-color:#fdba74;background:#fff7ed}
+.sol-card.tu-hoc{border-color:#67e8f9;background:var(--self-bg)}
+.sol-card.nang-cao{border-color:#86efac;background:var(--gioi-bg)}
+.sol-card h4{font-size:16px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sol-card p{margin:0 0 8px;font-size:13px;color:var(--ink-2)}
+.sol-card ul{margin:8px 0;padding-left:18px;font-size:13px}
+.sol-card ul li{margin-bottom:4px}
+.sol-tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+
+/* EXPORT CARDS */
+.export-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:20px}
+.export-card{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:26px;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+.export-card:hover{border-color:var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.08);transform:translateY(-2px)}
+.export-card .icon{font-size:46px;margin-bottom:10px}
+.export-card h4{font-size:17px;font-weight:700;margin:0 0 6px;color:#0f172a}
+.export-card p{font-size:13px;color:var(--ink-2);margin:0 0 16px;line-height:1.5}
+
+/* MODAL / TOAST */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px}
+.modal[hidden]{display:none}
+.card{background:var(--surface);border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:24px;border:1px solid var(--line);box-shadow:0 20px 40px rgba(0,0,0,.2)}
+.card header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+.card h3{font-size:22px;margin:0}
+.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+.kv div{background:var(--surface-2);border-radius:8px;padding:10px 12px}
+.kv .l{font-size:11.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em;margin:0}
+.kv .v{font-weight:700;font-size:16px;margin:0}
+.track{position:relative;height:14px;border-radius:99px;overflow:hidden;display:flex;margin-top:22px}
+.mark{position:relative;height:0}.mk{position:absolute;top:-34px;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap}
+.mk::after{content:"";display:block;width:2px;height:16px;background:var(--ink);margin:1px auto 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#0f172a;color:#fff;padding:10px 22px;border-radius:30px;font-weight:600;font-size:13.5px;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,.25)}
+.toast[hidden]{display:none}
+
+@media print{
+  .band,.login-overlay,nav.tabs,.btn,.filters,.dz,.subject-toolbar{display:none!important}
+  .block{break-inside:avoid;box-shadow:none;border:1px solid #ddd}
+  body{background:#fff}
+}
+@media(max-width:600px){
+  .band h1{font-size:20px}
+  .strip .v{font-size:24px}
+  .panel-head h2{font-size:20px}
+  .login-card{padding:24px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="loginScreen">
+  <div class="login-card">
+    <div class="logo-icon">📊</div>
+    <h1>EduReport KHTN</h1>
+    <p class="sub">Hệ thống Báo Cáo Chuyên Môn & Phân Tầng Học Sinh<br>Trường THPT FPT · Tổ Khoa Học Tự Nhiên</p>
+    <div class="field">
+      <label for="loginEmail">Email giảng viên / Cán bộ môn</label>
+      <input id="loginEmail" type="email" placeholder="example@fpt.edu.vn" autocomplete="email">
+    </div>
+    <p class="login-error" id="loginError">⚠️ Email không thuộc phân quyền của Tổ KHTN!</p>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doLogin()">🔐 Đăng nhập vào hệ thống</button>
+    </div>
+    <div class="quick-accounts">
+      <h4>🏫 Phân quyền truy cập theo yêu cầu</h4>
+      <button class="quick-btn" onclick="quickLogin('tamtt48@fpt.edu.vn')">
+        <div style="font-size:22px">👑</div>
+        <div><div class="qn">Tổ trưởng KHTN – Thầy/Cô Tâm</div><div class="qr">tamtt48@fpt.edu.vn · Toàn quyền 5 môn</div></div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('chinh10@fpt.edu.vn')">
+        <div style="font-size:22px">📐</div>
+        <div><div class="qn">Trưởng môn Toán – Thầy Chính</div><div class="qr">chinh10@fpt.edu.vn · Môn Toán</div></div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('hieutt85@fpt.edu.vn')">
+        <div style="font-size:22px">💻</div>
+        <div><div class="qn">Trưởng môn Tin học – Thầy Hiếu</div><div class="qr">hieutt85@fpt.edu.vn · Môn Tin học</div></div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('phuongtm30@fpt.edu.vn')">
+        <div style="font-size:22px">🧬</div>
+        <div><div class="qn">Trưởng môn Sinh học – Cô Phương</div><div class="qr">phuongtm30@fpt.edu.vn · Môn Sinh học</div></div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('muoint@fpt.edu.vn')">
+        <div style="font-size:22px">⚗️</div>
+        <div><div class="qn">Trưởng môn Hóa học – Cô Muội</div><div class="qr">muoint@fpt.edu.vn · Môn Hóa học</div></div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('duynva3@fpt.edu.vn')">
+        <div style="font-size:22px">⚡</div>
+        <div><div class="qn">Trưởng môn Vật lý – Thầy Duy</div><div class="qr">duynva3@fpt.edu.vn · Môn Vật lý</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- APP HEADER -->
+<header class="band" id="appHeader" style="display:none">
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>EduReport</h1>
+        <p class="sub">Tổ Khoa Học Tự Nhiên · Phân tích phổ điểm & giải pháp phân tầng</p>
+      </div>
+      <div class="user-info">
+        <span id="userDisplay" style="font-weight:700"></span>
+        <span class="user-badge" id="roleBadge"></span>
+        <button class="btn" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.2);padding:6px 12px;font-size:12px" onclick="doLogout()">Đăng xuất</button>
+      </div>
+    </div>
+
+    <!-- Subject Switcher Toolbar -->
+    <div class="subject-toolbar" id="subjectBar">
+      <span class="lbl">📚 Môn học:</span>
+      <div id="subjectPills" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <nav class="tabs" aria-label="Các mục">
+      <button data-tab="overview">📈 Tổng quan</button>
+      <button data-tab="charts">📊 Phổ điểm</button>
+      <button data-tab="tiers">🏷️ Phân tầng 4 nhóm</button>
+      <button data-tab="solutions">💡 Giải pháp can thiệp</button>
+      <button data-tab="students">👨‍🎓 Danh sách HS <span class="n" id="cnt">0</span></button>
+      <button data-tab="data">📋 Nhập thêm điểm</button>
+      <button data-tab="export">📥 Xuất file nộp (Word/PDF/Excel)</button>
+    </nav>
+  </div>
+</header>
+
+<!-- MAIN CONTENT WRAPPER -->
+<main class="wrap" id="appMain" style="display:none">
+  <section class="panel" id="p-overview" hidden></section>
+  <section class="panel" id="p-charts" hidden></section>
+  <section class="panel" id="p-tiers" hidden></section>
+  <section class="panel" id="p-solutions" hidden></section>
+  <section class="panel" id="p-students" hidden></section>
+
+  <!-- DATA INPUT PANEL -->
+  <section class="panel" id="p-data" hidden>
+    <div class="panel-head"><div><p class="eyebrow">Tùy biến dữ liệu</p><h2>Nhập thêm hoặc cập nhật bảng điểm</h2></div></div>
+    <div class="grid2">
+      <div class="block">
+        <h3>📁 Nhập từ file Excel hoặc CSV</h3>
+        <label class="dz" id="dz">
+          <input class="sr" type="file" id="file" accept=".xlsx,.xls,.csv">
+          <div style="font-size:32px">📥</div>
+          <strong>Kéo thả file vào đây hoặc bấm để chọn</strong>
+          <span class="hint">Hỗ trợ .xlsx, .xls, .csv — Yêu cầu có cột Họ tên và cột Điểm</span>
+        </label>
+        <div class="field" style="margin-top:14px">
+          <label for="impClass">Tên lớp áp dụng (nếu file không có cột Lớp)</label>
+          <input id="impClass" value="12A1" placeholder="VD: 12A1">
+        </div>
+        <p class="hint" style="margin-top:10px">Hệ thống tự động phát hiện tên cột thông minh (Họ và tên, Điểm số, Lớp học). Mỗi sheet trong Excel có thể là một lớp riêng.</p>
+      </div>
+      <div class="block">
+        <h3>📝 Dán nhanh từ Excel / Google Sheets</h3>
+        <div class="field"><label for="pasteClass">Tên lớp</label><input id="pasteClass" placeholder="VD: 12A2"></div>
+        <div class="field" style="margin-top:12px">
+          <label for="pasteBox">Mỗi dòng: Họ tên [Tab] Điểm</label>
+          <textarea id="pasteBox" placeholder="Nguyễn Văn An&#9;8,5&#10;Trần Thị Bích&#9;7,25"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="pasteAdd">➕ Thêm vào môn học</button>
+          <span class="hint" id="pasteMsg"></span>
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <h3>⚙️ Cấu hình thang điểm phân loại</h3>
+      <div class="row">
+        <div class="field"><label for="cfgExam">Tên kỳ thi</label><input id="cfgExam" value="Kiểm tra Giữa kỳ 1 · NH 2026-2027"></div>
+        <div class="field"><label for="cfgGioi">Ngưỡng Giỏi (≥)</label><input id="cfgGioi" type="number" step="0.1" min="0" max="10" value="8"></div>
+        <div class="field"><label for="cfgKha">Ngưỡng Khá (≥)</label><input id="cfgKha" type="number" step="0.1" min="0" max="10" value="6.5"></div>
+        <div class="field"><label for="cfgTb">Ngưỡng Đạt TB (≥)</label><input id="cfgTb" type="number" step="0.1" min="0" max="10" value="5"></div>
+      </div>
+      <p class="hint" style="margin-top:10px">Học sinh dưới ngưỡng Đạt TB là nhóm Yếu cần can thiệp phụ đạo/VIP/kèm 1-1. <span class="warn" id="cfgMsg"></span></p>
+    </div>
+    <div class="block">
+      <h3>📦 Danh sách các lớp trong môn học này</h3>
+      <div id="loaded"></div>
+    </div>
+  </section>
+
+  <!-- EXPORT PANEL -->
+  <section class="panel" id="p-export" hidden></section>
+</main>
+
+<!-- MODAL POPUP -->
+<div class="modal" id="modal" hidden>
+  <div class="card" id="modalCard" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- TOAST MESSAGE -->
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- JAVASCRIPT LOGIC -->
+<script>
+(function(){
+'use strict';
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fm=n=>String(Math.round(n*100)/100).replace('.',',');
+const f1=n=>(Math.round(n*10)/10).toFixed(1).replace('.',',');
+const pc=x=>Math.round(x*100)+'%';
+
+// ===== 1. USER ACCOUNTS & PERMISSIONS =====
+const ACCOUNTS = {
+  'tamtt48@fpt.edu.vn': {
+    name: 'Tâm',
+    fullName: 'Thầy/Cô Tâm (tamtt48@fpt.edu.vn)',
+    role: 'admin',
+    roleLabel: 'Tổ trưởng Tổ KHTN',
+    icon: '👑',
+    subjects: ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý']
+  },
+  'chinh10@fpt.edu.vn': {
+    name: 'Thầy Chính',
+    fullName: 'Thầy Chính (chinh10@fpt.edu.vn)',
+    role: 'truongmon',
+    roleLabel: 'Trưởng môn Toán',
+    icon: '📐',
+    subjects: ['Toán']
+  },
+  'hieutt85@fpt.edu.vn': {
+    name: 'Thầy Hiếu',
+    fullName: 'Thầy Hiếu (hieutt85@fpt.edu.vn)',
+    role: 'truongmon',
+    roleLabel: 'Trưởng môn Tin học',
+    icon: '💻',
+    subjects: ['Tin học']
+  },
+  'phuongtm30@fpt.edu.vn': {
+    name: 'Cô Phương',
+    fullName: 'Cô Phương (phuongtm30@fpt.edu.vn)',
+    role: 'truongmon',
+    roleLabel: 'Trưởng môn Sinh học',
+    icon: '🧬',
+    subjects: ['Sinh học']
+  },
+  'muoint@fpt.edu.vn': {
+    name: 'Cô Muội',
+    fullName: 'Cô Muội (muoint@fpt.edu.vn)',
+    role: 'truongmon',
+    roleLabel: 'Trưởng môn Hóa học',
+    icon: '⚗️',
+    subjects: ['Hóa học']
+  },
+  'duynva3@fpt.edu.vn': {
+    name: 'Thầy Duy',
+    fullName: 'Thầy Duy (duynva3@fpt.edu.vn)',
+    role: 'truongmon',
+    roleLabel: 'Trưởng môn Vật lý',
+    icon: '⚡',
+    subjects: ['Vật lý']
+  }
+};
+
+let currentUser = null;
+let currentSubject = 'Toán';
+let nextId = 1;
+let cur = 'overview';
+
+// ===== 2. INITIAL REALISTIC DATA FOR ALL 5 SUBJECTS =====
+const TIERS = [
+  { k: 'gioi', label: 'Giỏi' },
+  { k: 'kha', label: 'Khá' },
+  { k: 'tb', label: 'Trung bình' },
+  { k: 'yeu', label: 'Yếu' }
+];
+
+let allData = {};
+
+function initDefaultDataset() {
+  const SUBJECT_DEFAULTS = [
+    {
+      subject: 'Toán',
+      classes: [
+        { name: '12T1', n: 38, mean: 7.8, sd: 1.1 },
+        { name: '12T2', n: 37, mean: 7.0, sd: 1.3 },
+        { name: '12T3', n: 36, mean: 6.2, sd: 1.5 },
+        { name: '12T4', n: 37, mean: 5.4, sd: 1.6 }
+      ]
+    },
+    {
+      subject: 'Tin học',
+      classes: [
+        { name: '12Tin1', n: 35, mean: 8.2, sd: 1.0 },
+        { name: '12Tin2', n: 35, mean: 7.3, sd: 1.2 },
+        { name: '12Tin3', n: 35, mean: 6.5, sd: 1.4 }
+      ]
+    },
+    {
+      subject: 'Sinh học',
+      classes: [
+        { name: '12Sinh1', n: 34, mean: 7.5, sd: 1.2 },
+        { name: '12Sinh2', n: 34, mean: 6.8, sd: 1.3 },
+        { name: '12Sinh3', n: 34, mean: 5.9, sd: 1.5 }
+      ]
+    },
+    {
+      subject: 'Hóa học',
+      classes: [
+        { name: '12Hoa1', n: 36, mean: 7.6, sd: 1.2 },
+        { name: '12Hoa2', n: 35, mean: 6.9, sd: 1.4 },
+        { name: '12Hoa3', n: 35, mean: 6.0, sd: 1.6 },
+        { name: '12Hoa4', n: 34, mean: 5.1, sd: 1.7 }
+      ]
+    },
+    {
+      subject: 'Vật lý',
+      classes: [
+        { name: '12Ly1', n: 35, mean: 7.9, sd: 1.1 },
+        { name: '12Ly2', n: 35, mean: 7.1, sd: 1.3 },
+        { name: '12Ly3', n: 34, mean: 6.3, sd: 1.5 },
+        { name: '12Ly4', n: 34, mean: 5.2, sd: 1.6 }
+      ]
+    }
+  ];
+
+  const ho = ['Nguyễn','Trần','Lê','Phạm','Huỳnh','Võ','Phan','Trương','Bùi','Đặng','Dương','Hoàng','Vũ'];
+  const demNam = ['Văn','Minh','Quốc','Hoàng','Gia','Anh','Hải','Đức'];
+  const demNu = ['Thị','Ngọc','Thanh','Mai','Kim','Hồng','Bảo'];
+  const tenNam = ['An','Bình','Cường','Dũng','Đạt','Huy','Khang','Long','Nam','Phát','Phúc','Quân','Sơn','Tuấn','Vinh','Thịnh','Trí'];
+  const tenNu = ['Anh','Chi','Dung','Hân','Linh','My','Ngân','Nhi','Phương','Thảo','Trang','Uyên','Vy','Yến','Hương','Quỳnh'];
+
+  let seed = 20261109;
+  const rnd = () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+  const pick = l => l[Math.floor(rnd() * l.length)];
+
+  SUBJECT_DEFAULTS.forEach(sObj => {
+    const students = [];
+    sObj.classes.forEach(cObj => {
+      const seen = new Set();
+      while (seen.size < cObj.n) {
+        const isF = rnd() < 0.52;
+        const name = pick(ho) + ' ' + pick(isF ? demNu : demNam) + ' ' + pick(isF ? tenNu : tenNam);
+        if (seen.has(name)) continue;
+        seen.add(name);
+        const score = Math.min(10, Math.max(0.5, Math.round((cObj.mean + gauss() * cObj.sd) * 4) / 4));
+        students.push({
+          id: nextId++,
+          name,
+          score,
+          cls: cObj.name
+        });
+      }
+    });
+
+    allData[sObj.subject] = {
+      subject: sObj.subject,
+      exam: 'Kiểm tra Giữa kỳ 1 · NH 2026-2027',
+      students,
+      absent: [],
+      cfg: { gioi: 8.0, kha: 6.5, tb: 5.0 }
+    };
+  });
+}
+
+// Run initial dataset generator
+initDefaultDataset();
+
+function getCfg() {
+  const g = +$('#cfgGioi').value, k = +$('#cfgKha').value, t = +$('#cfgTb').value;
+  return {
+    subject: currentSubject,
+    exam: $('#cfgExam').value.trim() || 'Bài kiểm tra',
+    gioi: (g > k && g <= 10) ? g : 8.0,
+    kha: (k > t && k > 0) ? k : 6.5,
+    tb: (t > 0 && t < k) ? t : 5.0
+  };
+}
+
+function getCurrentData() {
+  if (!allData[currentSubject]) {
+    allData[currentSubject] = {
+      subject: currentSubject,
+      exam: 'Kiểm tra Giữa kỳ 1 · NH 2026-2027',
+      students: [],
+      absent: [],
+      cfg: { gioi: 8.0, kha: 6.5, tb: 5.0 }
+    };
+  }
+  return allData[currentSubject];
+}
+
+function S() { return getCurrentData().students; }
+function ABS() { return getCurrentData().absent; }
+function classes() { return [...new Set(S().map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true })); }
+
+function tier(score, cfg) {
+  if (score >= cfg.gioi) return 'gioi';
+  if (score >= cfg.kha) return 'kha';
+  if (score >= cfg.tb) return 'tb';
+  return 'yeu';
+}
+function tLabel(k) { return TIERS.find(t => t.k === k).label; }
+function range(k, cfg) {
+  return k === 'gioi' ? 'từ ' + f1(cfg.gioi) :
+         k === 'kha' ? 'từ ' + f1(cfg.kha) + ' đến dưới ' + f1(cfg.gioi) :
+         k === 'tb' ? 'từ ' + f1(cfg.tb) + ' đến dưới ' + f1(cfg.kha) :
+         'dưới ' + f1(cfg.tb);
+}
+function badge(k) { return `<span class="badge b-${k}">${tLabel(k)}</span>`; }
+
+function stats(list, cfg) {
+  const n = list.length;
+  if (!n) return null;
+  const v = list.map(s => s.score).sort((a,b) => a - b);
+  const mean = v.reduce((a,b) => a + b, 0) / n;
+  const med = n % 2 ? v[(n - 1) / 2] : (v[n/2 - 1] + v[n/2]) / 2;
+  const sd = Math.sqrt(v.reduce((a,x) => a + (x - mean) ** 2, 0) / n);
+  const c = { gioi: 0, kha: 0, tb: 0, yeu: 0 };
+  list.forEach(s => c[tier(s.score, cfg)]++);
+  return { n, mean, med, sd, min: v[0], max: v[n - 1], c, pass: (n - c.yeu) / n, gk: (c.gioi + c.kha) / n };
+}
+
+function buildRanks() {
+  const m = {}, st = S();
+  const asg = (list, key) => {
+    const srt = [...list].sort((a,b) => b.score - a.score);
+    let r = 0, prev = null;
+    srt.forEach((s, i) => {
+      if (s.score !== prev) { r = i + 1; prev = s.score; }
+      (m[s.id] = m[s.id] || {})[key] = r;
+    });
+  };
+  asg(st, 'all');
+  classes().forEach(c => asg(st.filter(s => s.cls === c), 'cls'));
+  return m;
+}
+
+function nearList() {
+  const cfg = getCfg();
+  const nxt = { yeu: ['tb', cfg.tb], tb: ['kha', cfg.kha], kha: ['gioi', cfg.gioi] };
+  const out = [];
+  S().forEach(s => {
+    const t = tier(s.score, cfg);
+    const x = nxt[t];
+    if (!x) return;
+    const gap = Math.round((x[1] - s.score) * 100) / 100;
+    if (gap <= 0.5 && gap > 0) out.push({ s, from: t, to: x[0], gap });
+  });
+  return out.sort((a,b) => a.gap - b.gap);
+}
+
+const tierBar = (c, n, big) => `
+  <div class="tbar${big ? ' big' : ''}">
+    ${TIERS.map(t => c[t.k] ? `<span class="s-${t.k}" style="width:${c[t.k]/n*100}%" title="${t.label}: ${c[t.k]} (${pc(c[t.k]/n)})"></span>` : '').join('')}
+  </div>`;
+
+// ===== 3. TOAST & MODAL =====
+let toastT;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.hidden = true, 2800);
+}
+window.toast = toast;
+
+function openModal(html) {
+  $('#modalCard').innerHTML = html;
+  $('#modal').hidden = false;
+}
+function closeModal() {
+  $('#modal').hidden = true;
+}
+window.closeModal = closeModal;
+$('#modal').addEventListener('click', e => {
+  if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ===== 4. AUTHENTICATION & LOGIN UI =====
+window.doLogin = function() {
+  const email = $('#loginEmail').value.trim().toLowerCase();
+  const acc = ACCOUNTS[email];
+  if (!acc) {
+    $('#loginError').style.display = 'block';
+    return;
+  }
+  $('#loginError').style.display = 'none';
+  currentUser = { email, ...acc };
+  localStorage.setItem('eduReportUser', email);
+  showApp();
+};
+
+window.quickLogin = function(email) {
+  $('#loginEmail').value = email;
+  window.doLogin();
+};
+
+window.doLogout = function() {
+  currentUser = null;
+  localStorage.removeItem('eduReportUser');
+  $('#loginScreen').style.display = 'flex';
+  $('#appHeader').style.display = 'none';
+  $('#appMain').style.display = 'none';
+};
+
+function showApp() {
+  $('#loginScreen').style.display = 'none';
+  $('#appHeader').style.display = '';
+  $('#appMain').style.display = '';
+
+  $('#userDisplay').innerHTML = `${currentUser.icon} ${esc(currentUser.name)}`;
+  const rb = $('#roleBadge');
+  rb.textContent = currentUser.roleLabel;
+  rb.className = 'user-badge' + (currentUser.role === 'admin' ? ' admin' : '');
+
+  // Set default subject based on permissions
+  if (!currentUser.subjects.includes(currentSubject)) {
+    currentSubject = currentUser.subjects[0];
+  }
+
+  renderSubjectToolbar();
+  refresh();
+  show(location.hash.slice(1) || 'overview');
+}
+
+function renderSubjectToolbar() {
+  const container = $('#subjectPills');
+  if (!currentUser) return;
+  const subjects = currentUser.subjects;
+
+  container.innerHTML = subjects.map(sb => `
+    <button class="subj-pill ${sb === currentSubject ? 'active' : ''}" onclick="switchSubject('${sb}')">
+      ${sb === 'Toán' ? '📐' : sb === 'Tin học' ? '💻' : sb === 'Sinh học' ? '🧬' : sb === 'Hóa học' ? '⚗️' : '⚡'} ${sb}
+    </button>
+  `).join('');
+}
+
+window.switchSubject = function(sb) {
+  if (!currentUser.subjects.includes(sb)) return;
+  currentSubject = sb;
+  renderSubjectToolbar();
+  refresh();
+  toast(`Đã chuyển sang môn: ${sb}`);
+};
+
+// Check stored login on startup
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('eduReportUser');
+  if (saved && ACCOUNTS[saved]) {
+    currentUser = { email: saved, ...ACCOUNTS[saved] };
+    showApp();
+  } else {
+    // Default open login
+    $('#loginScreen').style.display = 'flex';
+  }
+  $('#loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') window.doLogin(); });
+});
+
+// ===== 5. TABS & NAVIGATION =====
+const TABS = ['overview', 'charts', 'tiers', 'solutions', 'students', 'data', 'export'];
+
+function go(t) {
+  location.hash = t;
+  if (cur === t) renderTab(t);
+}
+function show(t) {
+  if (!TABS.includes(t)) t = 'overview';
+  cur = t;
+  TABS.forEach(x => {
+    const el = $('#p-' + x);
+    if (el) el.hidden = x !== t;
+  });
+  $$('nav.tabs button').forEach(b => {
+    if (b.dataset.tab === t) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  renderTab(t);
+}
+$$('nav.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+function refresh() {
+  $('#cnt').textContent = S().length;
+  renderLoadedClasses();
+  renderTab(cur);
+}
+
+function renderTab(t) {
+  killCharts();
+  if (t === 'overview') renderOverview();
+  else if (t === 'charts') renderCharts();
+  else if (t === 'tiers') renderTiers();
+  else if (t === 'solutions') renderSolutions();
+  else if (t === 'students') renderStudents();
+  else if (t === 'data') renderDataInput();
+  else if (t === 'export') renderExport();
+}
+
+const head = (eyebrow, title, actions) => `
+  <div class="panel-head">
+    <div><p class="eyebrow">${eyebrow}</p><h2>${title}</h2></div>
+    ${actions ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${actions}</div>` : ''}
+  </div>`;
+const meta = () => `${esc(getCfg().exam)} · Môn ${esc(currentSubject)}`;
+const emptyState = () => `
+  <div class="empty">
+    <div style="font-size:48px">📭</div>
+    <h2>Chưa có dữ liệu điểm môn ${esc(currentSubject)}</h2>
+    <p class="hint">Nhập file Excel hoặc dán bảng điểm ở mục "Nhập thêm điểm".</p>
+    <button class="btn btn-primary" onclick="go('data')">📋 Đi đến mục Nhập điểm</button>
+  </div>`;
+
+// ===== 6. OVERVIEW TAB =====
+function renderOverview() {
+  const el = $('#p-overview'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const all = stats(st, cfg), cl = classes();
+  const per = cl.map(c => ({ c, st: stats(st.filter(s => s.cls === c), cfg) }));
+  const means = per.map(p => p.st.mean), best = Math.max(...means), worst = Math.min(...means);
+
+  const ins = [];
+  ins.push(`Toàn khối có <strong>${all.n}</strong> học sinh, Điểm trung bình môn: <strong>${fm(all.mean)}</strong>, Tỉ lệ đạt (≥${f1(cfg.tb)}): <strong>${pc(all.pass)}</strong> (${all.n - all.c.yeu}/${all.n} HS).`);
+  if (per.length > 1) {
+    const so = [...per].sort((a,b) => b.st.mean - a.st.mean);
+    ins.push(`Lớp cao nhất là <strong>${esc(so[0].c)}</strong> (ĐTB: ${fm(so[0].st.mean)}), thấp nhất là <strong>${esc(so[so.length-1].c)}</strong> (ĐTB: ${fm(so[so.length-1].st.mean)}), chênh lệch <strong>${fm(so[0].st.mean - so[so.length-1].st.mean)}</strong> điểm.`);
+    const wk = [...per].sort((a,b) => (b.st.c.yeu/b.st.n) - (a.st.c.yeu/a.st.n))[0];
+    if (wk.st.c.yeu > 0) {
+      ins.push(`Lớp <strong>${esc(wk.c)}</strong> có tỉ lệ học sinh Yếu cao nhất: ${wk.st.c.yeu}/${wk.st.n} HS (${pc(wk.st.c.yeu/wk.st.n)}) — Cần ưu tiên bố trí phụ đạo.`);
+    }
+  }
+  const np = nearList().filter(x => x.from === 'yeu').length;
+  if (np > 0) {
+    ins.push(`Có <strong>${np}</strong> học sinh Yếu sát ngưỡng đạt (chỉ thiếu ≤0.5 điểm) — Đây là nhóm đối tượng vàng của Lớp VIP nâng hạng.`);
+  }
+
+  function rowC(c, s, cls) {
+    const cell = k => `${s.c[k]} <span class="hint">(${pc(s.c[k]/s.n)})</span>`;
+    return `<tr class="${cls}">
+      <td><strong>${esc(c)}</strong></td>
+      <td class="n">${s.n}</td>
+      <td class="n"><strong>${fm(s.mean)}</strong></td>
+      <td class="n">${fm(s.med)}</td>
+      <td class="n">${fm(s.max)}</td>
+      <td class="n">${fm(s.min)}</td>
+      <td class="n">${fm(s.sd)}</td>
+      <td class="n">${cell('gioi')}</td>
+      <td class="n">${cell('kha')}</td>
+      <td class="n">${cell('tb')}</td>
+      <td class="n">${cell('yeu')}</td>
+      <td class="n"><strong>${pc(s.pass)}</strong></td>
+      <td>${tierBar(s.c, s.n)}</td>
+    </tr>`;
+  }
+
+  el.innerHTML = head(meta(), `Tổng quan kết quả môn ${esc(currentSubject)}`, `
+    <button class="btn btn-export" onclick="go('export')">📥 Xuất file nộp</button>
+  `) + `
+  <div class="strip">
+    <div><p class="l">Tổng số học sinh</p><p class="v">${all.n}</p><p class="s">${cl.length} lớp học</p></div>
+    <div><p class="l">Điểm trung bình</p><p class="v">${fm(all.mean)}</p><p class="s">Trung vị: ${fm(all.med)}</p></div>
+    <div><p class="l">Độ phân tán (SD)</p><p class="v">${fm(all.sd)}</p><p class="s">Min: ${fm(all.min)} · Max: ${fm(all.max)}</p></div>
+    <div><p class="l">Tỉ lệ đạt (≥${f1(cfg.tb)})</p><p class="v">${pc(all.pass)}</p><p class="s">${all.n - all.c.yeu}/${all.n} học sinh</p></div>
+    <div><p class="l">Giỏi & Khá</p><p class="v">${pc(all.gk)}</p><p class="s">${all.c.gioi + all.c.kha} học sinh</p></div>
+  </div>
+  <div class="grid2">
+    <section class="block">
+      <h3>Cơ cấu 4 tầng học sinh</h3>
+      ${tierBar(all.c, all.n, true)}
+      <div class="legend">
+        ${TIERS.map(t => `
+          <div class="it">
+            <i class="s-${t.k}"></i>
+            <div>
+              <b>${t.label}: ${all.c[t.k]} HS</b> (${pc(all.c[t.k]/all.n)})<br>
+              <span class="hint">${range(t.k, cfg)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+    <section class="block">
+      <h3>Nhận xét chuyên môn</h3>
+      <ul class="ins">${ins.map(i => `<li>${i}</li>`).join('')}</ul>
+    </section>
+  </div>
+  <section class="block">
+    <h3>Bảng so sánh chi tiết các lớp môn ${esc(currentSubject)}</h3>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th>Lớp</th>
+            <th class="n">Sĩ số</th>
+            <th class="n">ĐTB</th>
+            <th class="n">Trung vị</th>
+            <th class="n">Cao nhất</th>
+            <th class="n">Thấp nhất</th>
+            <th class="n">Độ lệch (SD)</th>
+            <th class="n">🟢 Giỏi</th>
+            <th class="n">🔵 Khá</th>
+            <th class="n">🟡 TB</th>
+            <th class="n">🔴 Yếu</th>
+            <th class="n">Tỉ lệ đạt</th>
+            <th>Cơ cấu</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${per.map(p => rowC(p.c, p.st, per.length > 1 && p.st.mean === best ? 'best' : per.length > 1 && p.st.mean === worst ? 'worst' : '')).join('')}
+          ${per.length > 1 ? rowC('Toàn khối', all, 'total') : ''}
+        </tbody>
+      </table>
+    </div>
+  </section>`;
+}
+
+// ===== 7. CHARTS TAB =====
+let charts = [];
+function killCharts() {
+  charts.forEach(c => c.destroy());
+  charts = [];
+}
+function tc() {
+  return {
+    ink: '#15212e',
+    ink2: '#506072',
+    line: '#d9e0e8',
+    accent: '#4636b8',
+    gioi: '#0f8a5f',
+    kha: '#2563c9',
+    tb: '#a8680a',
+    yeu: '#c0392b'
+  };
+}
+function hist(list, step) {
+  const nb = Math.round(10 / step), bins = Array(nb).fill(0);
+  list.forEach(s => {
+    bins[Math.min(Math.floor(s.score / step + 1e-9), nb - 1)]++;
+  });
+  return bins;
+}
+function histChart(canvas, list, step, t, cfg) {
+  const bins = hist(list, step), nb = bins.length;
+  const labels = bins.map((_, i) => f1(i * step) + '–' + f1((i + 1) * step));
+  const colors = bins.map((_, i) => t[tier((i + 0.5) * step, cfg)]);
+  return new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Số lượng học sinh',
+        data: bins,
+        backgroundColor: colors,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: t.line } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderCharts() {
+  const el = $('#p-charts'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const cl = classes(), all = stats(st, cfg);
+  el.innerHTML = head(meta(), `Phổ điểm & Đồ thị phân tích môn ${esc(currentSubject)}`) + `
+  <div class="grid2">
+    <section class="block">
+      <h3>Phổ điểm toàn khối môn ${esc(currentSubject)}</h3>
+      <div class="cwrap"><canvas id="cHist"></canvas></div>
+    </section>
+    <section class="block">
+      <h3>Tỉ lệ 4 tầng học sinh</h3>
+      <div class="cwrap"><canvas id="cPie"></canvas></div>
+    </section>
+  </div>
+  ${cl.length > 1 ? `
+  <div class="grid2">
+    <section class="block">
+      <h3>So sánh Điểm trung bình các lớp</h3>
+      <div class="cwrap"><canvas id="cMean"></canvas></div>
+    </section>
+    <section class="block">
+      <h3>Tỉ lệ phân tầng theo từng lớp</h3>
+      <div class="cwrap" style="height:${Math.max(300, cl.length * 32 + 80)}px"><canvas id="cStack"></canvas></div>
+    </section>
+  </div>` : ''}
+  <section class="block">
+    <h3>Phổ điểm chi tiết từng lớp</h3>
+    <div class="minis">
+      ${cl.map((c, i) => `
+        <div>
+          <h4>Lớp ${esc(c)} <span class="hint">· ĐTB ${fm(stats(st.filter(s => s.cls === c), cfg).mean)}</span></h4>
+          <div class="cwrap sm"><canvas id="cm${i}"></canvas></div>
+        </div>
+      `).join('')}
+    </div>
+  </section>`;
+
+  const t = tc();
+  Chart.defaults.color = t.ink2;
+  Chart.defaults.borderColor = t.line;
+  Chart.defaults.font.family = "'Be Vietnam Pro',sans-serif";
+
+  charts.push(histChart($('#cHist'), st, 1, t, cfg));
+  charts.push(new Chart($('#cPie'), {
+    type: 'doughnut',
+    data: {
+      labels: TIERS.map(x => x.label),
+      datasets: [{
+        data: TIERS.map(x => all.c[x.k]),
+        backgroundColor: TIERS.map(x => t[x.k]),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '58%',
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } }
+      }
+    }
+  }));
+
+  if (cl.length > 1) {
+    const per = cl.map(c => stats(st.filter(s => s.cls === c), cfg));
+    charts.push(new Chart($('#cMean'), {
+      data: {
+        labels: cl,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'ĐTB Lớp',
+            data: per.map(p => Math.round(p.mean * 100) / 100),
+            backgroundColor: t.accent,
+            borderRadius: 4,
+            maxBarThickness: 55
+          },
+          {
+            type: 'line',
+            label: `ĐTB Toàn khối (${fm(all.mean)})`,
+            data: cl.map(() => Math.round(all.mean * 100) / 100),
+            borderColor: t.ink2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
+        scales: {
+          y: { min: 0, max: 10, grid: { color: t.line } },
+          x: { grid: { display: false } }
+        }
+      }
+    }));
+
+    charts.push(new Chart($('#cStack'), {
+      type: 'bar',
+      data: {
+        labels: cl,
+        datasets: TIERS.map(x => ({
+          label: x.label,
+          data: per.map(p => Math.round(p.c[x.k] / p.n * 1000) / 10),
+          backgroundColor: t[x.k]
+        }))
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
+        scales: {
+          x: { stacked: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: t.line } },
+          y: { stacked: true, grid: { display: false } }
+        }
+      }
+    }));
+  }
+
+  cl.forEach((c, i) => charts.push(histChart($('#cm' + i), st.filter(s => s.cls === c), 1, t, cfg)));
+}
+
+// ===== 8. TIERS TAB =====
+function renderTiers() {
+  const el = $('#p-tiers'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const all = stats(st, cfg), rk = buildRanks(), near = nearList();
+
+  function stuRows(list, showCls) {
+    return list.map(s => `
+      <tr class="clk" data-id="${s.id}">
+        <td class="n">${rk[s.id].all}</td>
+        <td><strong>${esc(s.name)}</strong></td>
+        ${showCls ? `<td>${esc(s.cls)}</td>` : ''}
+        <td class="n"><strong>${fm(s.score)}</strong></td>
+      </tr>
+    `).join('');
+  }
+
+  el.innerHTML = head(meta(), `Phân tầng 4 nhóm học sinh môn ${esc(currentSubject)}`) + `
+  <div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))">
+    ${TIERS.map(t => `
+      <div class="tiercard t-${t.k}">
+        <p class="nm">${t.label}</p>
+        <p class="ct">${all.c[t.k]}</p>
+        <p class="rg">${pc(all.c[t.k]/all.n)} · ${range(t.k, cfg)}</p>
+      </div>
+    `).join('')}
+  </div>
+
+  <section class="block">
+    <h3>🎯 Nhóm học sinh có khả năng nâng tầng (Thiếu ≤0.5 điểm)</h3>
+    <p class="hint" style="margin-bottom:12px">Danh sách học sinh chỉ cách tầng xếp loại cao hơn từ 0.1 đến 0.5 điểm. Cần động viên và giao nhiệm vụ bứt phá.</p>
+    ${near.length ? `
+      <div class="tw tall">
+        <table>
+          <thead>
+            <tr>
+              <th>Họ và tên</th>
+              <th>Lớp</th>
+              <th class="n">Điểm hiện tại</th>
+              <th>Tầng hiện tại</th>
+              <th class="n">Còn thiếu</th>
+              <th>Mục tiêu phấn đấu</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${near.map(x => `
+              <tr class="clk" data-id="${x.s.id}">
+                <td><strong>${esc(x.s.name)}</strong></td>
+                <td>${esc(x.s.cls)}</td>
+                <td class="n">${fm(x.s.score)}</td>
+                <td>${badge(x.from)}</td>
+                <td class="n" style="font-weight:700;color:${x.from === 'yeu' ? 'var(--vip)' : 'var(--accent)'}">+${fm(x.gap)}</td>
+                <td>${badge(x.to)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '<p class="hint">Không có học sinh nào sát ngưỡng.</p>'}
+  </section>
+
+  ${[...TIERS].reverse().map(t => {
+    const l = st.filter(s => tier(s.score, cfg) === t.k).sort((a,b) => b.score - a.score);
+    if (!l.length) return '';
+    return `
+      <details ${t.k === 'yeu' ? 'open' : ''}>
+        <summary>
+          ${badge(t.k)} <span>${l.length} học sinh · ${range(t.k, cfg)} (Bấm để xem danh sách)</span>
+        </summary>
+        <div class="tw tall">
+          <table>
+            <thead><tr><th class="n">Hạng</th><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th></tr></thead>
+            <tbody>${stuRows(l, true)}</tbody>
+          </table>
+        </div>
+      </details>
+    `;
+  }).join('')}`;
+}
+
+// ===== 9. SOLUTIONS TAB (GIẢI PHÁP PHỤ ĐẠO, VIP, 1-1 & TỰ HỌC) =====
+function renderSolutions() {
+  const el = $('#p-solutions'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const all = stats(st, cfg);
+  const yeuList = st.filter(s => tier(s.score, cfg) === 'yeu').sort((a,b) => a.score - b.score);
+  const gioiList = st.filter(s => tier(s.score, cfg) === 'gioi').sort((a,b) => b.score - a.score);
+  const nearYeu = nearList().filter(x => x.from === 'yeu');
+  const veryWeak = yeuList.filter(s => s.score < 3.0);
+  const weakStandard = yeuList.filter(s => s.score >= 3.0 && (!nearYeu.some(ny => ny.s.id === s.id)));
+
+  let html = head(meta(), `Kế hoạch giải pháp sư phạm môn ${esc(currentSubject)}`, `
+    <button class="btn btn-export" onclick="go('export')">📥 Xuất giải pháp nộp BGH</button>
+  `);
+
+  // Section 1: Nhóm Yếu
+  html += `
+  <section class="block">
+    <h3>🔴 Nhóm 1: Giải pháp can thiệp cho Học sinh Yếu (${yeuList.length} HS · ${pc(yeuList.length/all.n)})</h3>
+    <p class="hint" style="margin-bottom:16px">Phân tầng cụ thể thành 3 hình thức hỗ trợ trực tiếp để tối ưu nguồn lực giảng dạy của bộ môn.</p>
+    <div class="sol-grid">
+      
+      <!-- Card: Phụ đạo tập trung -->
+      <div class="sol-card phu-dao">
+        <h4>
+          <span>📚 1. Lớp Phụ Đạo Tập Trung</span>
+          <span class="sol-tag" style="background:var(--yeu);color:#fff">${weakStandard.length} HS</span>
+        </h4>
+        <p><strong>Đối tượng:</strong> Điểm từ 3.0 đến dưới ${f1(cfg.tb)} (hổng kiến thức vừa phải, có thể bù đắp qua lớp nhóm).</p>
+        <ul>
+          <li><strong>Thời lượng:</strong> 2 buổi/tuần (90 phút/buổi) ngoài giờ chính khóa.</li>
+          <li><strong>Trọng tâm:</strong> Rà soát lý thuyết cốt lõi, luyện tập dạng bài nhận biết & thông hiểu.</li>
+          <li><strong>Đánh giá:</strong> Mini-quiz 15 phút đầu giờ để theo dõi tiến bộ hàng tuần.</li>
+          <li><strong>Giảng viên:</strong> Phân công giáo viên chuyên trách môn ${esc(currentSubject)}.</li>
+        </ul>
+        ${weakStandard.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${weakStandard.length} HS phụ đạo</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Cần bù</th></tr></thead>
+                <tbody>
+                  ${weakStandard.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n">${fm(s.score)}</td><td class="n">+${fm(Math.round((cfg.tb - s.score)*100)/100)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
+      </div>
+
+      <!-- Card: VIP nâng hạng -->
+      <div class="sol-card vip">
+        <h4>
+          <span>⭐ 2. Nhóm VIP Nâng Hạng</span>
+          <span class="sol-tag" style="background:var(--vip);color:#fff">${nearYeu.length} HS</span>
+        </h4>
+        <p><strong>Đối tượng:</strong> Điểm từ ${f1(cfg.tb - 0.5)} đến dưới ${f1(cfg.tb)} (chỉ thiếu ≤0.5 điểm để đạt chuẩn).</p>
+        <ul>
+          <li><strong>Mục tiêu:</strong> "Cứu nguy" cấp tốc để đạt tỉ lệ tốt nghiệp/đạt môn 100%.</li>
+          <li><strong>Phương pháp:</strong> Huấn luyện kỹ năng tránh mất điểm oan ở bài thi trắc nghiệm.</li>
+          <li><strong>Luyện đề mục tiêu:</strong> Giải các bộ đề sát sườn với ngân hàng đề thi kỳ tới.</li>
+          <li><strong>Thời hạn cam kết:</strong> Đạt điểm trên ${f1(cfg.tb)} trong đợt khảo sát 2 tuần sau.</li>
+        </ul>
+        ${nearYeu.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${nearYeu.length} HS nhóm VIP</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Thiếu</th></tr></thead>
+                <tbody>
+                  ${nearYeu.map(x => `<tr><td>${esc(x.s.name)}</td><td>${esc(x.s.cls)}</td><td class="n">${fm(x.s.score)}</td><td class="n" style="color:var(--vip);font-weight:700">-${fm(x.gap)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
+      </div>
+
+      <!-- Card: Kèm 1-1 -->
+      <div class="sol-card kem11">
+        <h4>
+          <span>👨‍🏫 3. Kèm Cặp 1-1 (Buddy)</span>
+          <span class="sol-tag" style="background:#ea580c;color:#fff">${veryWeak.length} HS</span>
+        </h4>
+        <p><strong>Đối tượng:</strong> Điểm dưới 3.0 (mất gốc nghiêm trọng hoặc gặp trở ngại tâm lý/chuyên cần).</p>
+        <ul>
+          <li><strong>Mô hình đôi bạn cùng tiến (Buddy):</strong> 1 HS Giỏi kèm 1 HS Yếu trong lớp.</li>
+          <li><strong>Kèm trực tiếp từ GV:</strong> 1 buổi/tuần gặp riêng để tháo gỡ khó khăn cá nhân.</li>
+          <li><strong>Liên hệ gia đình:</strong> Thông báo phụ huynh đồng hành kiểm tra việc tự học tại nhà.</li>
+          <li><strong>Lộ trình cá nhân hóa:</strong> Học từ căn bản lớp dưới trước khi vào bài mới.</li>
+        </ul>
+        ${veryWeak.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${veryWeak.length} HS cần kèm 1-1</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th></tr></thead>
+                <tbody>
+                  ${veryWeak.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n" style="color:var(--yeu);font-weight:700">${fm(s.score)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
+      </div>
+    </div>
+  </section>`;
+
+  // Section 2: Nhóm Giỏi
+  html += `
+  <section class="block">
+    <h3>🟢 Nhóm 2: Giải pháp phát triển cho Học sinh Giỏi (${gioiList.length} HS · ${pc(gioiList.length/all.n)})</h3>
+    <p class="hint" style="margin-bottom:16px">Tạo không gian tự học số và thử thách học thuật để phát huy năng khiếu chuyên môn.</p>
+    <div class="sol-grid">
+      
+      <!-- Card: Tự học trên website -->
+      <div class="sol-card tu-hoc">
+        <h4>
+          <span>🌐 1. Tự Học Trên Nền Tảng Số</span>
+          <span class="sol-tag" style="background:var(--self);color:#fff">Học chủ động</span>
+        </h4>
+        <p>Môi trường học tập trực tuyến dành riêng cho học sinh có năng lực tự học cao:</p>
+        <ul>
+          <li><strong>Ngân hàng đề chuyên sâu:</strong> Bộ câu hỏi vận dụng cao (VDC) có lời giải chi tiết.</li>
+          <li><strong>Thư viện bài giảng số:</strong> Chuyên đề nâng cao môn ${esc(currentSubject)}.</li>
+          <li><strong>Bảng thành tích ảo (Gamification):</strong> Xếp hạng giải bài tập online tuần/tháng.</li>
+          <li><strong>Học tập dự án:</strong> Tự chọn chủ đề ứng dụng thực tế để thuyết trình.</li>
+        </ul>
+      </div>
+
+      <!-- Card: Bồi dưỡng & Đội tuyển -->
+      <div class="sol-card nang-cao">
+        <h4>
+          <span>🏆 2. Đội Tuyển & Mentor Bạn Học</span>
+          <span class="sol-tag" style="background:var(--gioi);color:#fff">${gioiList.filter(s => s.score >= 9.0).length} HS xuất sắc</span>
+        </h4>
+        <p>Tận dụng năng lực của nhóm dẫn đầu vừa nâng cao vừa hỗ trợ cộng đồng lớp:</p>
+        <ul>
+          <li><strong>CLB Học thuật & HSG:</strong> Bồi dưỡng thi Olympic, HSG cấp Tỉnh / FPT Edu.</li>
+          <li><strong>Chương trình Mentor:</strong> HS giỏi đảm nhiệm vai trò trợ giảng, hỗ trợ bạn yếu.</li>
+          <li><strong>Nghiên cứu khoa học STEM:</strong> Giao đề tài đổi mới sáng tạo kỹ thuật.</li>
+        </ul>
+      </div>
+    </div>
+
+    ${gioiList.length ? `
+      <details style="border:0;margin-top:16px">
+        <summary style="padding:8px 0;font-size:13.5px;font-weight:700">📋 Danh sách ${gioiList.length} HS Giỏi môn ${esc(currentSubject)} và định hướng phân công</summary>
+        <div class="tw tall" style="padding:0">
+          <table>
+            <thead><tr><th>Họ và tên</th><th>Lớp</th><th class="n">Điểm</th><th>Định hướng đề xuất</th></tr></thead>
+            <tbody>
+              ${gioiList.map(s => {
+                let role = '🌐 Tự học trên website bộ môn';
+                if (s.score >= 9.5) role = '🏆 Đội tuyển HSG xuất sắc + Dự án STEM';
+                else if (s.score >= 8.75) role = '🤝 Mentor lớp kèm cặp bạn yếu + Tự học nâng cao';
+                return `<tr><td><strong>${esc(s.name)}</strong></td><td>${esc(s.cls)}</td><td class="n" style="color:var(--gioi);font-weight:700">${fm(s.score)}</td><td>${role}</td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    ` : ''}
+  </section>`;
+
+  el.innerHTML = html;
+}
+
+// ===== 10. STUDENTS TAB =====
+let flt = { q: '', cls: '', tier: '', sort: 'score-desc' };
+
+function renderStudents() {
+  const el = $('#p-students'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const cl = classes();
+  if (flt.cls && !cl.includes(flt.cls)) flt.cls = '';
+
+  el.innerHTML = head(meta(), `Danh sách học sinh môn ${esc(currentSubject)}`) + `
+  <div class="filters block">
+    <div class="field" style="flex:2 1 220px">
+      <label for="fq">🔍 Tìm kiếm theo tên học sinh</label>
+      <input id="fq" type="search" placeholder="Nhập tên..." value="${esc(flt.q)}">
+    </div>
+    <div class="field">
+      <label for="fc">Lớp</label>
+      <select id="fc">
+        <option value="">Tất cả các lớp (${cl.length})</option>
+        ${cl.map(c => `<option value="${esc(c)}" ${flt.cls === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label for="ft">Xếp loại 4 tầng</label>
+      <select id="ft">
+        <option value="">Tất cả các tầng</option>
+        ${TIERS.map(t => `<option value="${t.k}" ${flt.tier === t.k ? 'selected' : ''}>${t.label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label for="fs">Sắp xếp</label>
+      <select id="fs">
+        <option value="score-desc" ${flt.sort === 'score-desc' ? 'selected' : ''}>Điểm: Cao → Thấp</option>
+        <option value="score-asc" ${flt.sort === 'score-asc' ? 'selected' : ''}>Điểm: Thấp → Cao</option>
+        <option value="name-asc" ${flt.sort === 'name-asc' ? 'selected' : ''}>Họ tên: A → Z</option>
+        <option value="cls-asc" ${flt.sort === 'cls-asc' ? 'selected' : ''}>Theo lớp học</option>
+      </select>
+    </div>
+  </div>
+  <section class="block">
+    <p class="hint" id="fcount" style="margin-bottom:10px"></p>
+    <div class="tw tall" id="stuWrap"></div>
+  </section>`;
+
+  const upd = () => {
+    flt.q = $('#fq').value;
+    flt.cls = $('#fc').value;
+    flt.tier = $('#ft').value;
+    flt.sort = $('#fs').value;
+    drawStudents();
+  };
+  ['#fq', '#fc', '#ft', '#fs'].forEach(s => $(s).addEventListener('input', upd));
+  drawStudents();
+}
+
+function drawStudents() {
+  const rk = buildRanks(), q = flt.q.trim().toLowerCase(), cfg = getCfg(), st = S();
+  let l = st.filter(s => 
+    (!q || s.name.toLowerCase().includes(q)) &&
+    (!flt.cls || s.cls === flt.cls) &&
+    (!flt.tier || tier(s.score, cfg) === flt.tier)
+  );
+
+  const [f, d] = flt.sort.split('-');
+  l.sort((a,b) => {
+    if (f === 'score') return d === 'asc' ? a.score - b.score : b.score - a.score;
+    if (f === 'name') return a.name.localeCompare(b.name, 'vi');
+    return a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || (b.score - a.score);
+  });
+
+  $('#fcount').textContent = `Hiển thị ${l.length} / ${st.length} học sinh. Bấm vào một dòng để xem phân tích chi tiết & giải pháp đề xuất.`;
+  $('#stuWrap').innerHTML = l.length ? `
+    <table>
+      <thead>
+        <tr>
+          <th class="n">Hạng khối</th>
+          <th class="n">Hạng lớp</th>
+          <th>Họ và tên</th>
+          <th>Lớp</th>
+          <th class="n">Điểm số</th>
+          <th>Phân tầng</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${l.map(s => `
+          <tr class="clk" data-id="${s.id}">
+            <td class="n">#${rk[s.id].all}</td>
+            <td class="n">#${rk[s.id].cls}</td>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${esc(s.cls)}</td>
+            <td class="n"><strong>${fm(s.score)}</strong></td>
+            <td>${badge(tier(s.score, cfg))}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  ` : '<p class="hint" style="padding:24px;text-align:center">Không tìm thấy học sinh nào phù hợp bộ lọc.</p>';
+}
+
+// Student detail modal
+function openStudent(id) {
+  const st = S(), cfg = getCfg(), s = st.find(x => x.id === id);
+  if (!s) return;
+  const rk = buildRanks()[id], cls = st.filter(x => x.cls === s.cls);
+  const cs = stats(cls, cfg), t = tier(s.score, cfg);
+  const diff = Math.round((s.score - cs.mean) * 100) / 100;
+  const nxt = { yeu: ['tb', cfg.tb], tb: ['kha', cfg.kha], kha: ['gioi', cfg.gioi] }[t];
+
+  let sol = '';
+  if (t === 'yeu') {
+    if (s.score < 3.0) sol = '👨‍🏫 <strong>Kèm cặp 1-1 (Buddy):</strong> Cần hỗ trợ khẩn cấp, bù đắp lỗ hổng căn bản.';
+    else if (nxt && Math.round((nxt[1] - s.score)*100)/100 <= 0.5) sol = '⭐ <strong>Lớp VIP Nâng Hạng:</strong> Mục tiêu tăng 0.1–0.5 điểm để đạt chuẩn.';
+    else sol = '📚 <strong>Phụ Đạo Tập Trung:</strong> Ôn tập theo chuyên đề 2 buổi/tuần.';
+  } else if (t === 'gioi') {
+    if (s.score >= 9.5) sol = '🏆 <strong>Ứng viên Đội tuyển HSG:</strong> Bồi dưỡng chuyên sâu & Nghiên cứu STEM.';
+    else sol = '🌐 <strong>Tự học trên website:</strong> Làm bài tập nâng cao & đảm nhận vai trò Mentor.';
+  } else {
+    sol = '📖 Tiếp tục phát huy, ôn tập củng cố kiến thức để nâng lên tầng cao hơn.';
+  }
+
+  const seg = [[0, cfg.tb, 'yeu'], [cfg.tb, cfg.kha, 'tb'], [cfg.kha, cfg.gioi, 'kha'], [cfg.gioi, 10, 'gioi']];
+
+  openModal(`
+    <header>
+      <div><p class="eyebrow">Lớp ${esc(s.cls)} · Môn ${esc(currentSubject)}</p><h3>${esc(s.name)}</h3></div>
+      <button class="btn" data-close>✕</button>
+    </header>
+    <div>${badge(t)}</div>
+    <div class="kv">
+      <div><p class="l">Điểm số</p><p class="v" style="font-size:22px;color:var(--${t})">${fm(s.score)}</p></div>
+      <div>
+        <p class="l">So với ĐTB lớp (${fm(cs.mean)})</p>
+        <p class="v" style="color:var(--${diff >= 0 ? 'gioi' : 'yeu'})">
+          ${diff >= 0 ? '▲ +' : '▼ -'}${fm(Math.abs(diff))} điểm
+        </p>
+      </div>
+      <div><p class="l">Hạng trong lớp</p><p class="v">#${rk.cls} / ${cls.length}</p></div>
+      <div><p class="l">Hạng toàn khối</p><p class="v">#${rk.all} / ${st.length}</p></div>
+    </div>
+    <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid var(--line);margin:14px 0">
+      <div style="font-weight:700;margin-bottom:4px">💡 Đề xuất sư phạm:</div>
+      <div style="font-size:13px">${sol}</div>
+    </div>
+    ${nxt ? `<p class="hint">Khoảng cách đến tầng ${tLabel(nxt[0])}: Cần thêm <strong>+${fm(Math.round((nxt[1] - s.score)*100)/100)}</strong> điểm.</p>` : '<p class="hint">Đang xếp loại Giỏi (tầng cao nhất).</p>'}
+    <div class="track">
+      ${seg.map(g => `<span class="s-${g[2]}" style="width:${(g[1]-g[0])*10}%"></span>`).join('')}
+    </div>
+    <div class="mark"><span class="mk" style="left:${s.score*10}%">${fm(s.score)}</span></div>
+    <p class="hint" style="margin-top:10px;display:flex;justify-content:space-between"><span>0</span><span>Thang điểm 10</span><span>10</span></p>
+  `);
+}
+
+document.addEventListener('click', e => {
+  const r = e.target.closest('tr[data-id]');
+  if (r) openStudent(+r.dataset.id);
+});
+
+// ===== 11. DATA INPUT HANDLING =====
+function renderDataInput() {
+  renderLoadedClasses();
+}
+
+function renderLoadedClasses() {
+  const el = $('#loaded');
+  if (!el) return;
+  const st = S();
+  if (!st.length) {
+    el.innerHTML = '<p class="hint">Chưa có học sinh nào trong môn này.</p>';
+    return;
+  }
+  const cl = classes(), abs = ABS();
+  el.innerHTML = `
+    <div class="chips">
+      ${cl.map(c => `
+        <span class="chip">
+          ${esc(c)} · ${st.filter(s => s.cls === c).length} HS
+          <button data-rm="${esc(c)}" title="Xóa lớp ${esc(c)}">×</button>
+        </span>
+      `).join('')}
+    </div>
+    <p class="hint" style="margin-top:12px">Tổng cộng: <strong>${st.length}</strong> học sinh trong <strong>${cl.length}</strong> lớp học môn ${esc(currentSubject)}.${abs.length ? ` (${abs.length} HS vắng).` : ''}</p>
+    <div style="margin-top:12px">
+      <button class="btn btn-danger" id="clearAll">🗑️ Xóa toàn bộ dữ liệu môn ${esc(currentSubject)}</button>
+    </div>
+  `;
+
+  $('#clearAll').addEventListener('click', function() {
+    if (this.dataset.arm) {
+      const d = getCurrentData();
+      d.students = [];
+      d.absent = [];
+      refresh();
+      toast('Đã xóa dữ liệu môn ' + currentSubject);
+    } else {
+      this.dataset.arm = '1';
+      this.textContent = '⚠️ Bấm lần nữa để xác nhận xóa toàn bộ';
+    }
+  });
+
+  el.querySelectorAll('[data-rm]').forEach(b => {
+    b.addEventListener('click', () => {
+      const clsName = b.dataset.rm;
+      const d = getCurrentData();
+      d.students = d.students.filter(s => s.cls !== clsName);
+      d.absent = d.absent.filter(a => a.cls !== clsName);
+      refresh();
+      toast(`Đã xóa lớp ${clsName}`);
+    });
+  });
+}
+
+// File drop & paste
+const dz = $('#dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) importFile(f);
+});
+$('#file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) importFile(f);
+  e.target.value = '';
+});
+
+async function importFile(file) {
+  if (typeof XLSX === 'undefined') { toast('Chưa nạp thư viện đọc Excel'); return; }
+  const cls = $('#impClass').value.trim() || '12A1';
+  try {
+    let wb;
+    if (/\.csv$/i.test(file.name)) wb = XLSX.read(await file.text(), { type: 'string' });
+    else wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const multi = wb.SheetNames.length > 1;
+    let items = [], skipped = 0, absent = [];
+    wb.SheetNames.forEach(n => {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
+      const r = parseRows(rows, multi ? n : cls);
+      items = items.concat(r.items);
+      skipped += r.skipped;
+      absent = absent.concat(r.absent);
+    });
+    if (addItems(items, skipped, absent)) go('overview');
+  } catch (e) {
+    toast('Không đọc được file này: ' + e.message);
+  }
+}
+
+function parseRows(rows, defCls) {
+  let h = -1;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    if (rows[i].some(c => /điểm|diem|score|point/i.test(String(c)))) { h = i; break; }
+  }
+  let nameCols = [], score = -1, cls = -1, start = 0;
+  if (h >= 0) {
+    const hd = rows[h].map(c => String(c).toLowerCase().trim());
+    hd.forEach((c, i) => {
+      if (/lớp|lop|class/.test(c)) cls = i;
+      else if (/họ|tên|\bten\b|\bname\b|\bho\b/.test(c)) nameCols.push(i);
+    });
+    score = hd.findIndex(c => /điểm|diem|score|point/.test(c));
+    start = h + 1;
+    if (!nameCols.length) nameCols = [score === 0 ? 1 : 0];
+  } else {
+    const probe = rows.slice(0, 8), w = Math.max(0, ...probe.map(r => r.length));
+    for (let c = w - 1; c >= 1; c--) {
+      if (probe.some(r => isNum(r[c]))) { score = c; break; }
+    }
+    nameCols = [0];
+    start = score > 0 && isNum((rows[0]||[])[score]) ? 0 : 1;
+  }
+  const items = [], absent = [];
+  let skipped = 0;
+  if (score < 0) return { items, skipped, absent };
+
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || !r.length) continue;
+    const name = nameCols.map(c => String(r[c] == null ? '' : r[c]).trim()).filter(Boolean).join(' ');
+    const raw = r[score];
+    if (raw === '' || raw == null || !name) continue;
+    const v = toNum(raw);
+    const c = cls >= 0 && String(r[cls]).trim() ? String(r[cls]).trim() : defCls;
+    if (v === null && /vắng|vang|nghỉ|bỏ thi/i.test(String(raw))) { absent.push({ name, cls: c }); continue; }
+    if (v === null || v < 0 || v > 10) { skipped++; continue; }
+    items.push({ name, score: Math.round(v * 100) / 100, cls: c });
+  }
+  return { items, skipped, absent };
+}
+
+const isNum = x => toNum(x) !== null;
+function toNum(x) {
+  if (typeof x === 'number' && isFinite(x)) return x;
+  const s = String(x == null ? '' : x).trim().replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(s) ? parseFloat(s) : null;
+}
+
+function addItems(items, skipped, absent) {
+  absent = absent || [];
+  if (!items.length) { toast('Không tìm thấy dòng điểm hợp lệ'); return false; }
+  const data = getCurrentData();
+  const cl = new Set(items.map(i => i.cls));
+  data.students = data.students.filter(s => !cl.has(s.cls));
+  data.absent = data.absent.filter(a => !cl.has(a.cls));
+  absent.forEach(a => data.absent.push(a));
+  items.forEach(i => data.students.push({ id: nextId++, name: i.name, score: i.score, cls: i.cls }));
+  refresh();
+  toast(`Đã cập nhật ${items.length} học sinh môn ${currentSubject}!`);
+  return true;
+}
+
+$('#pasteAdd').addEventListener('click', () => {
+  const cls = $('#pasteClass').value.trim();
+  if (!cls) { $('#pasteMsg').textContent = '⚠️ Hãy nhập tên lớp.'; $('#pasteClass').focus(); return; }
+  const items = [];
+  let bad = 0;
+  $('#pasteBox').value.split(/\r?\n/).forEach(line => {
+    line = line.trim();
+    if (!line) return;
+    const m = line.match(/^(.*\S)\s*[\t;]\s*(\d+(?:[.,]\d+)?)\s*$/) || line.match(/^(.*\S)\s+(\d+(?:[.,]\d+)?)\s*$/);
+    if (!m) { bad++; return; }
+    let name = m[1].replace(/[,;\s]+$/, '').replace(/^\d+[\s\t.)-]+(?=\S)/, '');
+    const v = toNum(m[2]);
+    if (!name || v === null || v > 10) { bad++; return; }
+    items.push({ name, score: Math.round(v * 100) / 100, cls });
+  });
+  $('#pasteMsg').textContent = '';
+  if (addItems(items, bad)) {
+    $('#pasteBox').value = '';
+    go('overview');
+  }
+});
+
+// Config inputs
+['#cfgExam', '#cfgGioi', '#cfgKha', '#cfgTb'].forEach(s => {
+  $(s).addEventListener('input', () => {
+    const g = +$('#cfgGioi').value, k = +$('#cfgKha').value, t = +$('#cfgTb').value;
+    if (g > k && k > t && t > 0 && g <= 10) {
+      $('#cfgMsg').textContent = '';
+    } else {
+      $('#cfgMsg').textContent = '⚠️ Ngưỡng phải giảm dần: Giỏi > Khá > TB (0–10).';
+    }
+    refresh();
+  });
+});
+
+// ===== 12. EXPORT SUITE: WORD (.DOC), PDF & EXCEL (.XLSX) =====
+function renderExport() {
+  const el = $('#p-export'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const isLeader = currentUser && currentUser.role === 'admin';
+
+  el.innerHTML = head(meta(), 'Xuất báo cáo chuyên môn & phân tầng') + `
+    <div class="block">
+      <h3>📋 Thông tin bản báo cáo</h3>
+      <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 12px">
+        Người lập báo cáo: <strong>${esc(currentUser ? currentUser.fullName : 'Giáo viên')}</strong> · Quyền hạn: <strong>${esc(currentUser ? currentUser.roleLabel : '')}</strong>
+      </p>
+      <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 16px">
+        Đơn vị: <strong>Tổ Khoa Học Tự Nhiên · Trường THPT FPT</strong> · Kỳ thi: <strong>${esc(cfg.exam)}</strong>
+      </p>
+      ${isLeader ? `
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;padding:12px 16px;border-radius:8px;font-size:13px;color:#312e81;margin-bottom:16px">
+          👑 <strong>Quyền Tổ trưởng KHTN:</strong> Bạn có thể xuất báo cáo riêng cho môn <strong>${esc(currentSubject)}</strong> hoặc xuất <strong>Báo cáo Tổng hợp toàn bộ 5 môn</strong> (Toán, Tin, Sinh, Hóa, Lý).
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="export-grid">
+      <!-- Word Export -->
+      <div class="export-card">
+        <div>
+          <div class="icon">📄</div>
+          <h4>Báo Cáo Word (.doc)</h4>
+          <p>Tạo file Word hành chính chuẩn mẫu Bộ GD&ĐT / FPT Education: có tiêu ngữ, bảng biểu, danh sách phụ đạo/VIP/tự học, chữ ký Tổ trưởng & Trưởng môn.</p>
+        </div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportWord(false)">
+            📥 Tải Word môn ${esc(currentSubject)}
+          </button>
+          ${isLeader ? `
+            <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportWord(true)">
+              👑 Tải Word Tổng hợp 5 môn
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- PDF Export -->
+      <div class="export-card">
+        <div>
+          <div class="icon">📑</div>
+          <h4>Báo Cáo PDF / In Ấn</h4>
+          <p>Định dạng trực quan, tối ưu cho khổ giấy A4, lưu trữ và nộp trực tiếp cho Ban Giám Hiệu nhà trường.</p>
+        </div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-success" style="width:100%;justify-content:center" onclick="exportPDF()">
+            🖨️ In / Lưu PDF A4
+          </button>
+        </div>
+      </div>
+
+      <!-- Excel Export -->
+      <div class="export-card">
+        <div>
+          <div class="icon">📊</div>
+          <h4>Sổ Điểm Excel (.xlsx)</h4>
+          <p>Bao gồm 4 Sheet: Tổng quan số liệu, Bảng so sánh giữa các lớp, Danh sách học sinh chi tiết và Kế hoạch phân bổ giải pháp.</p>
+        </div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportExcel()">
+            📥 Tải Excel môn ${esc(currentSubject)}
+          </button>
+          ${isLeader ? `
+            <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllExcel()">
+              👑 Tải Excel Cả 5 Môn
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Word Export Implementation
+window.exportWord = function(isAll) {
+  const cfg = getCfg();
+  const dateStr = new Date().toLocaleDateString('vi-VN');
+  const signerRole = currentUser ? currentUser.roleLabel : 'Trưởng bộ môn';
+  const signerName = currentUser ? currentUser.name : '';
+
+  let bodyContent = '';
+
+  const subjectsToExport = isAll ? (currentUser ? currentUser.subjects : [currentSubject]) : [currentSubject];
+
+  subjectsToExport.forEach((sb, sIdx) => {
+    const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
+    const stList = sData.students;
+    const sStats = stats(stList, sData.cfg || cfg);
+    const clList = [...new Set(stList.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
+
+    if (!sStats) return;
+
+    const near = [];
+    stList.forEach(s => {
+      const t = tier(s.score, sData.cfg || cfg);
+      const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
+      const diff = Math.round((target - s.score)*100)/100;
+      if (diff > 0 && diff <= 0.5) near.push({ s, gap: diff });
+    });
+
+    const yeuArr = stList.filter(s => s.score < 5.0);
+    const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
+    const nearYeuArr = near.filter(x => x.s.score >= 4.5 && x.s.score < 5.0);
+    const gioiArr = stList.filter(s => s.score >= 8.0);
+
+    bodyContent += `
+      ${sIdx > 0 ? '<br style="page-break-before:always;" />' : ''}
+      <h2 style="color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px;margin-top:24px">
+        PHẦN ${sIdx + 1}: BÁO CÁO CHUYÊN MÔN MÔN ${sb.toUpperCase()}
+      </h2>
+      <p><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh tham gia: <strong>${sStats.n}</strong> học sinh (${clList.length} lớp)</em></p>
+
+      <h3>1. Thống kê chất lượng & Phân tầng học sinh</h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:12pt">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th>Chỉ số</th>
+          <th>Toàn khối môn ${sb}</th>
+          <th>🟢 Giỏi (≥${f1(sData.cfg.gioi)})</th>
+          <th>🔵 Khá (${f1(sData.cfg.kha)}–${f1(sData.cfg.gioi-0.1)})</th>
+          <th>🟡 TB (${f1(sData.cfg.tb)}–${f1(sData.cfg.kha-0.1)})</th>
+          <th>🔴 Yếu (<${f1(sData.cfg.tb)})</th>
+          <th>Tỉ lệ Đạt (≥5.0)</th>
+        </tr>
+        <tr style="text-align:center">
+          <td><strong>Số lượng</strong></td>
+          <td><strong>${sStats.n} HS</strong></td>
+          <td>${sStats.c.gioi} HS</td>
+          <td>${sStats.c.kha} HS</td>
+          <td>${sStats.c.tb} HS</td>
+          <td style="color:#c0392b;font-weight:bold">${sStats.c.yeu} HS</td>
+          <td style="font-weight:bold">${pc(sStats.pass)}</td>
+        </tr>
+        <tr style="text-align:center">
+          <td><strong>Tỉ lệ (%)</strong></td>
+          <td>100%</td>
+          <td>${pc(sStats.c.gioi/sStats.n)}</td>
+          <td>${pc(sStats.c.kha/sStats.n)}</td>
+          <td>${pc(sStats.c.tb/sStats.n)}</td>
+          <td style="color:#c0392b;font-weight:bold">${pc(sStats.c.yeu/sStats.n)}</td>
+          <td>${sStats.n - sStats.c.yeu}/${sStats.n} HS</td>
+        </tr>
+      </table>
+
+      <p style="margin-top:8px">
+        • Điểm trung bình: <strong>${fm(sStats.mean)}</strong> · Trung vị: <strong>${fm(sStats.med)}</strong> · Điểm cao nhất: <strong>${fm(sStats.max)}</strong> · Điểm thấp nhất: <strong>${fm(sStats.min)}</strong> · Độ lệch chuẩn: <strong>${fm(sStats.sd)}</strong>
+      </p>
+
+      <h3>2. Bảng so sánh giữa các lớp</h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:11pt">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th>Lớp</th>
+          <th>Sĩ số</th>
+          <th>ĐTB</th>
+          <th>Cao nhất</th>
+          <th>Thấp nhất</th>
+          <th>Giỏi</th>
+          <th>Khá</th>
+          <th>TB</th>
+          <th>Yếu</th>
+          <th>Tỉ lệ đạt</th>
+        </tr>
+        ${clList.map(c => {
+          const cs = stats(stList.filter(s => s.cls === c), sData.cfg || cfg);
+          return `
+            <tr style="text-align:center">
+              <td style="text-align:left;font-weight:bold">${c}</td>
+              <td>${cs.n}</td>
+              <td style="font-weight:bold">${fm(cs.mean)}</td>
+              <td>${fm(cs.max)}</td>
+              <td>${fm(cs.min)}</td>
+              <td>${cs.c.gioi} (${pc(cs.c.gioi/cs.n)})</td>
+              <td>${cs.c.kha} (${pc(cs.c.kha/cs.n)})</td>
+              <td>${cs.c.tb} (${pc(cs.c.tb/cs.n)})</td>
+              <td style="color:#c0392b">${cs.c.yeu} (${pc(cs.c.yeu/cs.n)})</td>
+              <td style="font-weight:bold">${pc(cs.pass)}</td>
+            </tr>
+          `;
+        }).join('')}
+      </table>
+
+      <h3>3. Kế hoạch hành động và phân loại giải pháp</h3>
+      <p><strong>A. Giải pháp can thiệp cho đối tượng học sinh Yếu (${yeuArr.length} HS):</strong></p>
+      <ul>
+        <li><strong>Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Nhóm học sinh thiếu ≤0.5 điểm để đạt chuẩn (điểm 4.5–4.9). Tập trung luyện giải các đề thi thực chiến và kỹ năng chống mất điểm oan.</li>
+        <li><strong>Phụ đạo tập trung (${yeuArr.length - veryWeakArr.length - nearYeuArr.length} HS):</strong> Ôn tập theo chuyên đề 2 buổi/tuần vào chiều thứ Ba & thứ Năm.</li>
+        <li><strong>Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Điểm dưới 3.0. Áp dụng mô hình đôi bạn cùng tiến (HS Giỏi kèm HS Yếu) và giáo viên bộ môn phụ đạo riêng 1 buổi/tuần.</li>
+      </ul>
+
+      <p><strong>B. Giải pháp bồi dưỡng cho học sinh Giỏi (${gioiArr.length} HS):</strong></p>
+      <ul>
+        <li><strong>Hệ thống tự học trên nền tảng Website:</strong> Cung cấp ngân hàng bài tập vận dụng cao, đề thi học sinh giỏi các năm và tài liệu chuyên sâu.</li>
+        <li><strong>Phát triển phong trào Mentor:</strong> Huy động học sinh giỏi tham gia hướng dẫn bạn trong các nhóm học tập tại lớp.</li>
+        <li><strong>Đội tuyển học sinh giỏi:</strong> Chọn lọc các em đạt từ 9.0 trở lên vào đội tuyển bồi dưỡng cấp trường/tỉnh.</li>
+      </ul>
+    `;
+  });
+
+  const fullWordHTML = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>Báo cáo chuyên môn Tổ KHTN</title>
+      <style>
+        body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.4; }
+        table { border-collapse: collapse; }
+        h1, h2, h3 { font-family: 'Times New Roman', serif; }
+      </style>
+    </head>
+    <body>
+      <table style="width:100%;border:none;margin-bottom:20px">
+        <tr>
+          <td style="width:50%;text-align:center;vertical-align:top">
+            <strong>TRƯỜNG THPT FPT</strong><br>
+            <strong>TỔ KHOA HỌC TỰ NHIÊN</strong><br>
+            ------------------
+          </td>
+          <td style="width:50%;text-align:center;vertical-align:top">
+            <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
+            <strong>Độc lập - Tự do - Hạnh phúc</strong><br>
+            *****************
+          </td>
+        </tr>
+      </table>
+
+      <div style="text-align:center;margin:25px 0 30px">
+        <h1 style="font-size:18pt;margin:0">BÁO CÁO KẾT QUẢ KIỂM TRA CHUYÊN MÔN</h1>
+        <h2 style="font-size:14pt;font-weight:normal;margin:5px 0">
+          ${isAll ? 'TỔNG HỢP CÁC BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN' : `BỘ MÔN: ${currentSubject.toUpperCase()}`}
+        </h2>
+        <p style="margin:4px 0"><em>Kỳ kiểm tra: ${cfg.exam}</em></p>
+      </div>
+
+      ${bodyContent}
+
+      <br><br>
+      <table style="width:100%;border:none;margin-top:30px">
+        <tr>
+          <td style="width:50%;text-align:center;vertical-align:top">
+            <strong>TỔ TRƯỞNG CHUYÊN MÔN KHTN</strong><br>
+            <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
+            <strong>Tâm (tamtt48@fpt.edu.vn)</strong>
+          </td>
+          <td style="width:50%;text-align:center;vertical-align:top">
+            <em>Hà Nội, ngày ${dateStr}</em><br>
+            <strong>${signerRole.toUpperCase()}</strong><br>
+            <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
+            <strong>${signerName}</strong>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', fullWordHTML], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `BaoCao_KHTN_${isAll ? 'TongHop' : currentSubject}_${new Date().toISOString().slice(0,10)}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Đã xuất file Word thành công!');
+};
+
+// PDF Print
+window.exportPDF = function() {
+  window.print();
+};
+
+// Excel Export Implementation
+window.exportExcel = function() {
+  const cfg = getCfg();
+  const st = S();
+  const sStats = stats(st, cfg);
+  const cl = classes();
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Tổng quan
+  const sheet1Data = [
+    ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH'],
+    ['Trường THPT FPT - Tổ Khoa Học Tự Nhiên'],
+    ['Môn học:', currentSubject],
+    ['Kỳ kiểm tra:', cfg.exam],
+    ['Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
+    ['Ngày xuất:', new Date().toLocaleDateString('vi-VN')],
+    [],
+    ['I. THỐNG KÊ CHẤT LƯỢNG TOÀN KHỐI'],
+    ['Chỉ số', 'Giá trị'],
+    ['Tổng số học sinh', sStats.n],
+    ['Số lớp học', cl.length],
+    ['Điểm trung bình (ĐTB)', sStats.mean],
+    ['Trung vị (Median)', sStats.med],
+    ['Điểm cao nhất (Max)', sStats.max],
+    ['Điểm thấp nhất (Min)', sStats.min],
+    ['Độ lệch chuẩn (SD)', sStats.sd],
+    [],
+    ['II. CƠ CẤU 4 TẦNG HỌC SINH'],
+    ['Phân tầng', 'Ngưỡng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)'],
+    ['🟢 Giỏi', `≥ ${f1(cfg.gioi)}`, sStats.c.gioi, pc(sStats.c.gioi / sStats.n)],
+    ['🔵 Khá', `${f1(cfg.kha)} - ${f1(cfg.gioi - 0.1)}`, sStats.c.kha, pc(sStats.c.kha / sStats.n)],
+    ['🟡 Trung bình', `${f1(cfg.tb)} - ${f1(cfg.kha - 0.1)}`, sStats.c.tb, pc(sStats.c.tb / sStats.n)],
+    ['🔴 Yếu', `< ${f1(cfg.tb)}`, sStats.c.yeu, pc(sStats.c.yeu / sStats.n)],
+    ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)]
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
+
+  // Sheet 2: So sánh lớp
+  const sheet2Data = [
+    ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt']
+  ];
+  cl.forEach(c => {
+    const cs = stats(st.filter(s => s.cls === c), cfg);
+    sheet2Data.push([
+      c, cs.n, cs.mean, cs.med, cs.max, cs.min, cs.sd,
+      cs.c.gioi, cs.c.kha, cs.c.tb, cs.c.yeu, pc(cs.pass)
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+  XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
+
+  // Sheet 3: Danh sách học sinh
+  const sheet3Data = [
+    ['Hạng khối', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Đề xuất giải pháp']
+  ];
+  const rk = buildRanks();
+  const sorted = [...st].sort((a,b) => b.score - a.score);
+  sorted.forEach(s => {
+    const t = tier(s.score, cfg);
+    let sol = '';
+    if (t === 'yeu') {
+      if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
+      else if (s.score >= 4.5) sol = '⭐ Lớp VIP nâng hạng';
+      else sol = '📚 Phụ đạo tập trung';
+    } else if (t === 'gioi') {
+      if (s.score >= 9.5) sol = '🏆 Đội tuyển HSG';
+      else sol = '🌐 Tự học trên website';
+    } else {
+      sol = 'Tiếp tục rèn luyện';
+    }
+    sheet3Data.push([rk[s.id].all, s.name, s.cls, s.score, tLabel(t), sol]);
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+  XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách học sinh');
+
+  XLSX.writeFile(wb, `EduReport_${currentSubject}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Đã xuất file Excel môn ' + currentSubject);
+};
+
+window.exportAllExcel = function() {
+  const wb = XLSX.utils.book_new();
+  const subjects = currentUser ? currentUser.subjects : ['Toán'];
+
+  subjects.forEach(sb => {
+    const sData = allData[sb];
+    if (!sData || !sData.students.length) return;
+    const sStats = stats(sData.students, sData.cfg);
+    const cl = [...new Set(sData.students.map(s => s.cls))].sort();
+
+    const data = [
+      [`BÁO CÁO MÔN: ${sb.toUpperCase()}`],
+      ['Tổng số HS', sStats.n, 'ĐTB', sStats.mean, 'Tỉ lệ đạt', pc(sStats.pass)],
+      ['Giỏi', sStats.c.gioi, 'Khá', sStats.c.kha, 'TB', sStats.c.tb, 'Yếu', sStats.c.yeu],
+      [],
+      ['DANH SÁCH CHI TIẾT'],
+      ['Họ tên', 'Lớp', 'Điểm', 'Xếp loại']
+    ];
+    sData.students.forEach(s => {
+      data.push([s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg))]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, sb);
+  });
+
+  XLSX.writeFile(wb, `EduReport_ToanToKHTN_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Đã xuất file Excel tổng hợp 5 môn');
+};
+
+})();
+</script>
+</body>
+</html>
