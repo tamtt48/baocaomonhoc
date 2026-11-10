@@ -7,6 +7,13 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:wght@500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+if (typeof XLSX === 'undefined') {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  document.head.appendChild(s);
+}
+</script>
 <style>
 :root{
   --font-display:'Source Serif 4',Georgia,serif;
@@ -644,10 +651,56 @@ function toast(msg) {
 }
 window.toast = toast;
 
-function openModal(html) {
-  $('#modalCard').innerHTML = html;
+function sbSlug(s) {
+  return String(s || '').normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .replace(/_+/g, "_");
+}
+
+function downloadFile(content, fileName, mimeType) {
+  try {
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+      window.navigator.msSaveOrOpenBlob(blob, fileName);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (a.parentNode) document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) {}
+    }, 3500);
+  } catch (err) {
+    console.error('Download error:', err);
+    toast('⚠️ Lỗi tải file: ' + err.message);
+  }
+}
+window.downloadFile = downloadFile;
+
+function openModal(titleOrHtml, bodyHtml) {
+  if (bodyHtml !== undefined) {
+    $('#modalCard').innerHTML = `
+      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:10px">
+        <h3 style="margin:0;font-size:20px;color:var(--fpt-navy)">${titleOrHtml}</h3>
+        <button class="btn" style="padding:4px 10px;font-size:14px" onclick="closeModal()">✕ Đóng</button>
+      </header>
+      <div>${bodyHtml}</div>
+    `;
+  } else {
+    $('#modalCard').innerHTML = titleOrHtml;
+  }
   $('#modal').hidden = false;
 }
+window.openModal = openModal;
 function closeModal() {
   $('#modal').hidden = true;
 }
@@ -1994,15 +2047,11 @@ window.exportWord = function(isAll) {
     </html>
   `;
 
-  const blob = new Blob(['\ufeff', fullWordHTML], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `KHTNReport_${isAll ? 'TongHop_5Mon' : currentSubject}_${new Date().toISOString().slice(0,10)}.doc`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const cleanSb = sbSlug(currentSubject);
+  const dateSuffix = new Date().toISOString().slice(0,10);
+  const fileName = `KHTNReport_${isAll ? 'TongHop_5Mon' : cleanSb}_${dateSuffix}.doc`;
+
+  downloadFile('\ufeff' + fullWordHTML, fileName, 'application/msword;charset=utf-8');
   toast('Đã xuất file Word KHTNReport thành công!');
 };
 
@@ -2025,8 +2074,8 @@ window.previewReportModal = function() {
   const gioiArr = st.filter(s => s.score >= 8.0);
 
   const html = `
-    <div style="max-height:80vh;overflow-y:auto;padding:10px">
-      <div style="background:#fff;padding:28px;border:1px solid #cbd5e1;border-radius:8px;font-family:'Times New Roman',serif;font-size:12.5pt;line-height:1.45;color:#000">
+    <div style="max-height:75vh;overflow-y:auto;padding:8px">
+      <div style="background:#fff;padding:24px;border:1px solid #cbd5e1;border-radius:8px;font-family:'Times New Roman',serif;font-size:12.5pt;line-height:1.45;color:#000">
         <table style="width:100%;border:none;margin-bottom:18px">
           <tr>
             <td style="width:50%;text-align:center;vertical-align:top">
@@ -2144,235 +2193,356 @@ window.previewReportModal = function() {
     </div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn" onclick="closeModal()">Đóng</button>
-      <button class="btn btn-primary" onclick="exportPDF()">🖨️ In ra máy in / Lưu PDF ngay</button>
+      <button class="btn btn-primary" onclick="closeModal(); setTimeout(exportPDF, 300)">🖨️ In ra máy in / Lưu PDF ngay</button>
     </div>
   `;
-  openModal('📄 Xem trước bản in Báo Cáo A4', html);
+  openModal('📄 Bản Xem Trước Báo Cáo Chuyên Môn A4', html);
 };
 
-// ===== EXCEL EXPORT IMPLEMENTATION (5 SHEETS WITH !COLS) =====
+// Fallback HTML-Excel generator in case SheetJS is not loaded
+function exportTableToExcelFile(fileName, sheets) {
+  let workbookXML = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #d4d4d4; padding: 6px 10px; font-family: Calibri, sans-serif; font-size: 11pt; }
+        th { background: #0054A6; color: #fff; font-weight: bold; text-align: center; }
+        .num { text-align: right; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+      </style>
+    </head>
+    <body>
+  `;
+  sheets.forEach((sh, idx) => {
+    workbookXML += `<h2 style="color:#0054A6;margin-top:${idx>0?30:10}px">${esc(sh.name)}</h2>`;
+    workbookXML += '<table border="1">';
+    sh.data.forEach((row, rIdx) => {
+      workbookXML += '<tr>';
+      row.forEach(c => {
+        const tag = rIdx === 0 ? 'th' : 'td';
+        workbookXML += `<${tag}>${esc(c !== undefined && c !== null ? c : '')}</${tag}>`;
+      });
+      workbookXML += '</tr>';
+    });
+    workbookXML += '</table><br>';
+  });
+  workbookXML += '</body></html>';
+
+  downloadFile('\ufeff' + workbookXML, fileName.replace(/\.xlsx$/i, '.xls'), 'application/vnd.ms-excel;charset=utf-8');
+}
+
+// ===== EXCEL EXPORT IMPLEMENTATION (5 SHEETS WITH !COLS & SAFE DOWNLOAD) =====
 window.exportExcel = function() {
-  const cfg = getCfg();
-  const st = S();
-  const sStats = stats(st, cfg);
-  const cl = classes();
-
-  const wb = XLSX.utils.book_new();
-
-  // Sheet 1: Tổng quan
-  const sheet1Data = [
-    ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH (KHTNReport)'],
-    ['Trường THPT FPT - Tổ Khoa Học Tự Nhiên'],
-    ['Môn học:', currentSubject],
-    ['Kỳ kiểm tra:', cfg.exam],
-    ['Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
-    ['Ngày xuất:', new Date().toLocaleDateString('vi-VN')],
-    [],
-    ['I. THỐNG KÊ CHẤT LƯỢNG TOÀN KHỐI'],
-    ['Chỉ số', 'Giá trị', 'Đơn vị tính'],
-    ['Tổng số học sinh', sStats.n, 'Học sinh'],
-    ['Số lớp học', cl.length, 'Lớp'],
-    ['Điểm trung bình (ĐTB)', +sStats.mean.toFixed(2), 'Điểm'],
-    ['Trung vị (Median)', +sStats.med.toFixed(2), 'Điểm'],
-    ['Điểm cao nhất (Max)', sStats.max, 'Điểm'],
-    ['Điểm thấp nhất (Min)', sStats.min, 'Điểm'],
-    ['Độ lệch chuẩn (SD)', +sStats.sd.toFixed(2), 'Điểm'],
-    [],
-    ['II. CƠ CẤU 4 TẦNG HỌC SINH'],
-    ['Phân tầng', 'Ngưỡng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)'],
-    ['🟢 Giỏi', `≥ ${f1(cfg.gioi)}`, sStats.c.gioi, pc(sStats.c.gioi / sStats.n)],
-    ['🔵 Khá', `${f1(cfg.kha)} - ${f1(cfg.gioi - 0.1)}`, sStats.c.kha, pc(sStats.c.kha / sStats.n)],
-    ['🟡 Trung bình', `${f1(cfg.tb)} - ${f1(cfg.kha - 0.1)}`, sStats.c.tb, pc(sStats.c.tb / sStats.n)],
-    ['🔴 Yếu', `< ${f1(cfg.tb)}`, sStats.c.yeu, pc(sStats.c.yeu / sStats.n)],
-    ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)]
-  ];
-  const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-  ws1['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 16 }];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
-
-  // Sheet 2: So sánh lớp
-  const sheet2Data = [
-    ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt (%)']
-  ];
-  cl.forEach(c => {
-    const cs = stats(st.filter(s => s.cls === c), cfg);
-    sheet2Data.push([
-      c, cs.n, +cs.mean.toFixed(2), +cs.med.toFixed(2), cs.max, cs.min, +cs.sd.toFixed(2),
-      cs.c.gioi, cs.c.kha, cs.c.tb, cs.c.yeu, pc(cs.pass)
-    ]);
-  });
-  const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-  ws2['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 }];
-  XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
-
-  // Sheet 3: Danh sách toàn khối
-  const sheet3Data = [
-    ['Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
-  ];
-  const rk = buildRanks();
-  const sorted = [...st].sort((a,b) => b.score - a.score);
-  sorted.forEach(s => {
-    const t = tier(s.score, cfg);
-    const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
-    const diff = Math.round((target - s.score)*100)/100;
-    const isNear = diff > 0 && diff <= 0.5;
-    let sol = '';
-    if (t === 'yeu') {
-      if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
-      else if (s.score >= 4.5) sol = '⭐ Lớp VIP nâng hạng';
-      else sol = '📚 Phụ đạo tập trung';
-    } else if (t === 'gioi') {
-      if (s.score >= 9.5) sol = '🏆 Đội tuyển HSG';
-      else sol = '🌐 Tự học trên website';
-    } else {
-      sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
+  try {
+    const cfg = getCfg();
+    const st = S();
+    if (!st || !st.length) {
+      toast('⚠️ Chưa có dữ liệu học sinh để xuất file!');
+      return;
     }
-    sheet3Data.push([rk[s.id].all, s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
-  });
-  const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
-  ws3['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
-  XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách toàn khối');
+    const sStats = stats(st, cfg);
+    const cl = classes();
+    const cleanSb = sbSlug(currentSubject);
+    const dateSuffix = new Date().toISOString().slice(0,10);
+    const fileName = `KHTNReport_${cleanSb}_${dateSuffix}.xlsx`;
 
-  // Sheet 4: DS Can thiệp Yếu & VIP
-  const sheet4Data = [
-    ['Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
-  ];
-  const yeuList = st.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
-  yeuList.forEach(s => {
-    let grp = '', span = '', act = '';
-    if (s.score >= 4.5) {
-      grp = '⭐ Lớp VIP Nâng hạng';
-      span = '4.5 - 4.9';
-      act = 'Luyện đề thực chiến cấp tốc, rèn kỹ năng tránh sai sót để đạt chuẩn 5.0';
-    } else if (s.score >= 3.0) {
-      grp = '📚 Phụ đạo tập trung';
-      span = '3.0 - 4.4';
-      act = 'Học phụ đạo 2 buổi/tuần chiều T3-T5, lấp lỗ hổng chuyên đề trọng tâm';
+    // Sheet 1: Tổng quan
+    const sheet1Data = [
+      ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH (KHTNReport)'],
+      ['Trường THPT FPT - Tổ Khoa Học Tự Nhiên'],
+      ['Môn học:', currentSubject],
+      ['Kỳ kiểm tra:', cfg.exam],
+      ['Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
+      ['Ngày xuất:', new Date().toLocaleDateString('vi-VN')],
+      [],
+      ['I. THỐNG KÊ CHẤT LƯỢNG TOÀN KHỐI'],
+      ['Chỉ số', 'Giá trị', 'Đơn vị tính'],
+      ['Tổng số học sinh', sStats.n, 'Học sinh'],
+      ['Số lớp học', cl.length, 'Lớp'],
+      ['Điểm trung bình (ĐTB)', +sStats.mean.toFixed(2), 'Điểm'],
+      ['Trung vị (Median)', +sStats.med.toFixed(2), 'Điểm'],
+      ['Điểm cao nhất (Max)', sStats.max, 'Điểm'],
+      ['Điểm thấp nhất (Min)', sStats.min, 'Điểm'],
+      ['Độ lệch chuẩn (SD)', +sStats.sd.toFixed(2), 'Điểm'],
+      [],
+      ['II. CƠ CẤU 4 TẦNG HỌC SINH'],
+      ['Phân tầng', 'Ngưỡng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)'],
+      ['🟢 Giỏi', `≥ ${f1(cfg.gioi)}`, sStats.c.gioi, pc(sStats.c.gioi / sStats.n)],
+      ['🔵 Khá', `${f1(cfg.kha)} - ${f1(cfg.gioi - 0.1)}`, sStats.c.kha, pc(sStats.c.kha / sStats.n)],
+      ['🟡 Trung bình', `${f1(cfg.tb)} - ${f1(cfg.kha - 0.1)}`, sStats.c.tb, pc(sStats.c.tb / sStats.n)],
+      ['🔴 Yếu', `< ${f1(cfg.tb)}`, sStats.c.yeu, pc(sStats.c.yeu / sStats.n)],
+      ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)]
+    ];
+
+    // Sheet 2: So sánh lớp
+    const sheet2Data = [
+      ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt (%)']
+    ];
+    cl.forEach(c => {
+      const cs = stats(st.filter(s => s.cls === c), cfg);
+      sheet2Data.push([
+        c, cs.n, +cs.mean.toFixed(2), +cs.med.toFixed(2), cs.max, cs.min, +cs.sd.toFixed(2),
+        cs.c.gioi, cs.c.kha, cs.c.tb, cs.c.yeu, pc(cs.pass)
+      ]);
+    });
+
+    // Sheet 3: Danh sách toàn khối
+    const sheet3Data = [
+      ['Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
+    ];
+    const rk = buildRanks();
+    const sorted = [...st].sort((a,b) => b.score - a.score);
+    sorted.forEach(s => {
+      const t = tier(s.score, cfg);
+      const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
+      const diff = Math.round((target - s.score)*100)/100;
+      const isNear = diff > 0 && diff <= 0.5;
+      let sol = '';
+      if (t === 'yeu') {
+        if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
+        else if (s.score >= 4.5) sol = '⭐ Lớp VIP nâng hạng';
+        else sol = '📚 Phụ đạo tập trung';
+      } else if (t === 'gioi') {
+        if (s.score >= 9.5) sol = '🏆 Đội tuyển HSG';
+        else sol = '🌐 Tự học trên website';
+      } else {
+        sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
+      }
+      sheet3Data.push([rk[s.id] ? rk[s.id].all : '', s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
+    });
+
+    // Sheet 4: DS Can thiệp Yếu & VIP
+    const sheet4Data = [
+      ['Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
+    ];
+    const yeuList = st.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
+    yeuList.forEach(s => {
+      let grp = '', span = '', act = '';
+      if (s.score >= 4.5) {
+        grp = '⭐ Lớp VIP Nâng hạng';
+        span = '4.5 - 4.9';
+        act = 'Luyện đề thực chiến cấp tốc, rèn kỹ năng tránh sai sót để đạt chuẩn 5.0';
+      } else if (s.score >= 3.0) {
+        grp = '📚 Phụ đạo tập trung';
+        span = '3.0 - 4.4';
+        act = 'Học phụ đạo 2 buổi/tuần chiều T3-T5, lấp lỗ hổng chuyên đề trọng tâm';
+      } else {
+        grp = '👨‍🏫 Kèm 1-1';
+        span = '< 3.0';
+        act = 'Đôi bạn cùng tiến (HS Giỏi kèm) + GV kèm riêng 1 buổi/tuần';
+      }
+      sheet4Data.push([s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
+    });
+
+    // Sheet 5: DS Bồi dưỡng Giỏi
+    const sheet5Data = [
+      ['Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
+    ];
+    const gioiList = st.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
+    gioiList.forEach(s => {
+      let mod = '', content = '';
+      if (s.score >= 9.5) {
+        mod = '🏆 Đội tuyển HSG & STEM';
+        content = 'Bồi dưỡng chuyên đề nâng cao, dự thi HSG cấp trường và cụm trường';
+      } else if (s.score >= 8.5) {
+        mod = '🤝 Mentor trợ giảng';
+        content = 'Được phân công hướng dẫn và hỗ trợ bạn trong nhóm học tập tại lớp';
+      } else {
+        mod = '🌐 Tự học trên nền tảng';
+        content = 'Cấp tài khoản ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến';
+      }
+      sheet5Data.push([s.name, s.cls, s.score, mod, content]);
+    });
+
+    if (typeof XLSX !== 'undefined') {
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+      ws1['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
+
+      const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+      ws2['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
+
+      const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+      ws3['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
+      XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách toàn khối');
+
+      const ws4 = XLSX.utils.aoa_to_sheet(sheet4Data);
+      ws4['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
+      XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp Yếu & VIP');
+
+      const ws5 = XLSX.utils.aoa_to_sheet(sheet5Data);
+      ws5['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 48 }];
+      XLSX.utils.book_append_sheet(wb, ws5, 'DS Bồi dưỡng Giỏi');
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      toast('Đã xuất file Excel môn ' + currentSubject + ' (5 Sheet)');
     } else {
-      grp = '👨‍🏫 Kèm 1-1';
-      span = '< 3.0';
-      act = 'Đôi bạn cùng tiến (HS Giỏi kèm) + GV kèm riêng 1 buổi/tuần';
+      exportTableToExcelFile(fileName, [
+        { name: 'Tổng quan', data: sheet1Data },
+        { name: 'So sánh lớp', data: sheet2Data },
+        { name: 'Danh sách toàn khối', data: sheet3Data },
+        { name: 'DS Can thiệp Yếu & VIP', data: sheet4Data },
+        { name: 'DS Bồi dưỡng Giỏi', data: sheet5Data }
+      ]);
+      toast('Đã xuất file Excel môn ' + currentSubject + ' (Chế độ tương thích)');
     }
-    sheet4Data.push([s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
-  });
-  const ws4 = XLSX.utils.aoa_to_sheet(sheet4Data);
-  ws4['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
-  XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp Yếu & VIP');
-
-  // Sheet 5: DS Bồi dưỡng Giỏi
-  const sheet5Data = [
-    ['Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
-  ];
-  const gioiList = st.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
-  gioiList.forEach(s => {
-    let mod = '', content = '';
-    if (s.score >= 9.5) {
-      mod = '🏆 Đội tuyển HSG & STEM';
-      content = 'Bồi dưỡng chuyên đề nâng cao, dự thi HSG cấp trường và cụm trường';
-    } else if (s.score >= 8.5) {
-      mod = '🤝 Mentor trợ giảng';
-      content = 'Được phân công hướng dẫn và hỗ trợ bạn trong nhóm học tập tại lớp';
-    } else {
-      mod = '🌐 Tự học trên nền tảng';
-      content = 'Cấp tài khoản ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến';
-    }
-    sheet5Data.push([s.name, s.cls, s.score, mod, content]);
-  });
-  const ws5 = XLSX.utils.aoa_to_sheet(sheet5Data);
-  ws5['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 48 }];
-  XLSX.utils.book_append_sheet(wb, ws5, 'DS Bồi dưỡng Giỏi');
-
-  XLSX.writeFile(wb, `KHTNReport_${currentSubject}_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('Đã xuất file Excel môn ' + currentSubject + ' (5 Sheet)');
+  } catch (err) {
+    console.error('Export Excel Error:', err);
+    toast('⚠️ Lỗi khi xuất Excel: ' + err.message);
+  }
 };
 
 // ===== EXPORT ALL 5 SUBJECTS TO EXCEL =====
 window.exportAllExcel = function() {
-  const wb = XLSX.utils.book_new();
-  const subjects = currentUser ? currentUser.subjects : ['Toán'];
+  try {
+    const dateSuffix = new Date().toISOString().slice(0,10);
+    const fileName = `KHTNReport_ToanToKHTN_${dateSuffix}.xlsx`;
+    const subjects = currentUser ? currentUser.subjects : ['Toán'];
+    const sheetsFallback = [];
 
-  subjects.forEach(sb => {
-    const sData = allData[sb];
-    if (!sData || !sData.students.length) return;
-    const sStats = stats(sData.students, sData.cfg);
+    if (typeof XLSX !== 'undefined') {
+      const wb = XLSX.utils.book_new();
 
-    const data = [
-      [`BÁO CÁO MÔN: ${sb.toUpperCase()} (TỔ KHOA HỌC TỰ NHIÊN - THPT FPT)`],
-      ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
-      ['Giỏi', sStats.c.gioi, 'Khá', sStats.c.kha, 'TB', sStats.c.tb, 'Yếu', sStats.c.yeu],
-      [],
-      ['DANH SÁCH HỌC SINH MÔN ' + sb.toUpperCase()],
-      ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại', 'Giải pháp can thiệp']
-    ];
-    sData.students.forEach((s, idx) => {
-      const t = tier(s.score, sData.cfg);
-      let sol = '';
-      if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo tập trung';
-      else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
-      else sol = 'Rèn luyện';
-      data.push([idx + 1, s.name, s.cls, s.score, tLabel(t), sol]);
-    });
+      subjects.forEach(sb => {
+        const sData = allData[sb];
+        if (!sData || !sData.students.length) return;
+        const sStats = stats(sData.students, sData.cfg);
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 24 }];
-    XLSX.utils.book_append_sheet(wb, ws, sb);
-  });
+        const data = [
+          [`BÁO CÁO MÔN: ${sb.toUpperCase()} (TỔ KHOA HỌC TỰ NHIÊN - THPT FPT)`],
+          ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
+          ['Giỏi', sStats.c.gioi, 'Khá', sStats.c.kha, 'TB', sStats.c.tb, 'Yếu', sStats.c.yeu],
+          [],
+          ['DANH SÁCH HỌC SINH MÔN ' + sb.toUpperCase()],
+          ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại', 'Giải pháp can thiệp']
+        ];
+        sData.students.forEach((s, idx) => {
+          const t = tier(s.score, sData.cfg);
+          let sol = '';
+          if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo tập trung';
+          else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
+          else sol = 'Rèn luyện';
+          data.push([idx + 1, s.name, s.cls, s.score, tLabel(t), sol]);
+        });
 
-  XLSX.writeFile(wb, `KHTNReport_ToanToKHTN_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('Đã xuất file Excel tổng hợp 5 môn KHTNReport');
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 24 }];
+        XLSX.utils.book_append_sheet(wb, ws, sb);
+      });
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      toast('Đã xuất file Excel tổng hợp 5 môn KHTNReport');
+    } else {
+      subjects.forEach(sb => {
+        const sData = allData[sb];
+        if (!sData || !sData.students.length) return;
+        const sStats = stats(sData.students, sData.cfg);
+        const data = [
+          [`BÁO CÁO MÔN: ${sb.toUpperCase()}`],
+          ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
+          [],
+          ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại']
+        ];
+        sData.students.forEach((s, idx) => {
+          data.push([idx + 1, s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg))]);
+        });
+        sheetsFallback.push({ name: sb, data });
+      });
+      exportTableToExcelFile(fileName, sheetsFallback);
+      toast('Đã xuất file Excel tổng hợp 5 môn (Chế độ tương thích)');
+    }
+  } catch (err) {
+    console.error('Export All Excel Error:', err);
+    toast('⚠️ Lỗi khi xuất Excel tổng hợp: ' + err.message);
+  }
 };
 
 // ===== EXPORT SPECIAL GROUPS (VIP & PHỤ ĐẠO) =====
 window.exportSpecialGroupExcel = function(groupType) {
-  const cfg = getCfg();
-  const st = S();
-  const wb = XLSX.utils.book_new();
+  try {
+    const cfg = getCfg();
+    const st = S();
+    const cleanSb = sbSlug(currentSubject);
+    const dateSuffix = new Date().toISOString().slice(0,10);
 
-  if (groupType === 'vip') {
-    const list = st.filter(s => s.score >= 4.5 && s.score < 5.0).sort((a,b) => b.score - a.score);
-    const data = [
-      [`DANH SÁCH HỌC SINH LỚP VIP BỨT PHÁ (CẬN CHUẨN ĐẠT)`],
-      [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
-      [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 4.5 đến 4.9 (Thiếu ≤ 0.5 điểm để đạt chuẩn)`],
-      [`Tổng số học sinh: ${list.length} em`],
-      [],
-      ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Thiếu (điểm)', 'Mục tiêu', 'Giải pháp can thiệp', 'Giáo viên phụ trách']
-    ];
-    list.forEach((s, i) => {
-      data.push([
-        i + 1, s.name, s.cls, s.score, +(5.0 - s.score).toFixed(2),
-        '≥ 5.5', 'Lớp VIP bứt phá cấp tốc, luyện đề chống mất điểm oan', ''
-      ]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 42 }, { wch: 22 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Lop_VIP_ButPha');
-    XLSX.writeFile(wb, `KHTNReport_${currentSubject}_Lop_VIP_ButPha_${new Date().toISOString().slice(0,10)}.xlsx`);
-    toast(`Đã tải danh sách Lớp VIP (${list.length} học sinh)`);
-  } else if (groupType === 'phudao') {
-    const list = st.filter(s => s.score < 4.5).sort((a,b) => a.score - b.score);
-    const data = [
-      [`DANH SÁCH HỌC SINH PHỤ ĐẠO TẬP TRUNG & KÈM 1-1`],
-      [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
-      [`Kỳ thi: ${cfg.exam} · Phân bổ: Dưới 3.0 điểm kèm 1-1, từ 3.0 đến 4.4 phụ đạo 2 buổi/tuần`],
-      [`Tổng số học sinh: ${list.length} em`],
-      [],
-      ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Mô hình can thiệp', 'Lịch học đề xuất', 'Ghi chú']
-    ];
-    list.forEach((s, i) => {
-      const isOneOnOne = s.score < 3.0;
-      data.push([
-        i + 1, s.name, s.cls, s.score,
-        isOneOnOne ? '👨‍🏫 Kèm 1-1 (Đôi bạn + GV)' : '📚 Phụ đạo tập trung',
-        isOneOnOne ? '1 buổi kèm riêng/tuần' : 'Chiều Thứ 3 & Thứ 5 (16h30 - 17h45)',
-        isOneOnOne ? 'Mất gốc kiến thức, cần kèm sát' : 'Hổng kiến thức chuyên đề trọng tâm'
-      ]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 32 }, { wch: 34 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'PhuDao_Kem1-1');
-    XLSX.writeFile(wb, `KHTNReport_${currentSubject}_PhuDao_Kem1-1_${new Date().toISOString().slice(0,10)}.xlsx`);
-    toast(`Đã tải danh sách Phụ đạo & Kèm 1-1 (${list.length} học sinh)`);
+    if (groupType === 'vip') {
+      const list = st.filter(s => s.score >= 4.5 && s.score < 5.0).sort((a,b) => b.score - a.score);
+      const data = [
+        [`DANH SÁCH HỌC SINH LỚP VIP BỨT PHÁ (CẬN CHUẨN ĐẠT)`],
+        [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 4.5 đến 4.9 (Thiếu ≤ 0.5 điểm để đạt chuẩn)`],
+        [`Tổng số học sinh: ${list.length} em`],
+        [],
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Thiếu (điểm)', 'Mục tiêu', 'Giải pháp can thiệp', 'Giáo viên phụ trách']
+      ];
+      list.forEach((s, i) => {
+        data.push([
+          i + 1, s.name, s.cls, s.score, +(5.0 - s.score).toFixed(2),
+          '≥ 5.5', 'Lớp VIP bứt phá cấp tốc, luyện đề chống mất điểm oan', ''
+        ]);
+      });
+
+      const fileName = `KHTNReport_${cleanSb}_Lop_VIP_ButPha_${dateSuffix}.xlsx`;
+
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 42 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Lop_VIP_ButPha');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        exportTableToExcelFile(fileName, [{ name: 'Lop_VIP_ButPha', data }]);
+      }
+      toast(`Đã tải danh sách Lớp VIP (${list.length} học sinh)`);
+    } else if (groupType === 'phudao') {
+      const list = st.filter(s => s.score < 4.5).sort((a,b) => a.score - b.score);
+      const data = [
+        [`DANH SÁCH HỌC SINH PHỤ ĐẠO TẬP TRUNG & KÈM 1-1`],
+        [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Phân bổ: Dưới 3.0 điểm kèm 1-1, từ 3.0 đến 4.4 phụ đạo 2 buổi/tuần`],
+        [`Tổng số học sinh: ${list.length} em`],
+        [],
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Mô hình can thiệp', 'Lịch học đề xuất', 'Ghi chú']
+      ];
+      list.forEach((s, i) => {
+        const isOneOnOne = s.score < 3.0;
+        data.push([
+          i + 1, s.name, s.cls, s.score,
+          isOneOnOne ? '👨‍🏫 Kèm 1-1 (Đôi bạn + GV)' : '📚 Phụ đạo tập trung',
+          isOneOnOne ? '1 buổi kèm riêng/tuần' : 'Chiều Thứ 3 & Thứ 5 (16h30 - 17h45)',
+          isOneOnOne ? 'Mất gốc kiến thức, cần kèm sát' : 'Hổng kiến thức chuyên đề trọng tâm'
+        ]);
+      });
+
+      const fileName = `KHTNReport_${cleanSb}_PhuDao_Kem1-1_${dateSuffix}.xlsx`;
+
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 32 }, { wch: 34 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'PhuDao_Kem1-1');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        exportTableToExcelFile(fileName, [{ name: 'PhuDao_Kem1-1', data }]);
+      }
+      toast(`Đã tải danh sách Phụ đạo & Kèm 1-1 (${list.length} học sinh)`);
+    }
+  } catch (err) {
+    console.error('Export Special Group Error:', err);
+    toast('⚠️ Lỗi khi xuất danh sách: ' + err.message);
   }
 };
 
