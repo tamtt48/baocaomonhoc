@@ -6,6 +6,13 @@
 <title>KHTNReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:wght@500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+if (typeof Chart === 'undefined') {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+  document.head.appendChild(s);
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 if (typeof XLSX === 'undefined') {
@@ -952,19 +959,23 @@ function renderOverview() {
 // ===== 7. CHARTS TAB =====
 let charts = [];
 function killCharts() {
-  charts.forEach(c => c.destroy());
+  charts.forEach(c => {
+    try {
+      if (c && typeof c.destroy === 'function') c.destroy();
+    } catch (e) {}
+  });
   charts = [];
 }
 function tc() {
   return {
-    ink: '#15212e',
-    ink2: '#506072',
-    line: '#d9e0e8',
-    accent: '#4636b8',
-    gioi: '#0f8a5f',
-    kha: '#2563c9',
-    tb: '#a8680a',
-    yeu: '#c0392b'
+    ink: '#101e30',
+    ink2: '#4d6076',
+    line: '#d3dce8',
+    accent: '#f26f21',
+    gioi: '#00904b',
+    kha: '#0054a6',
+    tb: '#d97706',
+    yeu: '#dc2626'
   };
 }
 function hist(list, step) {
@@ -975,30 +986,36 @@ function hist(list, step) {
   return bins;
 }
 function histChart(canvas, list, step, t, cfg) {
-  const bins = hist(list, step), nb = bins.length;
+  if (!canvas || typeof Chart === 'undefined') return null;
+  const bins = hist(list, step);
   const labels = bins.map((_, i) => f1(i * step) + '–' + f1((i + 1) * step));
   const colors = bins.map((_, i) => t[tier((i + 0.5) * step, cfg)]);
-  return new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Số lượng học sinh',
-        data: bins,
-        backgroundColor: colors,
-        borderRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: t.line } },
-        x: { grid: { display: false } }
+  try {
+    return new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Số lượng học sinh',
+          data: bins,
+          backgroundColor: colors,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: t.line } },
+          x: { grid: { display: false } }
+        }
       }
-    }
-  });
+    });
+  } catch (err) {
+    console.error('Error creating histChart:', err);
+    return null;
+  }
 }
 
 function renderCharts() {
@@ -1040,92 +1057,126 @@ function renderCharts() {
     </div>
   </section>`;
 
-  const t = tc();
-  Chart.defaults.color = t.ink2;
-  Chart.defaults.borderColor = t.line;
-  Chart.defaults.font.family = "'Be Vietnam Pro',sans-serif";
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js not yet loaded');
+    return;
+  }
 
-  charts.push(histChart($('#cHist'), st, 1, t, cfg));
-  charts.push(new Chart($('#cPie'), {
-    type: 'doughnut',
-    data: {
-      labels: TIERS.map(x => x.label),
-      datasets: [{
-        data: TIERS.map(x => all.c[x.k]),
-        backgroundColor: TIERS.map(x => t[x.k]),
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '58%',
-      plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } }
-      }
-    }
-  }));
+  const t = tc();
+  try {
+    Chart.defaults.color = t.ink2;
+    Chart.defaults.borderColor = t.line;
+    Chart.defaults.font.family = "'Be Vietnam Pro',sans-serif";
+  } catch (e) {}
+
+  const chHist = $('#cHist');
+  if (chHist) {
+    const h = histChart(chHist, st, 1, t, cfg);
+    if (h) charts.push(h);
+  }
+
+  const chPie = $('#cPie');
+  if (chPie) {
+    try {
+      charts.push(new Chart(chPie, {
+        type: 'doughnut',
+        data: {
+          labels: TIERS.map(x => x.label),
+          datasets: [{
+            data: TIERS.map(x => all.c[x.k]),
+            backgroundColor: TIERS.map(x => t[x.k]),
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '58%',
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } }
+          }
+        }
+      }));
+    } catch (e) { console.error('Error creating cPie:', e); }
+  }
 
   if (cl.length > 1) {
     const per = cl.map(c => stats(st.filter(s => s.cls === c), cfg));
-    charts.push(new Chart($('#cMean'), {
-      data: {
-        labels: cl,
-        datasets: [
-          {
-            type: 'bar',
-            label: 'ĐTB Lớp',
-            data: per.map(p => Math.round(p.mean * 100) / 100),
-            backgroundColor: t.accent,
-            borderRadius: 4,
-            maxBarThickness: 55
+    const chMean = $('#cMean');
+    if (chMean) {
+      try {
+        charts.push(new Chart(chMean, {
+          type: 'bar',
+          data: {
+            labels: cl,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'ĐTB Lớp',
+                data: per.map(p => Math.round(p.mean * 100) / 100),
+                backgroundColor: t.accent,
+                borderRadius: 4,
+                maxBarThickness: 55
+              },
+              {
+                type: 'line',
+                label: `ĐTB Toàn khối (${fm(all.mean)})`,
+                data: cl.map(() => Math.round(all.mean * 100) / 100),
+                borderColor: t.ink2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                borderWidth: 2
+              }
+            ]
           },
-          {
-            type: 'line',
-            label: `ĐTB Toàn khối (${fm(all.mean)})`,
-            data: cl.map(() => Math.round(all.mean * 100) / 100),
-            borderColor: t.ink2,
-            borderDash: [6, 4],
-            pointRadius: 0,
-            borderWidth: 2
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
+            scales: {
+              y: { min: 0, max: 10, grid: { color: t.line } },
+              x: { grid: { display: false } }
+            }
           }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
-        scales: {
-          y: { min: 0, max: 10, grid: { color: t.line } },
-          x: { grid: { display: false } }
-        }
-      }
-    }));
+        }));
+      } catch (e) { console.error('Error creating cMean:', e); }
+    }
 
-    charts.push(new Chart($('#cStack'), {
-      type: 'bar',
-      data: {
-        labels: cl,
-        datasets: TIERS.map(x => ({
-          label: x.label,
-          data: per.map(p => Math.round(p.c[x.k] / p.n * 1000) / 10),
-          backgroundColor: t[x.k]
-        }))
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
-        scales: {
-          x: { stacked: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: t.line } },
-          y: { stacked: true, grid: { display: false } }
-        }
-      }
-    }));
+    const chStack = $('#cStack');
+    if (chStack) {
+      try {
+        charts.push(new Chart(chStack, {
+          type: 'bar',
+          data: {
+            labels: cl,
+            datasets: TIERS.map(x => ({
+              label: x.label,
+              data: per.map(p => Math.round(p.c[x.k] / p.n * 1000) / 10),
+              backgroundColor: t[x.k]
+            }))
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
+            scales: {
+              x: { stacked: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: t.line } },
+              y: { stacked: true, grid: { display: false } }
+            }
+          }
+        }));
+      } catch (e) { console.error('Error creating cStack:', e); }
+    }
   }
 
-  cl.forEach((c, i) => charts.push(histChart($('#cm' + i), st.filter(s => s.cls === c), 1, t, cfg)));
+  cl.forEach((c, i) => {
+    const chMin = $('#cm' + i);
+    if (chMin) {
+      const h = histChart(chMin, st.filter(s => s.cls === c), 1, t, cfg);
+      if (h) charts.push(h);
+    }
+  });
 }
 
 // ===== 8. TIERS TAB =====
@@ -1851,7 +1902,57 @@ window.exportWord = function(isAll) {
   const signerName = currentUser ? currentUser.name : '';
 
   let bodyContent = '';
-  const subjectsToExport = isAll ? (currentUser ? currentUser.subjects : [currentSubject]) : [currentSubject];
+  const subjectsToExport = isAll
+    ? (currentUser && currentUser.subjects && currentUser.subjects.length > 1 ? currentUser.subjects : ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý'])
+    : [currentSubject];
+
+  // Nếu xuất tổng hợp 5 môn, thêm Bảng Tổng Quan So Sánh Cả 5 Môn ở đầu văn bản
+  if (isAll && subjectsToExport.length > 1) {
+    bodyContent += `
+      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:15px">
+        TỔNG HỢP SO SÁNH CHẤT LƯỢNG 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN
+      </h2>
+      <p style="font-size:12pt"><em>Kỳ kiểm tra: ${cfg.exam} · Trường THPT FPT · Tổ KHTN</em></p>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt;margin-bottom:28px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th>STT</th>
+          <th>Bộ môn</th>
+          <th>Sĩ số</th>
+          <th>Số lớp</th>
+          <th>Điểm TB</th>
+          <th>Cao nhất</th>
+          <th>Thấp nhất</th>
+          <th>Giỏi (≥8.0)</th>
+          <th>Khá (6.5–7.9)</th>
+          <th>TB (5.0–6.4)</th>
+          <th>Yếu (<5.0)</th>
+          <th>Tỉ lệ Đạt (≥5.0)</th>
+        </tr>
+        ${subjectsToExport.map((sb, idx) => {
+          const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
+          const sStats = stats(sData.students, sData.cfg || cfg);
+          const clCount = new Set(sData.students.map(s => s.cls)).size;
+          if (!sStats) return '';
+          return `
+            <tr style="text-align:center">
+              <td>${idx + 1}</td>
+              <td style="text-align:left;font-weight:bold">${sb}</td>
+              <td>${sStats.n} HS</td>
+              <td>${clCount}</td>
+              <td style="font-weight:bold;color:#f26f21">${fm(sStats.mean)}</td>
+              <td>${fm(sStats.max)}</td>
+              <td>${fm(sStats.min)}</td>
+              <td>${sStats.c.gioi} (${pc(sStats.c.gioi/sStats.n)})</td>
+              <td>${sStats.c.kha} (${pc(sStats.c.kha/sStats.n)})</td>
+              <td>${sStats.c.tb} (${pc(sStats.c.tb/sStats.n)})</td>
+              <td style="color:#c0392b;font-weight:bold">${sStats.c.yeu} (${pc(sStats.c.yeu/sStats.n)})</td>
+              <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
+            </tr>
+          `;
+        }).join('')}
+      </table>
+    `;
+  }
 
   subjectsToExport.forEach((sb, sIdx) => {
     const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
@@ -1874,11 +1975,12 @@ window.exportWord = function(isAll) {
     const nearYeuArr = near.filter(x => x.s.score >= 4.5 && x.s.score < 5.0);
     const regularWeakArr = yeuArr.filter(s => s.score >= 3.0 && s.score < 4.5);
     const gioiArr = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
+    const sortedAll = [...stList].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
 
     bodyContent += `
-      ${sIdx > 0 ? '<br style="page-break-before:always;" />' : ''}
-      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:28px">
-        PHẦN ${sIdx + 1}: BÁO CÁO KẾT QUẢ CHUYÊN MÔN BỘ MÔN ${sb.toUpperCase()}
+      ${(isAll && subjectsToExport.length > 1) || sIdx > 0 ? '<br style="page-break-before:always;" />' : ''}
+      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:24px">
+        ${isAll ? `PHẦN ${sIdx + 1}: BÁO CÁO KẾT QUẢ BỘ MÔN ${sb.toUpperCase()}` : `BÁO CÁO KẾT QUẢ BỘ MÔN ${sb.toUpperCase()}`}
       </h2>
       <p style="font-size:12pt"><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh: <strong>${sStats.n}</strong> học sinh (${clList.length} lớp học)</em></p>
 
@@ -1937,20 +2039,20 @@ window.exportWord = function(isAll) {
             <tr style="text-align:center">
               <td style="text-align:left;font-weight:bold">${c}</td>
               <td>${cs.n}</td>
-              <td style="font-weight:bold">${fm(cs.mean)}</td>
+              <td style="font-weight:bold;color:#f26f21">${fm(cs.mean)}</td>
               <td>${fm(cs.max)}</td>
               <td>${fm(cs.min)}</td>
               <td>${cs.c.gioi} (${pc(cs.c.gioi/cs.n)})</td>
               <td>${cs.c.kha} (${pc(cs.c.kha/cs.n)})</td>
               <td>${cs.c.tb} (${pc(cs.c.tb/cs.n)})</td>
-              <td style="color:#c0392b">${cs.c.yeu} (${pc(cs.c.yeu/cs.n)})</td>
+              <td style="color:#c0392b;font-weight:bold">${cs.c.yeu} (${pc(cs.c.yeu/cs.n)})</td>
               <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
             </tr>
           `;
         }).join('')}
       </table>
 
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">3. Kế hoạch giải pháp sư phạm & Phân bổ học sinh</h3>
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">3. Kế hoạch giải pháp sư phạm & Danh sách học sinh phân loại đầy đủ</h3>
       <p><strong>A. Kế hoạch can thiệp nhóm học sinh Yếu (${yeuArr.length} học sinh):</strong></p>
       <ul>
         <li><strong>⭐ Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Học sinh cận chuẩn (4.5–4.9 điểm). Tổ chức ôn luyện trọng tâm cấp tốc 3 buổi để đảm bảo đạt chuẩn kỳ tiếp theo.</li>
@@ -1958,35 +2060,87 @@ window.exportWord = function(isAll) {
         <li><strong>👨‍🏫 Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Học sinh dưới 3.0 điểm. Mô hình Đôi bạn cùng tiến (HS Giỏi kèm) kết hợp GV kèm riêng 1 buổi/tuần.</li>
       </ul>
 
-      <p style="font-weight:bold;margin-top:10px">Danh sách học sinh diện can thiệp (trích xuất):</p>
+      <p style="font-weight:bold;margin-top:10px;color:#c0392b">Bảng danh sách toàn bộ học sinh diện can thiệp (${yeuArr.length} học sinh):</p>
+      ${yeuArr.length === 0 ? '<p style="font-style:italic">Không có học sinh yếu môn này.</p>' : `
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
         <tr style="background:#fee2e2;font-weight:bold;text-align:center">
-          <th>STT</th>
-          <th>Họ và tên</th>
-          <th>Lớp</th>
-          <th>Điểm số</th>
-          <th>Mô hình phân bổ</th>
-          <th>Mục tiêu can thiệp</th>
+          <th style="width:6%">STT</th>
+          <th style="width:28%">Họ và tên</th>
+          <th style="width:12%">Lớp</th>
+          <th style="width:12%">Điểm số</th>
+          <th style="width:22%">Mô hình phân bổ</th>
+          <th style="width:20%">Mục tiêu can thiệp</th>
         </tr>
-        ${yeuArr.slice(0, 15).map((s, idx) => `
+        ${yeuArr.map((s, idx) => `
           <tr style="text-align:center">
             <td>${idx + 1}</td>
-            <td style="text-align:left;font-weight:bold">${s.name}</td>
-            <td>${s.cls}</td>
+            <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
+            <td>${esc(s.cls)}</td>
             <td style="color:#c0392b;font-weight:bold">${s.score}</td>
-            <td>${s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo tập trung'}</td>
+            <td>${s.score < 3 ? '👨‍🏫 Kèm 1-1' : s.score >= 4.5 ? '⭐ VIP nâng hạng' : '📚 Phụ đạo tập trung'}</td>
             <td>${s.score >= 4.5 ? 'Đạt ≥ 5.5' : 'Đạt chuẩn 5.0'}</td>
           </tr>
         `).join('')}
-      </table>
-      ${yeuArr.length > 15 ? `<p style="font-size:10pt;font-style:italic">... và ${yeuArr.length - 15} học sinh khác (xem chi tiết trong file Excel đính kèm).</p>` : ''}
+      </table>`}
 
-      <p style="margin-top:14px"><strong>B. Kế hoạch bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} học sinh):</strong></p>
+      <p style="margin-top:16px"><strong>B. Kế hoạch bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} học sinh):</strong></p>
       <ul>
         <li><strong>🏆 Đội tuyển HSG & Dự án STEM:</strong> Chọn lọc học sinh đạt từ 9.0 trở lên tham gia bồi dưỡng chuyên sâu.</li>
         <li><strong>🌐 Tự học trên nền tảng Website:</strong> Cung cấp ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến.</li>
         <li><strong>🤝 Phong trào Mentor trợ giảng:</strong> Huy động học sinh giỏi kèm cặp và hướng dẫn các bạn yếu trong nhóm học tập tại lớp.</li>
       </ul>
+
+      <p style="font-weight:bold;margin-top:10px;color:#00904b">Bảng danh sách toàn bộ học sinh Giỏi (${gioiArr.length} học sinh):</p>
+      ${gioiArr.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+        <tr style="background:#dcfce7;font-weight:bold;text-align:center">
+          <th style="width:6%">STT</th>
+          <th style="width:28%">Họ và tên</th>
+          <th style="width:12%">Lớp</th>
+          <th style="width:12%">Điểm số</th>
+          <th style="width:22%">Mô hình bồi dưỡng</th>
+          <th style="width:20%">Nhiệm vụ trọng tâm</th>
+        </tr>
+        ${gioiArr.map((s, idx) => `
+          <tr style="text-align:center">
+            <td>${idx + 1}</td>
+            <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
+            <td>${esc(s.cls)}</td>
+            <td style="color:#00904b;font-weight:bold">${s.score}</td>
+            <td>${s.score >= 9.5 ? '🏆 Đội tuyển HSG & STEM' : s.score >= 8.5 ? '🤝 Mentor trợ giảng' : '🌐 Tự học nâng cao'}</td>
+            <td>${s.score >= 9.5 ? 'Bồi dưỡng chuyên đề thi HSG' : s.score >= 8.5 ? 'Hỗ trợ nhóm bạn học tại lớp' : 'Luyện đề vận dụng cao online'}</td>
+          </tr>
+        `).join('')}
+      </table>`}
+
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:18px">4. Phụ lục: Bảng điểm chi tiết toàn bộ học sinh (${stList.length} học sinh)</h3>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th style="width:6%">STT</th>
+          <th style="width:34%">Họ và tên</th>
+          <th style="width:12%">Lớp</th>
+          <th style="width:12%">Điểm số</th>
+          <th style="width:16%">Xếp loại</th>
+          <th style="width:20%">Đề xuất sư phạm</th>
+        </tr>
+        ${sortedAll.map((s, idx) => {
+          const t = tier(s.score, sData.cfg || cfg);
+          let sol = '';
+          if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'Lớp VIP' : 'Phụ đạo tập trung';
+          else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
+          else sol = 'Rèn luyện';
+          return `
+            <tr style="text-align:center">
+              <td>${idx + 1}</td>
+              <td style="text-align:left">${esc(s.name)}</td>
+              <td>${esc(s.cls)}</td>
+              <td style="font-weight:bold;${s.score < 5 ? 'color:#c0392b' : s.score >= 8 ? 'color:#00904b' : ''}">${s.score}</td>
+              <td>${tLabel(t)}</td>
+              <td>${sol}</td>
+            </tr>
+          `;
+        }).join('')}
+      </table>
     `;
   });
 
@@ -2167,12 +2321,43 @@ window.previewReportModal = function() {
           <li><strong>📚 Phụ đạo tập trung (${yeuArr.length - nearYeuArr.length - veryWeakArr.length} em):</strong> Điểm 3.0 – 4.4. Học phụ đạo 2 buổi/tuần chiều T3-T5.</li>
           <li><strong>👨‍🏫 Kèm 1-1 (${veryWeakArr.length} em):</strong> Điểm < 3.0. Phân công đôi bạn cùng tiến và giáo viên kèm riêng.</li>
         </ul>
-        <p style="margin:4px 0 2px"><strong>2. Bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} em):</strong></p>
+        <table border="1" cellspacing="0" cellpadding="4" style="width:100%;border-collapse:collapse;text-align:center;font-size:9.5pt;margin-bottom:12px">
+          <tr style="background:#fee2e2;font-weight:bold">
+            <th>STT</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th><th>Phân loại</th><th>Mục tiêu</th>
+          </tr>
+          ${yeuArr.map((s, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
+              <td>${esc(s.cls)}</td>
+              <td style="color:#c0392b;font-weight:bold">${s.score}</td>
+              <td>${s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo'}</td>
+              <td>${s.score >= 4.5 ? '≥ 5.5' : 'Đạt 5.0'}</td>
+            </tr>
+          `).join('')}
+        </table>
+
+        <p style="margin:8px 0 2px"><strong>2. Bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} em):</strong></p>
         <ul style="margin:2px 0 10px;padding-left:20px;font-size:10.5pt">
           <li><strong>🏆 Đội tuyển HSG:</strong> Bồi dưỡng dự thi học sinh giỏi và dự án STEM.</li>
           <li><strong>🌐 Tự học số:</strong> Cung cấp ngân hàng bài tập vận dụng cao trực tuyến.</li>
           <li><strong>🤝 Mentor:</strong> Học sinh giỏi hướng dẫn bạn trong các nhóm học tập.</li>
         </ul>
+        <table border="1" cellspacing="0" cellpadding="4" style="width:100%;border-collapse:collapse;text-align:center;font-size:9.5pt;margin-bottom:12px">
+          <tr style="background:#dcfce7;font-weight:bold">
+            <th>STT</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th><th>Mô hình</th><th>Nội dung</th>
+          </tr>
+          ${gioiArr.map((s, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
+              <td>${esc(s.cls)}</td>
+              <td style="color:#00904b;font-weight:bold">${s.score}</td>
+              <td>${s.score >= 9.5 ? '🏆 Đội HSG' : s.score >= 8.5 ? '🤝 Mentor' : '🌐 Tự học số'}</td>
+              <td>${s.score >= 9.5 ? 'Chuyên đề HSG' : s.score >= 8.5 ? 'Trợ giảng lớp' : 'Luyện online'}</td>
+            </tr>
+          `).join('')}
+        </table>
 
         <table style="width:100%;border:none;margin-top:28px">
           <tr>
@@ -2291,11 +2476,11 @@ window.exportExcel = function() {
 
     // Sheet 3: Danh sách toàn khối
     const sheet3Data = [
-      ['Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
+      ['STT', 'Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
     ];
     const rk = buildRanks();
     const sorted = [...st].sort((a,b) => b.score - a.score);
-    sorted.forEach(s => {
+    sorted.forEach((s, idx) => {
       const t = tier(s.score, cfg);
       const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
       const diff = Math.round((target - s.score)*100)/100;
@@ -2307,19 +2492,20 @@ window.exportExcel = function() {
         else sol = '📚 Phụ đạo tập trung';
       } else if (t === 'gioi') {
         if (s.score >= 9.5) sol = '🏆 Đội tuyển HSG';
+        else if (s.score >= 8.5) sol = '🤝 Mentor trợ giảng';
         else sol = '🌐 Tự học trên website';
       } else {
         sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
       }
-      sheet3Data.push([rk[s.id] ? rk[s.id].all : '', s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
+      sheet3Data.push([idx + 1, rk[s.id] ? rk[s.id].all : '', s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
     });
 
     // Sheet 4: DS Can thiệp Yếu & VIP
     const sheet4Data = [
-      ['Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
+      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
     ];
     const yeuList = st.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
-    yeuList.forEach(s => {
+    yeuList.forEach((s, idx) => {
       let grp = '', span = '', act = '';
       if (s.score >= 4.5) {
         grp = '⭐ Lớp VIP Nâng hạng';
@@ -2334,15 +2520,15 @@ window.exportExcel = function() {
         span = '< 3.0';
         act = 'Đôi bạn cùng tiến (HS Giỏi kèm) + GV kèm riêng 1 buổi/tuần';
       }
-      sheet4Data.push([s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
+      sheet4Data.push([idx + 1, s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
     });
 
     // Sheet 5: DS Bồi dưỡng Giỏi
     const sheet5Data = [
-      ['Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
+      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
     ];
     const gioiList = st.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
-    gioiList.forEach(s => {
+    gioiList.forEach((s, idx) => {
       let mod = '', content = '';
       if (s.score >= 9.5) {
         mod = '🏆 Đội tuyển HSG & STEM';
@@ -2354,7 +2540,7 @@ window.exportExcel = function() {
         mod = '🌐 Tự học trên nền tảng';
         content = 'Cấp tài khoản ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến';
       }
-      sheet5Data.push([s.name, s.cls, s.score, mod, content]);
+      sheet5Data.push([idx + 1, s.name, s.cls, s.score, mod, content]);
     });
 
     if (typeof XLSX !== 'undefined') {
@@ -2368,15 +2554,15 @@ window.exportExcel = function() {
       XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
 
       const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
-      ws3['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
+      ws3['!cols'] = [{ wch: 6 }, { wch: 10 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
       XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách toàn khối');
 
       const ws4 = XLSX.utils.aoa_to_sheet(sheet4Data);
-      ws4['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
+      ws4['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
       XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp Yếu & VIP');
 
       const ws5 = XLSX.utils.aoa_to_sheet(sheet5Data);
-      ws5['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 48 }];
+      ws5['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 48 }];
       XLSX.utils.book_append_sheet(wb, ws5, 'DS Bồi dưỡng Giỏi');
 
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -2402,58 +2588,122 @@ window.exportExcel = function() {
 // ===== EXPORT ALL 5 SUBJECTS TO EXCEL =====
 window.exportAllExcel = function() {
   try {
+    const cfg = getCfg();
     const dateSuffix = new Date().toISOString().slice(0,10);
-    const fileName = `KHTNReport_ToanToKHTN_${dateSuffix}.xlsx`;
-    const subjects = currentUser ? currentUser.subjects : ['Toán'];
+    const fileName = `KHTNReport_TongHop_5Mon_${dateSuffix}.xlsx`;
+    const subjects = currentUser ? currentUser.subjects : ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý'];
     const sheetsFallback = [];
+
+    // Tạo Sheet Tổng Hợp Tổ KHTN so sánh cả 5 môn
+    const masterData = [
+      ['BÁO CÁO TỔNG HỢP SO SÁNH CHẤT LƯỢNG 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN'],
+      ['Trường THPT FPT - Kỳ thi:', cfg.exam],
+      ['Tổ trưởng:', 'Thầy Thạch Thanh Tâm', 'Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
+      ['Ngày xuất báo cáo:', new Date().toLocaleDateString('vi-VN')],
+      [],
+      ['STT', 'Bộ môn', 'Sĩ số', 'Số lớp', 'Điểm TB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch SD', 'Giỏi (SL)', 'Giỏi (%)', 'Khá (SL)', 'Khá (%)', 'TB (SL)', 'TB (%)', 'Yếu (SL)', 'Yếu (%)', 'Tỉ lệ Đạt (%)']
+    ];
+
+    subjects.forEach((sb, idx) => {
+      const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
+      const sStats = stats(sData.students, sData.cfg || cfg);
+      const clCount = new Set(sData.students.map(s => s.cls)).size;
+      if (!sStats) return;
+      masterData.push([
+        idx + 1,
+        sb,
+        sStats.n,
+        clCount,
+        +sStats.mean.toFixed(2),
+        +sStats.med.toFixed(2),
+        sStats.max,
+        sStats.min,
+        +sStats.sd.toFixed(2),
+        sStats.c.gioi,
+        pc(sStats.c.gioi / sStats.n),
+        sStats.c.kha,
+        pc(sStats.c.kha / sStats.n),
+        sStats.c.tb,
+        pc(sStats.c.tb / sStats.n),
+        sStats.c.yeu,
+        pc(sStats.c.yeu / sStats.n),
+        pc(sStats.pass)
+      ]);
+    });
 
     if (typeof XLSX !== 'undefined') {
       const wb = XLSX.utils.book_new();
 
+      // Thêm Sheet 1: Tổng Hợp Tổ KHTN
+      const wsMaster = XLSX.utils.aoa_to_sheet(masterData);
+      wsMaster['!cols'] = [
+        { wch: 6 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+        { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 16 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsMaster, 'Tổng Hợp Tổ KHTN');
+
+      // Thêm các Sheet chi tiết từng môn với 100% học sinh
       subjects.forEach(sb => {
         const sData = allData[sb];
         if (!sData || !sData.students.length) return;
-        const sStats = stats(sData.students, sData.cfg);
+        const sStats = stats(sData.students, sData.cfg || cfg);
 
         const data = [
-          [`BÁO CÁO MÔN: ${sb.toUpperCase()} (TỔ KHOA HỌC TỰ NHIÊN - THPT FPT)`],
-          ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
-          ['Giỏi', sStats.c.gioi, 'Khá', sStats.c.kha, 'TB', sStats.c.tb, 'Yếu', sStats.c.yeu],
+          [`BÁO CÁO CHI TIẾT BỘ MÔN: ${sb.toUpperCase()} (TỔ KHTN - THPT FPT)`],
+          ['Kỳ kiểm tra:', cfg.exam, 'Sĩ số:', sStats.n, 'Điểm TB:', +sStats.mean.toFixed(2), 'Tỉ lệ đạt:', pc(sStats.pass)],
+          ['Giỏi:', sStats.c.gioi, 'Khá:', sStats.c.kha, 'Trung bình:', sStats.c.tb, 'Yếu:', sStats.c.yeu],
           [],
-          ['DANH SÁCH HỌC SINH MÔN ' + sb.toUpperCase()],
-          ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại', 'Giải pháp can thiệp']
+          ['DANH SÁCH TOÀN BỘ HỌC SINH MÔN ' + sb.toUpperCase() + ` (TỔNG SỐ: ${sData.students.length} HỌC SINH)`],
+          ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Giải pháp can thiệp / Bồi dưỡng']
         ];
-        sData.students.forEach((s, idx) => {
-          const t = tier(s.score, sData.cfg);
+
+        const sorted = [...sData.students].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
+        sorted.forEach((s, idx) => {
+          const t = tier(s.score, sData.cfg || cfg);
+          const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
+          const diff = Math.round((target - s.score)*100)/100;
+          const isNear = diff > 0 && diff <= 0.5;
           let sol = '';
-          if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo tập trung';
-          else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
-          else sol = 'Rèn luyện';
-          data.push([idx + 1, s.name, s.cls, s.score, tLabel(t), sol]);
+          if (t === 'yeu') sol = s.score < 3 ? '👨‍🏫 Kèm 1-1' : s.score >= 4.5 ? '⭐ Lớp VIP nâng hạng' : '📚 Phụ đạo tập trung';
+          else if (t === 'gioi') sol = s.score >= 9.5 ? '🏆 Đội tuyển HSG & STEM' : s.score >= 8.5 ? '🤝 Mentor trợ giảng' : '🌐 Tự học website';
+          else sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
+
+          data.push([
+            idx + 1,
+            s.name,
+            s.cls,
+            s.score,
+            tLabel(t),
+            isNear ? `Thiếu ${diff}đ` : 'Không',
+            sol
+          ]);
         });
 
         const ws = XLSX.utils.aoa_to_sheet(data);
-        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 24 }];
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
         XLSX.utils.book_append_sheet(wb, ws, sb);
       });
 
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      toast('Đã xuất file Excel tổng hợp 5 môn KHTNReport');
+      toast('Đã xuất file Excel tổng hợp 5 môn KHTNReport đầy đủ 100% học sinh');
     } else {
+      sheetsFallback.push({ name: 'Tổng Hợp Tổ KHTN', data: masterData });
       subjects.forEach(sb => {
         const sData = allData[sb];
         if (!sData || !sData.students.length) return;
-        const sStats = stats(sData.students, sData.cfg);
+        const sStats = stats(sData.students, sData.cfg || cfg);
         const data = [
           [`BÁO CÁO MÔN: ${sb.toUpperCase()}`],
           ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
           [],
-          ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại']
+          ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại', 'Giải pháp can thiệp']
         ];
-        sData.students.forEach((s, idx) => {
-          data.push([idx + 1, s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg))]);
+        const sorted = [...sData.students].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
+        sorted.forEach((s, idx) => {
+          data.push([idx + 1, s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg || cfg)), s.score < 5 ? 'Cần can thiệp' : 'Đạt chuẩn']);
         });
         sheetsFallback.push({ name: sb, data });
       });
