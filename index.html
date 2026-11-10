@@ -5,20 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KHTNReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:wght@500;600;700&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="js/chart.umd.min.js"></script>
+<script src="js/xlsx.full.min.js"></script>
 <script>
 if (typeof Chart === 'undefined') {
-  const s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
-  document.head.appendChild(s);
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\\/script>');
 }
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script>
 if (typeof XLSX === 'undefined') {
-  const s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-  document.head.appendChild(s);
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\\/script>');
 }
 </script>
 <style>
@@ -75,6 +69,15 @@ h1,h2,h3{font-family:var(--font-display);line-height:1.2}
 .subj-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);color:#fff;padding:6px 14px;border-radius:20px;font-weight:600;font-size:12.5px;cursor:pointer;transition:all .15s}
 .subj-pill:hover{background:rgba(255,255,255,.24);transform:translateY(-1px)}
 .subj-pill.active{background:#f26f21;color:#fff;font-weight:700;box-shadow:0 2px 10px rgba(242,111,33,.5);border-color:#f26f21}
+
+.exam-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:8px 12px;background:rgba(0,0,0,.18);border-radius:10px;font-size:13px;flex-wrap:wrap;border:1px solid rgba(255,255,255,.1)}
+.exam-toolbar .lbl{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#ffd8be}
+.exam-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;padding:5px 12px;border-radius:16px;font-weight:600;font-size:12px;cursor:pointer;transition:all .15s}
+.exam-pill:hover{background:rgba(255,255,255,.2);transform:translateY(-1px)}
+.exam-pill.active{background:#0054a6;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,84,166,.5);border-color:#38bdf8}
+.last-report-badge{font-size:12px;color:#d8e5f5;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);padding:4px 12px;border-radius:99px;border:1px solid rgba(255,255,255,.18)}
+.last-report-badge.done{color:#86efac;background:rgba(16,185,129,.18);border-color:rgba(52,211,153,.35)}
+.last-report-badge.pending{color:#fde047;background:rgba(234,179,8,.15);border-color:rgba(250,204,21,.3)}
 
 nav.tabs{display:flex;gap:4px;margin-top:12px;overflow-x:auto}
 nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;color:var(--band-ink);opacity:.75;padding:10px 14px;font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap;transition:all .15s}
@@ -305,6 +308,15 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
       <div id="subjectPills" style="display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
 
+    <!-- Exam Switcher Toolbar -->
+    <div class="exam-toolbar" id="examBar">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="lbl">🎯 Kỳ kiểm tra:</span>
+        <div id="examPills" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div id="lastReportBadge" class="last-report-badge"></div>
+    </div>
+
     <!-- Tabs Navigation -->
     <nav class="tabs" aria-label="Các mục">
       <button data-tab="overview">📈 Tổng quan</button>
@@ -453,7 +465,16 @@ let currentSubject = 'Toán';
 let nextId = 1;
 let cur = 'overview';
 
-// ===== 2. INITIAL REALISTIC DATA FOR ALL 5 SUBJECTS =====
+// ===== 2. EXAM PERIODS (GK1, CK1, GK2, CK2, TỐT NGHIỆP) =====
+const EXAMS = [
+  { id: 'GK1', name: 'Kiểm tra Giữa kỳ 1 · NH 2026-2027', short: 'Giữa kỳ 1 (GK1)', icon: '📝', delta: 0.0 },
+  { id: 'CK1', name: 'Kiểm tra Cuối kỳ 1 · NH 2026-2027', short: 'Cuối kỳ 1 (CK1)', icon: '📘', delta: 0.25 },
+  { id: 'GK2', name: 'Kiểm tra Giữa kỳ 2 · NH 2026-2027', short: 'Giữa kỳ 2 (GK2)', icon: '📝', delta: 0.35 },
+  { id: 'CK2', name: 'Kiểm tra Cuối kỳ 2 · NH 2026-2027', short: 'Cuối kỳ 2 (CK2)', icon: '📙', delta: 0.55 },
+  { id: 'TN',  name: 'Khảo sát Thi Tốt Nghiệp THPT 2027', short: 'Thi Tốt Nghiệp (TN)', icon: '🎓', delta: 0.15 }
+];
+let currentExam = 'GK1';
+
 const TIERS = [
   { k: 'gioi', label: 'Giỏi' },
   { k: 'kha', label: 'Khá' },
@@ -527,30 +548,58 @@ function initDefaultDataset() {
   const pick = l => l[Math.floor(rnd() * l.length)];
 
   SUBJECT_DEFAULTS.forEach(sObj => {
-    const students = [];
+    // Tạo danh sách học sinh cố định theo từng lớp
+    const classRosters = [];
     sObj.classes.forEach(cObj => {
       const seen = new Set();
+      const roster = [];
       while (seen.size < cObj.n) {
         const isF = rnd() < 0.52;
         const name = pick(ho) + ' ' + pick(isF ? demNu : demNam) + ' ' + pick(isF ? tenNu : tenNam);
         if (seen.has(name)) continue;
         seen.add(name);
-        const score = Math.min(10, Math.max(0.5, Math.round((cObj.mean + gauss() * cObj.sd) * 4) / 4));
-        students.push({
+        roster.push({
           id: nextId++,
           name,
-          score,
-          cls: cObj.name
+          cls: cObj.name,
+          mean: cObj.mean,
+          sd: cObj.sd
         });
       }
+      classRosters.push(...roster);
+    });
+
+    // Tạo dataset cho cả 5 kỳ thi
+    const examsData = {};
+    EXAMS.forEach(ex => {
+      const students = classRosters.map(st => {
+        // Điểm số thay đổi tinh tế theo từng kỳ kiểm tra
+        const score = Math.min(10, Math.max(0.5, Math.round((st.mean + ex.delta + gauss() * st.sd) * 4) / 4));
+        return {
+          id: st.id,
+          name: st.name,
+          score,
+          cls: st.cls
+        };
+      });
+
+      examsData[ex.id] = {
+        subject: sObj.subject,
+        examId: ex.id,
+        exam: ex.name,
+        students,
+        absent: [],
+        cfg: { gioi: 8.0, kha: 6.5, tb: 5.0 }
+      };
     });
 
     allData[sObj.subject] = {
       subject: sObj.subject,
-      exam: 'Kiểm tra Giữa kỳ 1 · NH 2026-2027',
-      students,
+      exams: examsData,
+      students: examsData['GK1'].students,
       absent: [],
-      cfg: { gioi: 8.0, kha: 6.5, tb: 5.0 }
+      cfg: { gioi: 8.0, kha: 6.5, tb: 5.0 },
+      exam: EXAMS[0].name
     };
   });
 }
@@ -559,10 +608,15 @@ function initDefaultDataset() {
 initDefaultDataset();
 
 function getCfg() {
-  const g = +$('#cfgGioi').value, k = +$('#cfgKha').value, t = +$('#cfgTb').value;
+  const gEl = $('#cfgGioi'), kEl = $('#cfgKha'), tEl = $('#cfgTb'), eEl = $('#cfgExam');
+  const g = gEl ? +gEl.value : 8.0;
+  const k = kEl ? +kEl.value : 6.5;
+  const t = tEl ? +tEl.value : 5.0;
+  const curExObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
+  const examName = (eEl && eEl.value.trim()) ? eEl.value.trim() : curExObj.name;
   return {
     subject: currentSubject,
-    exam: $('#cfgExam').value.trim() || 'Bài kiểm tra',
+    exam: examName,
     gioi: (g > k && g <= 10) ? g : 8.0,
     kha: (k > t && k > 0) ? k : 6.5,
     tb: (t > 0 && t < k) ? t : 5.0
@@ -571,15 +625,95 @@ function getCfg() {
 
 function getCurrentData() {
   if (!allData[currentSubject]) {
-    allData[currentSubject] = {
+    allData[currentSubject] = { subject: currentSubject, exams: {} };
+  }
+  if (!allData[currentSubject].exams) {
+    allData[currentSubject].exams = {};
+  }
+  if (!allData[currentSubject].exams[currentExam]) {
+    const curExamObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
+    allData[currentSubject].exams[currentExam] = {
       subject: currentSubject,
-      exam: 'Kiểm tra Giữa kỳ 1 · NH 2026-2027',
+      examId: currentExam,
+      exam: curExamObj.name,
       students: [],
       absent: [],
       cfg: { gioi: 8.0, kha: 6.5, tb: 5.0 }
     };
   }
-  return allData[currentSubject];
+  const d = allData[currentSubject].exams[currentExam];
+  allData[currentSubject].students = d.students;
+  allData[currentSubject].absent = d.absent;
+  allData[currentSubject].cfg = d.cfg;
+  allData[currentSubject].exam = d.exam;
+  return d;
+}
+
+// ===== 3. PERSISTENCE: LƯU LẠI THÔNG TIN LẦN BÁO CÁO CUỐI CÙNG =====
+function saveLastReport(sb = currentSubject, ex = currentExam, source = 'Xuất file nộp') {
+  try {
+    const d = (allData[sb] && allData[sb].exams && allData[sb].exams[ex]) ? allData[sb].exams[ex] : getCurrentData();
+    const st = d.students || [];
+    const cfg = d.cfg || getCfg();
+    const sStats = stats(st, cfg);
+    const examObj = EXAMS.find(e => e.id === ex) || { name: cfg.exam, short: ex };
+
+    const record = {
+      subject: sb,
+      examId: ex,
+      examName: examObj.name,
+      examShort: examObj.short,
+      timestamp: Date.now(),
+      dateStr: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      reporterName: currentUser ? currentUser.name : 'Giáo viên bộ môn',
+      reporterFullName: currentUser ? currentUser.fullName : 'Giáo viên bộ môn',
+      signerRole: currentUser ? currentUser.roleLabel : 'Trưởng bộ môn',
+      n: sStats ? sStats.n : st.length,
+      mean: sStats ? +sStats.mean.toFixed(2) : 0,
+      passRate: sStats ? pc(sStats.pass) : '0%',
+      gioi: sStats ? sStats.c.gioi : 0,
+      kha: sStats ? sStats.c.kha : 0,
+      tb: sStats ? sStats.c.tb : 0,
+      yeu: sStats ? sStats.c.yeu : 0,
+      source: source,
+      status: 'Đã hoàn thành nộp báo cáo'
+    };
+
+    const raw = localStorage.getItem('khtn_last_reports');
+    const store = raw ? JSON.parse(raw) : {};
+    store[sb] = record;
+    store[`${sb}__${ex}`] = record;
+    localStorage.setItem('khtn_last_reports', JSON.stringify(store));
+
+    updateLastReportUI();
+    toast(`✅ Đã lưu thông tin lần báo cáo cuối cùng môn ${sb} (${examObj.short})`);
+  } catch(e) {
+    console.error('Lỗi khi lưu lần báo cáo cuối cùng:', e);
+  }
+}
+
+function getLastReport(sb = currentSubject, ex = currentExam) {
+  try {
+    const raw = localStorage.getItem('khtn_last_reports');
+    if (!raw) return null;
+    const store = JSON.parse(raw);
+    return store[`${sb}__${ex}`] || store[sb] || null;
+  } catch(e) {
+    return null;
+  }
+}
+
+function updateLastReportUI() {
+  const badge = $('#lastReportBadge');
+  if (!badge) return;
+  const last = getLastReport(currentSubject, currentExam);
+  if (last) {
+    badge.className = 'last-report-badge done';
+    badge.innerHTML = `🟢 Lần báo cáo cuối: <strong>${esc(last.examShort)}</strong> · ${esc(last.dateStr)} · <em>${esc(last.reporterName)}</em>`;
+  } else {
+    badge.className = 'last-report-badge pending';
+    badge.innerHTML = `🟡 Kỳ này chưa nộp báo cáo môn ${esc(currentSubject)}`;
+  }
 }
 
 function S() { return getCurrentData().students; }
@@ -761,6 +895,7 @@ function showApp() {
   }
 
   renderSubjectToolbar();
+  renderExamToolbar();
   refresh();
   show(location.hash.slice(1) || 'overview');
 }
@@ -777,12 +912,39 @@ function renderSubjectToolbar() {
   `).join('');
 }
 
+function renderExamToolbar() {
+  const container = $('#examPills');
+  if (!container) return;
+
+  container.innerHTML = EXAMS.map(ex => `
+    <button class="exam-pill ${ex.id === currentExam ? 'active' : ''}" onclick="switchExam('${ex.id}')">
+      ${ex.icon} ${ex.short}
+    </button>
+  `).join('');
+
+  updateLastReportUI();
+}
+
 window.switchSubject = function(sb) {
   if (!currentUser.subjects.includes(sb)) return;
   currentSubject = sb;
   renderSubjectToolbar();
+  renderExamToolbar();
   refresh();
   toast(`Đã chuyển sang môn: ${sb}`);
+};
+
+window.switchExam = function(exId) {
+  const exObj = EXAMS.find(e => e.id === exId);
+  if (!exObj) return;
+  currentExam = exId;
+  const cfgInput = $('#cfgExam');
+  if (cfgInput) cfgInput.value = exObj.name;
+
+  getCurrentData();
+  renderExamToolbar();
+  refresh();
+  toast(`Đã chọn kỳ thi: ${exObj.short}`);
 };
 
 // Check stored login on startup
@@ -985,12 +1147,122 @@ function hist(list, step) {
   });
   return bins;
 }
+
+// Infallible SVG Fallback for Histogram (never blank)
+function renderSvgHist(canvas, list, step, t, cfg) {
+  if (!canvas || !canvas.parentElement) return;
+  const bins = hist(list, step);
+  const max = Math.max(1, ...bins);
+  const w = 560, h = 260, padL = 40, padB = 40, padT = 25, padR = 20;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const barW = Math.max(14, (plotW / bins.length) - 6);
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  for (let stepIdx = 0; stepIdx <= 4; stepIdx++) {
+    const yVal = Math.round((max / 4) * stepIdx);
+    const yPos = padT + plotH - (plotH * (yVal / max));
+    svg += `<line x1="${padL}" y1="${yPos}" x2="${w - padR}" y2="${yPos}" stroke="${t.line}" stroke-dasharray="3,3" />`;
+    svg += `<text x="${padL - 6}" y="${yPos + 4}" font-size="10" fill="${t.ink2}" text-anchor="end">${yVal}</text>`;
+  }
+
+  bins.forEach((b, i) => {
+    const x = padL + i * (plotW / bins.length) + 3;
+    const barH = (b / max) * plotH;
+    const y = padT + plotH - barH;
+    const color = t[tier((i + 0.5) * step, cfg)];
+    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${color}">
+      <title>Khoảng điểm ${f1(i * step)}–${f1((i + 1) * step)}: ${b} học sinh</title>
+    </rect>`;
+    if (b > 0) {
+      svg += `<text x="${x + barW/2}" y="${y - 5}" font-size="11" font-weight="700" fill="${t.ink}" text-anchor="middle">${b}</text>`;
+    }
+    svg += `<text x="${x + barW/2}" y="${h - 15}" font-size="10" fill="${t.ink2}" text-anchor="middle">${f1(i * step)}</text>`;
+  });
+  svg += `</svg>`;
+
+  canvas.style.display = 'none';
+  let fb = canvas.parentElement.querySelector('.svg-chart-fallback');
+  if (!fb) {
+    fb = document.createElement('div');
+    fb.className = 'svg-chart-fallback';
+    fb.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center';
+    canvas.parentElement.appendChild(fb);
+  }
+  fb.innerHTML = svg;
+}
+
+// Infallible SVG Fallback for Donut (never blank)
+function renderSvgPie(canvas, all, t) {
+  if (!canvas || !canvas.parentElement) return;
+  const n = all.n || 1;
+  const data = TIERS.map(x => ({ label: x.label, count: all.c[x.k], color: t[x.k], pct: Math.round(all.c[x.k] / n * 100) }));
+  
+  let currentAngle = 0;
+  const cx = 130, cy = 130, r = 88, rIn = 50;
+  let paths = '';
+
+  data.forEach(d => {
+    if (d.count === 0) return;
+    const angle = (d.count / n) * 2 * Math.PI;
+    const endAngle = currentAngle + angle;
+    const x1 = cx + r * Math.cos(currentAngle);
+    const y1 = cy + r * Math.sin(currentAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+
+    const x3 = cx + rIn * Math.cos(endAngle);
+    const y3 = cy + rIn * Math.sin(endAngle);
+    const x4 = cx + rIn * Math.cos(currentAngle);
+    const y4 = cy + rIn * Math.sin(currentAngle);
+
+    const largeArc = angle > Math.PI ? 1 : 0;
+    paths += `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x4} ${y4} Z" fill="${d.color}">
+      <title>${d.label}: ${d.count} HS (${d.pct}%)</title>
+    </path>`;
+    currentAngle = endAngle;
+  });
+
+  let legend = '';
+  data.forEach((d, i) => {
+    const y = 50 + i * 40;
+    legend += `
+      <rect x="250" y="${y}" width="14" height="14" rx="3" fill="${d.color}" />
+      <text x="272" y="${y + 12}" font-size="12" font-weight="600" fill="${t.ink}">${d.label}: ${d.count} HS (${d.pct}%)</text>
+    `;
+  });
+
+  const svg = `<svg viewBox="0 0 450 260" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif" xmlns="http://www.w3.org/2000/svg">
+    ${paths}
+    <text x="${cx}" y="${cy - 4}" font-size="20" font-weight="800" fill="${t.ink}" text-anchor="middle">${n}</text>
+    <text x="${cx}" y="${cy + 16}" font-size="11" fill="${t.ink2}" text-anchor="middle">HỌC SINH</text>
+    ${legend}
+  </svg>`;
+
+  canvas.style.display = 'none';
+  let fb = canvas.parentElement.querySelector('.svg-chart-fallback');
+  if (!fb) {
+    fb = document.createElement('div');
+    fb.className = 'svg-chart-fallback';
+    fb.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center';
+    canvas.parentElement.appendChild(fb);
+  }
+  fb.innerHTML = svg;
+}
+
 function histChart(canvas, list, step, t, cfg) {
-  if (!canvas || typeof Chart === 'undefined') return null;
+  if (!canvas) return null;
+  if (typeof Chart === 'undefined') {
+    renderSvgHist(canvas, list, step, t, cfg);
+    return null;
+  }
   const bins = hist(list, step);
   const labels = bins.map((_, i) => f1(i * step) + '–' + f1((i + 1) * step));
   const colors = bins.map((_, i) => t[tier((i + 0.5) * step, cfg)]);
   try {
+    if (canvas.parentElement) {
+      canvas.parentElement.querySelectorAll('.svg-chart-fallback').forEach(el => el.remove());
+      canvas.style.display = '';
+    }
     return new Chart(canvas, {
       type: 'bar',
       data: {
@@ -1005,6 +1277,7 @@ function histChart(canvas, list, step, t, cfg) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 250 },
         plugins: { legend: { display: false } },
         scales: {
           y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: t.line } },
@@ -1013,7 +1286,8 @@ function histChart(canvas, list, step, t, cfg) {
       }
     });
   } catch (err) {
-    console.error('Error creating histChart:', err);
+    console.error('Error creating histChart, using SVG fallback:', err);
+    renderSvgHist(canvas, list, step, t, cfg);
     return null;
   }
 }
@@ -1057,12 +1331,18 @@ function renderCharts() {
     </div>
   </section>`;
 
+  const t = tc();
+
   if (typeof Chart === 'undefined') {
-    console.warn('Chart.js not yet loaded');
+    const chHist = $('#cHist'), chPie = $('#cPie');
+    if (chHist) renderSvgHist(chHist, st, 1, t, cfg);
+    if (chPie) renderSvgPie(chPie, all, t);
+    setTimeout(() => {
+      if (cur === 'charts' && typeof Chart !== 'undefined') renderCharts();
+    }, 200);
     return;
   }
 
-  const t = tc();
   try {
     Chart.defaults.color = t.ink2;
     Chart.defaults.borderColor = t.line;
@@ -1078,6 +1358,10 @@ function renderCharts() {
   const chPie = $('#cPie');
   if (chPie) {
     try {
+      if (chPie.parentElement) {
+        chPie.parentElement.querySelectorAll('.svg-chart-fallback').forEach(el => el.remove());
+        chPie.style.display = '';
+      }
       charts.push(new Chart(chPie, {
         type: 'doughnut',
         data: {
@@ -1091,13 +1375,17 @@ function renderCharts() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: { duration: 250 },
           cutout: '58%',
           plugins: {
             legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } }
           }
         }
       }));
-    } catch (e) { console.error('Error creating cPie:', e); }
+    } catch (e) {
+      console.error('Error creating cPie, using SVG fallback:', e);
+      renderSvgPie(chPie, all, t);
+    }
   }
 
   if (cl.length > 1) {
@@ -1132,6 +1420,7 @@ function renderCharts() {
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: { duration: 250 },
             plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
             scales: {
               y: { min: 0, max: 10, grid: { color: t.line } },
@@ -1159,6 +1448,7 @@ function renderCharts() {
             indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
+            animation: { duration: 250 },
             plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
             scales: {
               x: { stacked: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: t.line } },
@@ -1787,35 +2077,94 @@ function renderExport() {
   const cl = classes();
   const nearYeuCount = st.filter(s => s.score >= 4.5 && s.score < 5.0).length;
   const veryWeakCount = st.filter(s => s.score < 3.0).length;
+  const lastRep = getLastReport(currentSubject, currentExam);
+  const curExamObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
+
+  const allSubjects = ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý'];
 
   el.innerHTML = head(meta(), 'Xuất báo cáo chuyên môn & phân tầng') + `
-    <div class="block" style="border-left:5px solid var(--fpt-orange)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+    <!-- THẺ TRẠNG THÁI VÀ GHI NHẬN LẦN BÁO CÁO CUỐI CÙNG -->
+    <div class="block" style="border-left:5px solid ${lastRep ? 'var(--gioi)' : 'var(--fpt-orange)'};background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
         <div>
-          <h3 style="margin:0 0 6px;color:var(--fpt-navy);display:flex;align-items:center;gap:8px">
-            📋 Thông tin hồ sơ báo cáo môn <strong>${esc(currentSubject)}</strong>
-          </h3>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <h3 style="margin:0;color:var(--fpt-navy)">
+              📋 Báo cáo chuyên môn môn <strong>${esc(currentSubject)}</strong>
+            </h3>
+            <span class="badge ${lastRep ? 'b-gioi' : 'b-tb'}" style="font-size:12px">
+              ${lastRep ? '🟢 ĐÃ HOÀN TẤT NỘP BÁO CÁO' : '🟡 CHƯA XÁC NHẬN NỘP BÁO CÁO KỲ NÀY'}
+            </span>
+          </div>
           <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 4px">
-            Người lập báo cáo: <strong>${esc(currentUser ? currentUser.fullName : 'Giáo viên')}</strong> · Quyền hạn: <strong>${esc(currentUser ? currentUser.roleLabel : '')}</strong>
+            Kỳ kiểm tra: <strong style="color:var(--fpt-blue)">${esc(curExamObj.name)}</strong> · Đơn vị: <strong>Tổ Khoa Học Tự Nhiên · THPT FPT</strong>
           </p>
           <p style="font-size:13.5px;color:var(--ink-2);margin:0">
-            Đơn vị: <strong>Tổ Khoa Học Tự Nhiên · Trường THPT FPT</strong> · Kỳ thi: <strong>${esc(cfg.exam)}</strong>
+            ${lastRep 
+              ? `Lần báo cáo cuối: <strong>${esc(lastRep.dateStr)}</strong> bởi <strong>${esc(lastRep.reporterFullName || lastRep.reporterName)}</strong> (${esc(lastRep.source)})`
+              : `Chưa có thông tin nộp báo cáo cho kỳ này. Bạn có thể xuất file hoặc bấm nút xác nhận bên phải.`}
           </p>
         </div>
-        <div style="display:flex;gap:12px;background:var(--surface-2);padding:10px 16px;border-radius:10px;font-size:13px">
-          <div><span style="color:var(--ink-2)">Sĩ số:</span> <strong>${sStats.n} HS</strong></div>
-          <div><span style="color:var(--ink-2)">ĐTB:</span> <strong style="color:var(--fpt-blue)">${fm(sStats.mean)}</strong></div>
-          <div><span style="color:var(--ink-2)">Tỉ lệ đạt:</span> <strong style="color:var(--gioi)">${pc(sStats.pass)}</strong></div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <div style="display:flex;gap:12px;background:var(--surface-2);padding:10px 16px;border-radius:10px;font-size:13px">
+            <div><span style="color:var(--ink-2)">Sĩ số:</span> <strong>${sStats.n} HS</strong></div>
+            <div><span style="color:var(--ink-2)">ĐTB:</span> <strong style="color:var(--fpt-blue)">${fm(sStats.mean)}</strong></div>
+            <div><span style="color:var(--ink-2)">Tỉ lệ đạt:</span> <strong style="color:var(--gioi)">${pc(sStats.pass)}</strong></div>
+            <div><span style="color:var(--ink-2)">Cần can thiệp:</span> <strong style="color:var(--yeu)">${sStats.c.yeu} HS</strong></div>
+          </div>
+          <button class="btn btn-primary" style="font-size:12.5px" onclick="saveLastReport(currentSubject, currentExam, 'Xác nhận nộp báo cáo')">
+            ✅ Xác nhận & Lưu lần báo cáo cuối cùng kỳ này
+          </button>
         </div>
       </div>
-      ${isLeader ? `
-        <div style="background:#fff7f2;border:1px solid #fed7aa;padding:12px 16px;border-radius:8px;font-size:13px;color:#9a3412;margin-top:14px;display:flex;align-items:center;gap:8px">
-          <span>👑</span>
-          <div>
-            <strong>Quyền hạn Tổ trưởng Tổ KHTN:</strong> Bạn có quyền xuất báo cáo riêng cho môn <strong>${esc(currentSubject)}</strong> hoặc xuất <strong>Báo cáo Tổng hợp toàn bộ 5 môn</strong> (Toán, Tin, Sinh, Hóa, Lý) nộp Ban Giám Hiệu.
-          </div>
+
+      <!-- BẢNG THEO DÕI TIẾN ĐỘ NỘP BÁO CÁO CẢ 5 BỘ MÔN (TỔ KHTN) -->
+      <div style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px">
+        <h4 style="margin:0 0 10px;font-size:13.5px;color:#1e293b;display:flex;align-items:center;gap:6px">
+          📊 Tiến độ hoàn thành nộp báo cáo các bộ môn Tổ KHTN · ${esc(curExamObj.short)}
+        </h4>
+        <div class="tw">
+          <table style="font-size:12.5px">
+            <thead>
+              <tr style="background:var(--surface-2)">
+                <th>Bộ môn</th>
+                <th>Kỳ kiểm tra</th>
+                <th>Lần nộp cuối cùng</th>
+                <th>Người nộp báo cáo</th>
+                <th>Sĩ số</th>
+                <th>ĐTB</th>
+                <th>Tỉ lệ Đạt</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allSubjects.map(sb => {
+                const r = getLastReport(sb, currentExam);
+                const sData = (allData[sb] && allData[sb].exams && allData[sb].exams[currentExam]) ? allData[sb].exams[currentExam] : allData[sb];
+                const stList = sData ? sData.students : [];
+                const sbStat = stats(stList, (sData && sData.cfg) ? sData.cfg : cfg);
+                const isCurrent = sb === currentSubject;
+                return `
+                  <tr style="${isCurrent ? 'background:#fff8f4;font-weight:600' : ''}">
+                    <td><strong>${sb === 'Toán' ? '📐' : sb === 'Tin học' ? '💻' : sb === 'Sinh học' ? '🧬' : sb === 'Hóa học' ? '⚗️' : '⚡'} ${sb} ${isCurrent ? '(Đang chọn)' : ''}</strong></td>
+                    <td>${esc(curExamObj.short)}</td>
+                    <td>${r ? esc(r.dateStr) : '<span style="color:#94a3b8">Chưa nộp</span>'}</td>
+                    <td>${r ? esc(r.reporterName) : '<span style="color:#94a3b8">—</span>'}</td>
+                    <td>${sbStat ? sbStat.n : 0} HS</td>
+                    <td style="color:var(--fpt-blue);font-weight:700">${sbStat ? fm(sbStat.mean) : '—'}</td>
+                    <td style="color:var(--gioi);font-weight:700">${sbStat ? pc(sbStat.pass) : '—'}</td>
+                    <td>
+                      <span class="badge ${r ? 'b-gioi' : 'b-tb'}" style="font-size:11px">
+                        ${r ? 'Đã nộp' : 'Chưa nộp'}
+                      </span>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
-      ` : ''}
+      </div>
     </div>
 
     <div class="export-grid">
@@ -1824,11 +2173,11 @@ function renderExport() {
         <div>
           <div class="icon">📄</div>
           <h4>Báo Cáo Word (.doc)</h4>
-          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT & Bộ GD&ĐT: Quốc hiệu - Tiêu ngữ, bảng phân tích 4 tầng, so sánh lớp, danh sách học sinh can thiệp và chữ ký phê duyệt.</p>
+          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT: Quốc hiệu, Bảng phân tích 4 tầng, So sánh lớp, Danh sách 100% học sinh can thiệp & Giỏi, Phụ lục điểm toàn khối và chữ ký phê duyệt.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportWord(false)">
-            📥 Tải Word môn ${esc(currentSubject)}
+            📥 Tải Word môn ${esc(currentSubject)} (${esc(curExamObj.short)})
           </button>
           ${isLeader ? `
             <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportWord(true)">
@@ -1843,15 +2192,15 @@ function renderExport() {
         <div>
           <div class="icon">📊</div>
           <h4>Sổ Điểm Excel (.xlsx)</h4>
-          <p>Bao gồm <strong>5 Sheet</strong> chuyên sâu: Tổng quan số liệu, So sánh các lớp, Danh sách toàn khối, Danh sách nhóm Yếu/VIP và Danh sách bồi dưỡng Giỏi (tự động căn chỉnh độ rộng cột chuẩn).</p>
+          <p>Bao gồm <strong>5 Sheet</strong> chuyên sâu: Tổng quan số liệu, So sánh các lớp, Danh sách toàn khối (có STT), Danh sách nhóm Yếu/VIP và Danh sách bồi dưỡng Giỏi 100% học sinh.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportExcel()">
-            📥 Tải Excel môn ${esc(currentSubject)}
+            📥 Tải Excel môn ${esc(currentSubject)} (${esc(curExamObj.short)})
           </button>
           ${isLeader ? `
             <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllExcel()">
-              👑 Tải Excel Cả 5 Môn (5 Sheet)
+              👑 Tải Excel Cả 5 Môn (6 Sheet Đầy Đủ)
             </button>
           ` : ''}
         </div>
@@ -2202,15 +2551,18 @@ window.exportWord = function(isAll) {
   `;
 
   const cleanSb = sbSlug(currentSubject);
+  const curEx = EXAMS.find(e => e.id === currentExam) || { short: currentExam };
   const dateSuffix = new Date().toISOString().slice(0,10);
-  const fileName = `KHTNReport_${isAll ? 'TongHop_5Mon' : cleanSb}_${dateSuffix}.doc`;
+  const fileName = `KHTNReport_${isAll ? 'TongHop_5Mon' : cleanSb}_${currentExam}_${dateSuffix}.doc`;
 
   downloadFile('\ufeff' + fullWordHTML, fileName, 'application/msword;charset=utf-8');
-  toast('Đã xuất file Word KHTNReport thành công!');
+  saveLastReport(currentSubject, currentExam, isAll ? 'Tải Word 5 môn' : `Tải Word môn ${currentSubject}`);
+  toast(`Đã xuất file Word KHTNReport ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) thành công!`);
 };
 
 // ===== PDF & MODAL PREVIEW =====
 window.exportPDF = function() {
+  saveLastReport(currentSubject, currentExam, 'In / Lưu PDF');
   window.print();
 };
 
@@ -2432,7 +2784,7 @@ window.exportExcel = function() {
     const cl = classes();
     const cleanSb = sbSlug(currentSubject);
     const dateSuffix = new Date().toISOString().slice(0,10);
-    const fileName = `KHTNReport_${cleanSb}_${dateSuffix}.xlsx`;
+    const fileName = `KHTNReport_${cleanSb}_${currentExam}_${dateSuffix}.xlsx`;
 
     // Sheet 1: Tổng quan
     const sheet1Data = [
@@ -2568,7 +2920,8 @@ window.exportExcel = function() {
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      toast('Đã xuất file Excel môn ' + currentSubject + ' (5 Sheet)');
+      saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
+      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (5 Sheet)`);
     } else {
       exportTableToExcelFile(fileName, [
         { name: 'Tổng quan', data: sheet1Data },
@@ -2577,7 +2930,8 @@ window.exportExcel = function() {
         { name: 'DS Can thiệp Yếu & VIP', data: sheet4Data },
         { name: 'DS Bồi dưỡng Giỏi', data: sheet5Data }
       ]);
-      toast('Đã xuất file Excel môn ' + currentSubject + ' (Chế độ tương thích)');
+      saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
+      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (Chế độ tương thích)`);
     }
   } catch (err) {
     console.error('Export Excel Error:', err);
@@ -2590,7 +2944,7 @@ window.exportAllExcel = function() {
   try {
     const cfg = getCfg();
     const dateSuffix = new Date().toISOString().slice(0,10);
-    const fileName = `KHTNReport_TongHop_5Mon_${dateSuffix}.xlsx`;
+    const fileName = `KHTNReport_TongHop_5Mon_${currentExam}_${dateSuffix}.xlsx`;
     const subjects = currentUser ? currentUser.subjects : ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý'];
     const sheetsFallback = [];
 
@@ -2688,7 +3042,8 @@ window.exportAllExcel = function() {
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      toast('Đã xuất file Excel tổng hợp 5 môn KHTNReport đầy đủ 100% học sinh');
+      saveLastReport(currentSubject, currentExam, 'Tải Excel 5 môn');
+      toast(`Đã xuất file Excel tổng hợp 5 môn (${currentExam}) đầy đủ 100% học sinh`);
     } else {
       sheetsFallback.push({ name: 'Tổng Hợp Tổ KHTN', data: masterData });
       subjects.forEach(sb => {
@@ -2708,7 +3063,8 @@ window.exportAllExcel = function() {
         sheetsFallback.push({ name: sb, data });
       });
       exportTableToExcelFile(fileName, sheetsFallback);
-      toast('Đã xuất file Excel tổng hợp 5 môn (Chế độ tương thích)');
+      saveLastReport(currentSubject, currentExam, 'Tải Excel 5 môn');
+      toast(`Đã xuất file Excel tổng hợp 5 môn (${currentExam}) (Chế độ tương thích)`);
     }
   } catch (err) {
     console.error('Export All Excel Error:', err);
