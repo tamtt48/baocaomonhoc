@@ -3,17 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EduReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Source+Serif+4:wght@500;600;700&display=swap">
+<title>KHTNReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:wght@500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --font-display:'Source Serif 4',Georgia,serif;
   --font-body:'Be Vietnam Pro',system-ui,sans-serif;
-  --bg:#f3f5f8;--surface:#fff;--surface-2:#e9eef4;--ink:#15212e;--ink-2:#506072;--line:#d9e0e8;
-  --accent:#4636b8;--accent-ink:#fff;--band:#13233a;--band-ink:#eef3fa;--tabline:#b9afff;
-  --gioi:#0f8a5f;--gioi-bg:#dff5ec;--kha:#2563c9;--kha-bg:#e0ebfb;--tb:#a8680a;--tb-bg:#fbeccf;--yeu:#c0392b;--yeu-bg:#fbe1dd;
+  --bg:#f4f6fa;--surface:#fff;--surface-2:#eaf0f8;--ink:#101e30;--ink-2:#4d6076;--line:#d3dce8;
+  --fpt-orange:#f26f21;--fpt-orange-hover:#d95b11;--fpt-orange-soft:#fff4eb;
+  --fpt-blue:#0054a6;--fpt-navy:#092247;--fpt-green:#00904b;
+  --accent:#f26f21;--accent-ink:#fff;
+  --band:linear-gradient(135deg, #091e38 0%, #003e7a 55%, #002752 100%);
+  --band-ink:#f0f6fc;--tabline:#f26f21;
+  --gioi:#00904b;--gioi-bg:#dff6e8;--kha:#0066cc;--kha-bg:#e2efff;--tb:#d97706;--tb-bg:#fef3c7;--yeu:#dc2626;--yeu-bg:#fee2e2;
   --vip:#7c3aed;--vip-bg:#ede9fe;--self:#0891b2;--self-bg:#e0f7fa;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -24,43 +28,45 @@ h1,h2,h3{font-family:var(--font-display);line-height:1.2}
 .wrap{max-width:1280px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left))}
 
 /* LOGIN SCREEN */
-.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#312e81 100%);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
-.login-card{background:#fff;border-radius:18px;padding:36px;width:100%;max-width:460px;box-shadow:0 25px 60px rgba(0,0,0,.35)}
-.login-card h1{text-align:center;font-size:26px;margin:0 0 4px;color:#1e1b4b}
+.login-overlay{position:fixed;inset:0;background:radial-gradient(circle at 80% 20%, #0054a6 0%, #092247 50%, #040e1c 100%);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.login-card{background:#fff;border-radius:18px;padding:36px;width:100%;max-width:470px;box-shadow:0 25px 60px rgba(0,0,0,.4);border-top:5px solid #f26f21}
+.login-card h1{text-align:center;font-size:27px;font-weight:800;margin:0 0 4px;color:#092247}
+.login-card h1 span{color:#f26f21}
 .login-card .sub{text-align:center;color:var(--ink-2);font-size:13px;margin-bottom:24px}
-.login-card .logo-icon{text-align:center;font-size:46px;margin-bottom:8px}
+.login-card .logo-icon{text-align:center;font-size:42px;margin-bottom:8px}
 .login-card .field{margin-bottom:14px}
 .login-card .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
 .login-card .field input{width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px}
-.login-card .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(70,54,184,.15);outline:none}
+.login-card .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(242,111,33,.18);outline:none}
 .login-error{color:var(--yeu);font-size:13px;font-weight:600;margin-bottom:12px;display:none}
 .quick-accounts{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
 .quick-accounts h4{font-size:12px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px}
 .quick-btn{display:flex;align-items:center;gap:12px;width:100%;padding:9px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;margin-bottom:7px;text-align:left;transition:all .15s}
-.quick-btn:hover{border-color:var(--accent);background:#f5f3ff;transform:translateY(-1px)}
-.quick-btn .qn{font-weight:700;font-size:13px;color:#1e1b4b}
+.quick-btn:hover{border-color:var(--accent);background:#fff7f2;transform:translateY(-1px)}
+.quick-btn .qn{font-weight:700;font-size:13px;color:#092247}
 .quick-btn .qr{font-size:11.5px;color:var(--ink-2)}
 
-/* HEADER / APP BAR */
-.band{background:var(--band);color:var(--band-ink);padding:16px 0 0}
+/* HEADER / APP BAR - FPT THEME */
+.band{background:var(--band);color:var(--band-ink);padding:16px 0 0;border-top:4px solid;border-image:linear-gradient(90deg, #f26f21 0%, #f26f21 34%, #0054a6 34%, #0054a6 68%, #00904b 68%, #00904b 100%) 1;box-shadow:0 4px 18px rgba(0,0,0,.15)}
 .band .top{display:flex;justify-content:space-between;align-items:center;gap:12px 24px;flex-wrap:wrap}
-.band h1{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:0}
-.band .sub{font-size:12.5px;opacity:.8}
+.band h1{font-size:24px;font-weight:800;letter-spacing:-.01em;margin:0;color:#fff;display:inline-flex;align-items:center;gap:8px}
+.band h1 span.logo-hl{color:#f26f21}
+.band .sub{font-size:12.5px;opacity:.88}
 .band .user-info{display:flex;align-items:center;gap:10px;font-size:13px}
-.band .user-badge{background:rgba(255,255,255,.15);padding:4px 12px;border-radius:20px;font-weight:600;font-size:12px}
-.band .user-badge.admin{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff}
+.band .user-badge{background:rgba(255,255,255,.16);padding:4px 12px;border-radius:20px;font-weight:600;font-size:12px;border:1px solid rgba(255,255,255,.2)}
+.band .user-badge.admin{background:linear-gradient(135deg,#f26f21,#e0560a);color:#fff;box-shadow:0 2px 8px rgba(242,111,33,.45);border:none}
 
-.subject-toolbar{display:flex;align-items:center;gap:8px;margin-top:14px;padding:8px 12px;background:rgba(255,255,255,.07);border-radius:10px;font-size:13px;flex-wrap:wrap}
-.subject-toolbar .lbl{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;opacity:.8}
-.subj-pill{background:rgba(255,255,255,.12);border:1px solid transparent;color:#fff;padding:5px 14px;border-radius:20px;font-weight:600;font-size:12.5px;cursor:pointer;transition:all .15s}
-.subj-pill:hover{background:rgba(255,255,255,.25)}
-.subj-pill.active{background:#fff;color:#1e1b4b;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.subject-toolbar{display:flex;align-items:center;gap:8px;margin-top:14px;padding:8px 12px;background:rgba(255,255,255,.09);border-radius:10px;font-size:13px;flex-wrap:wrap;border:1px solid rgba(255,255,255,.1)}
+.subject-toolbar .lbl{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#ffdfc9}
+.subj-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);color:#fff;padding:6px 14px;border-radius:20px;font-weight:600;font-size:12.5px;cursor:pointer;transition:all .15s}
+.subj-pill:hover{background:rgba(255,255,255,.24);transform:translateY(-1px)}
+.subj-pill.active{background:#f26f21;color:#fff;font-weight:700;box-shadow:0 2px 10px rgba(242,111,33,.5);border-color:#f26f21}
 
 nav.tabs{display:flex;gap:4px;margin-top:12px;overflow-x:auto}
-nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;color:var(--band-ink);opacity:.72;padding:10px 14px;font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap;transition:opacity .15s}
-nav.tabs button:hover{opacity:1}
-nav.tabs button[aria-current="page"]{opacity:1;border-bottom-color:var(--tabline)}
-nav.tabs .n{font-size:11px;background:rgba(255,255,255,.16);border-radius:99px;padding:1px 8px;margin-left:6px}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;color:var(--band-ink);opacity:.75;padding:10px 14px;font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap;transition:all .15s}
+nav.tabs button:hover{opacity:1;color:#ffdfc9}
+nav.tabs button[aria-current="page"]{opacity:1;color:#fff;border-bottom-color:var(--tabline);font-weight:700}
+nav.tabs .n{font-size:11px;background:rgba(255,255,255,.18);border-radius:99px;padding:1px 8px;margin-left:6px}
 
 /* MAIN LAYOUT */
 main.wrap{padding:24px 0 56px;display:flex;flex-direction:column;gap:20px}
@@ -79,14 +85,14 @@ main.wrap{padding:24px 0 56px;display:flex;flex-direction:column;gap:20px}
 .btn:hover{border-color:var(--accent);background:#fafafa}
 .btn:active{transform:scale(.98)}
 .btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn-primary:hover{background:#3b2d9b}
+.btn-primary:hover{background:var(--fpt-orange-hover);border-color:var(--fpt-orange-hover)}
 .btn-danger{color:var(--yeu);border-color:var(--yeu)}
 .btn-danger:hover{background:var(--yeu-bg)}
 .btn-success{background:var(--gioi);color:#fff;border-color:var(--gioi)}
-.btn-success:hover{background:#0b734e}
+.btn-success:hover{background:#00753d}
 .btn-vip{background:var(--vip);color:#fff;border-color:var(--vip)}
-.btn-export{background:#0f172a;color:#fff;border-color:#0f172a}
-.btn-export:hover{background:#1e293b}
+.btn-export{background:var(--fpt-blue);color:#fff;border-color:var(--fpt-blue)}
+.btn-export:hover{background:#004080;border-color:#004080}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
 .field input,.field select,.field textarea{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
@@ -212,9 +218,13 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
 <!-- LOGIN SCREEN -->
 <div class="login-overlay" id="loginScreen">
   <div class="login-card">
-    <div class="logo-icon">📊</div>
-    <h1>EduReport KHTN</h1>
-    <p class="sub">Hệ thống Báo Cáo Chuyên Môn & Phân Tầng Học Sinh<br>Trường THPT FPT · Tổ Khoa Học Tự Nhiên</p>
+    <div style="display:flex;justify-content:center;align-items:center;gap:5px;margin-bottom:12px">
+      <span style="width:10px;height:24px;background:#f26f21;border-radius:2px;display:inline-block"></span>
+      <span style="width:10px;height:24px;background:#0054a6;border-radius:2px;display:inline-block"></span>
+      <span style="width:10px;height:24px;background:#00904b;border-radius:2px;display:inline-block"></span>
+    </div>
+    <h1>KHTN<span>Report</span></h1>
+    <p class="sub">Hệ thống Báo Cáo Chuyên Môn & Phân Tầng Học Sinh<br><strong>Trường THPT FPT · Tổ Khoa Học Tự Nhiên</strong></p>
     <div class="field">
       <label for="loginEmail">Email giảng viên / Cán bộ môn</label>
       <input id="loginEmail" type="email" placeholder="example@fpt.edu.vn" autocomplete="email">
@@ -253,13 +263,20 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
   </div>
 </div>
 
-<!-- APP HEADER -->
+<!-- APP HEADER - FPT STYLE -->
 <header class="band" id="appHeader" style="display:none">
   <div class="wrap">
     <div class="top">
-      <div>
-        <h1>EduReport</h1>
-        <p class="sub">Tổ Khoa Học Tự Nhiên · Phân tích phổ điểm & giải pháp phân tầng</p>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.1);padding:6px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.18)" title="FPT Education">
+          <span style="width:8px;height:22px;background:#f26f21;border-radius:2px;display:inline-block"></span>
+          <span style="width:8px;height:22px;background:#0054a6;border-radius:2px;display:inline-block"></span>
+          <span style="width:8px;height:22px;background:#00904b;border-radius:2px;display:inline-block"></span>
+        </div>
+        <div>
+          <h1>KHTN<span class="logo-hl">Report</span></h1>
+          <p class="sub">Tổ Khoa Học Tự Nhiên · Trường THPT FPT · Phân tích phổ điểm &amp; giải pháp phân tầng</p>
+        </div>
       </div>
       <div class="user-info">
         <span id="userDisplay" style="font-weight:700"></span>
@@ -650,7 +667,7 @@ window.doLogin = function() {
   }
   $('#loginError').style.display = 'none';
   currentUser = { email, ...acc };
-  localStorage.setItem('eduReportUser', email);
+  localStorage.setItem('khtnReportUser', email);
   showApp();
 };
 
@@ -661,6 +678,7 @@ window.quickLogin = function(email) {
 
 window.doLogout = function() {
   currentUser = null;
+  localStorage.removeItem('khtnReportUser');
   localStorage.removeItem('eduReportUser');
   $('#loginScreen').style.display = 'flex';
   $('#appHeader').style.display = 'none';
@@ -709,7 +727,7 @@ window.switchSubject = function(sb) {
 
 // Check stored login on startup
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('eduReportUser');
+  const saved = localStorage.getItem('khtnReportUser') || localStorage.getItem('eduReportUser');
   if (saved && ACCOUNTS[saved]) {
     currentUser = { email: saved, ...ACCOUNTS[saved] };
     showApp();
@@ -1655,36 +1673,54 @@ $('#pasteAdd').addEventListener('click', () => {
   });
 });
 
-// ===== 12. EXPORT SUITE: WORD (.DOC), PDF & EXCEL (.XLSX) =====
+// ===== 12. EXPORT SUITE: WORD (.DOC), PDF & EXCEL (.XLSX) - KHTNREPORT =====
 function renderExport() {
   const el = $('#p-export'), st = S(), cfg = getCfg();
   if (!st.length) { el.innerHTML = emptyState(); return; }
 
   const isLeader = currentUser && currentUser.role === 'admin';
+  const sStats = stats(st, cfg);
+  const cl = classes();
+  const nearYeuCount = st.filter(s => s.score >= 4.5 && s.score < 5.0).length;
+  const veryWeakCount = st.filter(s => s.score < 3.0).length;
 
   el.innerHTML = head(meta(), 'Xuất báo cáo chuyên môn & phân tầng') + `
-    <div class="block">
-      <h3>📋 Thông tin bản báo cáo</h3>
-      <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 12px">
-        Người lập báo cáo: <strong>${esc(currentUser ? currentUser.fullName : 'Giáo viên')}</strong> · Quyền hạn: <strong>${esc(currentUser ? currentUser.roleLabel : '')}</strong>
-      </p>
-      <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 16px">
-        Đơn vị: <strong>Tổ Khoa Học Tự Nhiên · Trường THPT FPT</strong> · Kỳ thi: <strong>${esc(cfg.exam)}</strong>
-      </p>
+    <div class="block" style="border-left:5px solid var(--fpt-orange)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div>
+          <h3 style="margin:0 0 6px;color:var(--fpt-navy);display:flex;align-items:center;gap:8px">
+            📋 Thông tin hồ sơ báo cáo môn <strong>${esc(currentSubject)}</strong>
+          </h3>
+          <p style="font-size:13.5px;color:var(--ink-2);margin:0 0 4px">
+            Người lập báo cáo: <strong>${esc(currentUser ? currentUser.fullName : 'Giáo viên')}</strong> · Quyền hạn: <strong>${esc(currentUser ? currentUser.roleLabel : '')}</strong>
+          </p>
+          <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+            Đơn vị: <strong>Tổ Khoa Học Tự Nhiên · Trường THPT FPT</strong> · Kỳ thi: <strong>${esc(cfg.exam)}</strong>
+          </p>
+        </div>
+        <div style="display:flex;gap:12px;background:var(--surface-2);padding:10px 16px;border-radius:10px;font-size:13px">
+          <div><span style="color:var(--ink-2)">Sĩ số:</span> <strong>${sStats.n} HS</strong></div>
+          <div><span style="color:var(--ink-2)">ĐTB:</span> <strong style="color:var(--fpt-blue)">${fm(sStats.mean)}</strong></div>
+          <div><span style="color:var(--ink-2)">Tỉ lệ đạt:</span> <strong style="color:var(--gioi)">${pc(sStats.pass)}</strong></div>
+        </div>
+      </div>
       ${isLeader ? `
-        <div style="background:#eef2ff;border:1px solid #c7d2fe;padding:12px 16px;border-radius:8px;font-size:13px;color:#312e81;margin-bottom:16px">
-          👑 <strong>Quyền Tổ trưởng KHTN:</strong> Bạn có thể xuất báo cáo riêng cho môn <strong>${esc(currentSubject)}</strong> hoặc xuất <strong>Báo cáo Tổng hợp toàn bộ 5 môn</strong> (Toán, Tin, Sinh, Hóa, Lý).
+        <div style="background:#fff7f2;border:1px solid #fed7aa;padding:12px 16px;border-radius:8px;font-size:13px;color:#9a3412;margin-top:14px;display:flex;align-items:center;gap:8px">
+          <span>👑</span>
+          <div>
+            <strong>Quyền hạn Tổ trưởng Tổ KHTN:</strong> Bạn có quyền xuất báo cáo riêng cho môn <strong>${esc(currentSubject)}</strong> hoặc xuất <strong>Báo cáo Tổng hợp toàn bộ 5 môn</strong> (Toán, Tin, Sinh, Hóa, Lý) nộp Ban Giám Hiệu.
+          </div>
         </div>
       ` : ''}
     </div>
 
     <div class="export-grid">
-      <!-- Word Export -->
+      <!-- 1. Word Export -->
       <div class="export-card">
         <div>
           <div class="icon">📄</div>
           <h4>Báo Cáo Word (.doc)</h4>
-          <p>Tạo file Word hành chính chuẩn mẫu Bộ GD&ĐT / FPT Education: có tiêu ngữ, bảng biểu, danh sách phụ đạo/VIP/tự học, chữ ký Tổ trưởng & Trưởng môn.</p>
+          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT & Bộ GD&ĐT: Quốc hiệu - Tiêu ngữ, bảng phân tích 4 tầng, so sánh lớp, danh sách học sinh can thiệp và chữ ký phê duyệt.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportWord(false)">
@@ -1692,32 +1728,18 @@ function renderExport() {
           </button>
           ${isLeader ? `
             <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportWord(true)">
-              👑 Tải Word Tổng hợp 5 môn
+              👑 Tải Word Tổng hợp 5 môn Tổ KHTN
             </button>
           ` : ''}
         </div>
       </div>
 
-      <!-- PDF Export -->
-      <div class="export-card">
-        <div>
-          <div class="icon">📑</div>
-          <h4>Báo Cáo PDF / In Ấn</h4>
-          <p>Định dạng trực quan, tối ưu cho khổ giấy A4, lưu trữ và nộp trực tiếp cho Ban Giám Hiệu nhà trường.</p>
-        </div>
-        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-success" style="width:100%;justify-content:center" onclick="exportPDF()">
-            🖨️ In / Lưu PDF A4
-          </button>
-        </div>
-      </div>
-
-      <!-- Excel Export -->
+      <!-- 2. Excel Export -->
       <div class="export-card">
         <div>
           <div class="icon">📊</div>
           <h4>Sổ Điểm Excel (.xlsx)</h4>
-          <p>Bao gồm 4 Sheet: Tổng quan số liệu, Bảng so sánh giữa các lớp, Danh sách học sinh chi tiết và Kế hoạch phân bổ giải pháp.</p>
+          <p>Bao gồm <strong>5 Sheet</strong> chuyên sâu: Tổng quan số liệu, So sánh các lớp, Danh sách toàn khối, Danh sách nhóm Yếu/VIP và Danh sách bồi dưỡng Giỏi (tự động căn chỉnh độ rộng cột chuẩn).</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportExcel()">
@@ -1725,16 +1747,50 @@ function renderExport() {
           </button>
           ${isLeader ? `
             <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllExcel()">
-              👑 Tải Excel Cả 5 Môn
+              👑 Tải Excel Cả 5 Môn (5 Sheet)
             </button>
           ` : ''}
+        </div>
+      </div>
+
+      <!-- 3. PDF & Print -->
+      <div class="export-card">
+        <div>
+          <div class="icon">📑</div>
+          <h4>Báo Cáo In / Lưu PDF A4</h4>
+          <p>Bản báo cáo chuẩn hóa khổ giấy A4 nộp Ban Giám Hiệu nhà trường. Tích hợp công cụ xem trước trực quan và lệnh in chuyên nghiệp.</p>
+        </div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-success" style="width:100%;justify-content:center" onclick="exportPDF()">
+            🖨️ In / Lưu PDF A4
+          </button>
+          <button class="btn" style="width:100%;justify-content:center;font-size:12.5px" onclick="previewReportModal()">
+            👁️ Xem trước bản in A4
+          </button>
+        </div>
+      </div>
+
+      <!-- 4. Quick Special Group Exports -->
+      <div class="export-card">
+        <div>
+          <div class="icon">🎯</div>
+          <h4>Xuất Danh Sách Can Thiệp</h4>
+          <p>Tải nhanh danh sách phân nhóm học sinh theo kế hoạch sư phạm để giao trực tiếp cho Giáo viên bộ môn hoặc GVCN quản lý.</p>
+        </div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-vip" style="width:100%;justify-content:center;font-size:12px" onclick="exportSpecialGroupExcel('vip')">
+            ⭐ DS Lớp VIP Nâng Hạng (${nearYeuCount} HS)
+          </button>
+          <button class="btn btn-danger" style="width:100%;justify-content:center;font-size:12px" onclick="exportSpecialGroupExcel('phudao')">
+            📚 DS Phụ Đạo & Kèm 1-1 (${sStats.c.yeu} HS)
+          </button>
         </div>
       </div>
     </div>
   `;
 }
 
-// Word Export Implementation
+// ===== WORD EXPORT IMPLEMENTATION =====
 window.exportWord = function(isAll) {
   const cfg = getCfg();
   const dateStr = new Date().toLocaleDateString('vi-VN');
@@ -1742,7 +1798,6 @@ window.exportWord = function(isAll) {
   const signerName = currentUser ? currentUser.name : '';
 
   let bodyContent = '';
-
   const subjectsToExport = isAll ? (currentUser ? currentUser.subjects : [currentSubject]) : [currentSubject];
 
   subjectsToExport.forEach((sb, sIdx) => {
@@ -1761,23 +1816,24 @@ window.exportWord = function(isAll) {
       if (diff > 0 && diff <= 0.5) near.push({ s, gap: diff });
     });
 
-    const yeuArr = stList.filter(s => s.score < 5.0);
+    const yeuArr = stList.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
     const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
     const nearYeuArr = near.filter(x => x.s.score >= 4.5 && x.s.score < 5.0);
-    const gioiArr = stList.filter(s => s.score >= 8.0);
+    const regularWeakArr = yeuArr.filter(s => s.score >= 3.0 && s.score < 4.5);
+    const gioiArr = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
 
     bodyContent += `
       ${sIdx > 0 ? '<br style="page-break-before:always;" />' : ''}
-      <h2 style="color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px;margin-top:24px">
-        PHẦN ${sIdx + 1}: BÁO CÁO CHUYÊN MÔN MÔN ${sb.toUpperCase()}
+      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:28px">
+        PHẦN ${sIdx + 1}: BÁO CÁO KẾT QUẢ CHUYÊN MÔN BỘ MÔN ${sb.toUpperCase()}
       </h2>
-      <p><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh tham gia: <strong>${sStats.n}</strong> học sinh (${clList.length} lớp)</em></p>
+      <p style="font-size:12pt"><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh: <strong>${sStats.n}</strong> học sinh (${clList.length} lớp học)</em></p>
 
-      <h3>1. Thống kê chất lượng & Phân tầng học sinh</h3>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:12pt">
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">1. Bảng tổng hợp chất lượng & Cơ cấu 4 tầng học sinh</h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:11pt">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th>Chỉ số</th>
-          <th>Toàn khối môn ${sb}</th>
+          <th>Toàn khối ${sb}</th>
           <th>🟢 Giỏi (≥${f1(sData.cfg.gioi)})</th>
           <th>🔵 Khá (${f1(sData.cfg.kha)}–${f1(sData.cfg.gioi-0.1)})</th>
           <th>🟡 TB (${f1(sData.cfg.tb)}–${f1(sData.cfg.kha-0.1)})</th>
@@ -1791,7 +1847,7 @@ window.exportWord = function(isAll) {
           <td>${sStats.c.kha} HS</td>
           <td>${sStats.c.tb} HS</td>
           <td style="color:#c0392b;font-weight:bold">${sStats.c.yeu} HS</td>
-          <td style="font-weight:bold">${pc(sStats.pass)}</td>
+          <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
         </tr>
         <tr style="text-align:center">
           <td><strong>Tỉ lệ (%)</strong></td>
@@ -1804,12 +1860,12 @@ window.exportWord = function(isAll) {
         </tr>
       </table>
 
-      <p style="margin-top:8px">
-        • Điểm trung bình: <strong>${fm(sStats.mean)}</strong> · Trung vị: <strong>${fm(sStats.med)}</strong> · Điểm cao nhất: <strong>${fm(sStats.max)}</strong> · Điểm thấp nhất: <strong>${fm(sStats.min)}</strong> · Độ lệch chuẩn: <strong>${fm(sStats.sd)}</strong>
+      <p style="margin-top:8px;font-size:11pt">
+        • Điểm trung bình khối: <strong>${fm(sStats.mean)}</strong> · Trung vị: <strong>${fm(sStats.med)}</strong> · Điểm cao nhất: <strong>${fm(sStats.max)}</strong> · Điểm thấp nhất: <strong>${fm(sStats.min)}</strong> · Độ lệch chuẩn (SD): <strong>${fm(sStats.sd)}</strong>
       </p>
 
-      <h3>2. Bảng so sánh giữa các lớp</h3>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:11pt">
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">2. Bảng so sánh chất lượng giữa các lớp trong khối</h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th>Lớp</th>
           <th>Sĩ số</th>
@@ -1835,25 +1891,48 @@ window.exportWord = function(isAll) {
               <td>${cs.c.kha} (${pc(cs.c.kha/cs.n)})</td>
               <td>${cs.c.tb} (${pc(cs.c.tb/cs.n)})</td>
               <td style="color:#c0392b">${cs.c.yeu} (${pc(cs.c.yeu/cs.n)})</td>
-              <td style="font-weight:bold">${pc(cs.pass)}</td>
+              <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
             </tr>
           `;
         }).join('')}
       </table>
 
-      <h3>3. Kế hoạch hành động và phân loại giải pháp</h3>
-      <p><strong>A. Giải pháp can thiệp cho đối tượng học sinh Yếu (${yeuArr.length} HS):</strong></p>
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">3. Kế hoạch giải pháp sư phạm & Phân bổ học sinh</h3>
+      <p><strong>A. Kế hoạch can thiệp nhóm học sinh Yếu (${yeuArr.length} học sinh):</strong></p>
       <ul>
-        <li><strong>Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Nhóm học sinh thiếu ≤0.5 điểm để đạt chuẩn (điểm 4.5–4.9). Tập trung luyện giải các đề thi thực chiến và kỹ năng chống mất điểm oan.</li>
-        <li><strong>Phụ đạo tập trung (${yeuArr.length - veryWeakArr.length - nearYeuArr.length} HS):</strong> Ôn tập theo chuyên đề 2 buổi/tuần vào chiều thứ Ba & thứ Năm.</li>
-        <li><strong>Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Điểm dưới 3.0. Áp dụng mô hình đôi bạn cùng tiến (HS Giỏi kèm HS Yếu) và giáo viên bộ môn phụ đạo riêng 1 buổi/tuần.</li>
+        <li><strong>⭐ Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Học sinh cận chuẩn (4.5–4.9 điểm). Tổ chức ôn luyện trọng tâm cấp tốc 3 buổi để đảm bảo đạt chuẩn kỳ tiếp theo.</li>
+        <li><strong>📚 Phụ đạo tập trung (${regularWeakArr.length} HS):</strong> Học sinh từ 3.0–4.4 điểm. Tổ chức học phụ đạo 2 buổi/tuần vào chiều thứ Ba & thứ Năm, củng cố kiến thức hổng.</li>
+        <li><strong>👨‍🏫 Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Học sinh dưới 3.0 điểm. Mô hình Đôi bạn cùng tiến (HS Giỏi kèm) kết hợp GV kèm riêng 1 buổi/tuần.</li>
       </ul>
 
-      <p><strong>B. Giải pháp bồi dưỡng cho học sinh Giỏi (${gioiArr.length} HS):</strong></p>
+      <p style="font-weight:bold;margin-top:10px">Danh sách học sinh diện can thiệp (trích xuất):</p>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+        <tr style="background:#fee2e2;font-weight:bold;text-align:center">
+          <th>STT</th>
+          <th>Họ và tên</th>
+          <th>Lớp</th>
+          <th>Điểm số</th>
+          <th>Mô hình phân bổ</th>
+          <th>Mục tiêu can thiệp</th>
+        </tr>
+        ${yeuArr.slice(0, 15).map((s, idx) => `
+          <tr style="text-align:center">
+            <td>${idx + 1}</td>
+            <td style="text-align:left;font-weight:bold">${s.name}</td>
+            <td>${s.cls}</td>
+            <td style="color:#c0392b;font-weight:bold">${s.score}</td>
+            <td>${s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo tập trung'}</td>
+            <td>${s.score >= 4.5 ? 'Đạt ≥ 5.5' : 'Đạt chuẩn 5.0'}</td>
+          </tr>
+        `).join('')}
+      </table>
+      ${yeuArr.length > 15 ? `<p style="font-size:10pt;font-style:italic">... và ${yeuArr.length - 15} học sinh khác (xem chi tiết trong file Excel đính kèm).</p>` : ''}
+
+      <p style="margin-top:14px"><strong>B. Kế hoạch bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} học sinh):</strong></p>
       <ul>
-        <li><strong>Hệ thống tự học trên nền tảng Website:</strong> Cung cấp ngân hàng bài tập vận dụng cao, đề thi học sinh giỏi các năm và tài liệu chuyên sâu.</li>
-        <li><strong>Phát triển phong trào Mentor:</strong> Huy động học sinh giỏi tham gia hướng dẫn bạn trong các nhóm học tập tại lớp.</li>
-        <li><strong>Đội tuyển học sinh giỏi:</strong> Chọn lọc các em đạt từ 9.0 trở lên vào đội tuyển bồi dưỡng cấp trường/tỉnh.</li>
+        <li><strong>🏆 Đội tuyển HSG & Dự án STEM:</strong> Chọn lọc học sinh đạt từ 9.0 trở lên tham gia bồi dưỡng chuyên sâu.</li>
+        <li><strong>🌐 Tự học trên nền tảng Website:</strong> Cung cấp ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến.</li>
+        <li><strong>🤝 Phong trào Mentor trợ giảng:</strong> Huy động học sinh giỏi kèm cặp và hướng dẫn các bạn yếu trong nhóm học tập tại lớp.</li>
       </ul>
     `;
   });
@@ -1862,33 +1941,33 @@ window.exportWord = function(isAll) {
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
       <meta charset='utf-8'>
-      <title>Báo cáo chuyên môn Tổ KHTN</title>
+      <title>KHTNReport - Báo cáo chuyên môn Tổ KHTN</title>
       <style>
-        body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.4; }
+        body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.45; }
         table { border-collapse: collapse; }
-        h1, h2, h3 { font-family: 'Times New Roman', serif; }
+        h1, h2, h3, h4 { font-family: 'Times New Roman', serif; }
       </style>
     </head>
     <body>
       <table style="width:100%;border:none;margin-bottom:20px">
         <tr>
-          <td style="width:50%;text-align:center;vertical-align:top">
+          <td style="width:45%;text-align:center;vertical-align:top">
             <strong>TRƯỜNG THPT FPT</strong><br>
             <strong>TỔ KHOA HỌC TỰ NHIÊN</strong><br>
-            ------------------
+            <div style="width:90px;height:1px;background:#000;margin:4px auto"></div>
           </td>
-          <td style="width:50%;text-align:center;vertical-align:top">
+          <td style="width:55%;text-align:center;vertical-align:top">
             <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
             <strong>Độc lập - Tự do - Hạnh phúc</strong><br>
-            *****************
+            <div style="width:130px;height:1px;background:#000;margin:4px auto"></div>
           </td>
         </tr>
       </table>
 
       <div style="text-align:center;margin:25px 0 30px">
-        <h1 style="font-size:18pt;margin:0">BÁO CÁO KẾT QUẢ KIỂM TRA CHUYÊN MÔN</h1>
-        <h2 style="font-size:14pt;font-weight:normal;margin:5px 0">
-          ${isAll ? 'TỔNG HỢP CÁC BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN' : `BỘ MÔN: ${currentSubject.toUpperCase()}`}
+        <h1 style="font-size:18pt;margin:0;color:#004f9e">BÁO CÁO KẾT QUẢ KIỂM TRA CHUYÊN MÔN</h1>
+        <h2 style="font-size:14pt;font-weight:normal;margin:6px 0">
+          ${isAll ? 'TỔNG HỢP 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN (KHTNReport)' : `BỘ MÔN: ${currentSubject.toUpperCase()} (KHTNReport)`}
         </h2>
         <p style="margin:4px 0"><em>Kỳ kiểm tra: ${cfg.exam}</em></p>
       </div>
@@ -1896,17 +1975,17 @@ window.exportWord = function(isAll) {
       ${bodyContent}
 
       <br><br>
-      <table style="width:100%;border:none;margin-top:30px">
+      <table style="width:100%;border:none;margin-top:35px">
         <tr>
           <td style="width:50%;text-align:center;vertical-align:top">
             <strong>TỔ TRƯỞNG CHUYÊN MÔN KHTN</strong><br>
-            <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
+            <em>(Ký và ghi rõ họ tên)</em><br><br><br><br><br>
             <strong>Thầy Thạch Thanh Tâm</strong>
           </td>
           <td style="width:50%;text-align:center;vertical-align:top">
             <em>Hà Nội, ngày ${dateStr}</em><br>
             <strong>${signerRole.toUpperCase()}</strong><br>
-            <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
+            <em>(Ký và ghi rõ họ tên)</em><br><br><br><br><br>
             <strong>${signerName}</strong>
           </td>
         </tr>
@@ -1919,20 +1998,159 @@ window.exportWord = function(isAll) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `BaoCao_KHTN_${isAll ? 'TongHop' : currentSubject}_${new Date().toISOString().slice(0,10)}.doc`;
+  a.download = `KHTNReport_${isAll ? 'TongHop_5Mon' : currentSubject}_${new Date().toISOString().slice(0,10)}.doc`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('Đã xuất file Word thành công!');
+  toast('Đã xuất file Word KHTNReport thành công!');
 };
 
-// PDF Print
+// ===== PDF & MODAL PREVIEW =====
 window.exportPDF = function() {
   window.print();
 };
 
-// Excel Export Implementation
+window.previewReportModal = function() {
+  const cfg = getCfg();
+  const st = S();
+  const sStats = stats(st, cfg);
+  const cl = classes();
+  const dateStr = new Date().toLocaleDateString('vi-VN');
+  const signerRole = currentUser ? currentUser.roleLabel : 'Trưởng bộ môn';
+  const signerName = currentUser ? currentUser.name : '';
+  const yeuArr = st.filter(s => s.score < 5.0);
+  const nearYeuArr = yeuArr.filter(s => s.score >= 4.5);
+  const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
+  const gioiArr = st.filter(s => s.score >= 8.0);
+
+  const html = `
+    <div style="max-height:80vh;overflow-y:auto;padding:10px">
+      <div style="background:#fff;padding:28px;border:1px solid #cbd5e1;border-radius:8px;font-family:'Times New Roman',serif;font-size:12.5pt;line-height:1.45;color:#000">
+        <table style="width:100%;border:none;margin-bottom:18px">
+          <tr>
+            <td style="width:50%;text-align:center;vertical-align:top">
+              <strong>TRƯỜNG THPT FPT</strong><br>
+              <strong>TỔ KHOA HỌC TỰ NHIÊN</strong><br>
+              <div style="width:80px;height:1px;background:#000;margin:4px auto"></div>
+            </td>
+            <td style="width:50%;text-align:center;vertical-align:top">
+              <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
+              <strong>Độc lập - Tự do - Hạnh phúc</strong><br>
+              <div style="width:120px;height:1px;background:#000;margin:4px auto"></div>
+            </td>
+          </tr>
+        </table>
+
+        <div style="text-align:center;margin:18px 0 22px">
+          <h2 style="font-size:16pt;margin:0;font-weight:bold;color:#004f9e">BÁO CÁO PHÂN TÍCH CHUYÊN MÔN & KẾ HOẠCH PHÂN TẦNG</h2>
+          <h3 style="font-size:13pt;font-weight:normal;margin:4px 0">BỘ MÔN: ${currentSubject.toUpperCase()} (KHTNReport)</h3>
+          <p style="margin:2px 0;font-size:11pt"><em>Kỳ kiểm tra: ${esc(cfg.exam)} · Sĩ số: ${sStats.n} học sinh (${cl.length} lớp)</em></p>
+        </div>
+
+        <h4 style="font-size:12pt;margin:12px 0 6px">I. BẢNG THỐNG KÊ CHẤT LƯỢNG VÀ PHÂN TẦNG</h4>
+        <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;text-align:center;font-size:10.5pt">
+          <tr style="background:#f1f5f9;font-weight:bold">
+            <th>Tổng số HS</th>
+            <th>ĐTB</th>
+            <th>Trung vị</th>
+            <th>Min</th>
+            <th>Max</th>
+            <th>SD</th>
+            <th>🟢 Giỏi</th>
+            <th>🔵 Khá</th>
+            <th>🟡 TB</th>
+            <th>🔴 Yếu</th>
+            <th>Tỉ lệ Đạt</th>
+          </tr>
+          <tr>
+            <td><strong>${sStats.n}</strong></td>
+            <td><strong>${fm(sStats.mean)}</strong></td>
+            <td>${fm(sStats.med)}</td>
+            <td>${fm(sStats.min)}</td>
+            <td>${fm(sStats.max)}</td>
+            <td>${fm(sStats.sd)}</td>
+            <td>${sStats.c.gioi} (${pc(sStats.c.gioi/sStats.n)})</td>
+            <td>${sStats.c.kha} (${pc(sStats.c.kha/sStats.n)})</td>
+            <td>${sStats.c.tb} (${pc(sStats.c.tb/sStats.n)})</td>
+            <td style="color:#c0392b;font-weight:bold">${sStats.c.yeu} (${pc(sStats.c.yeu/sStats.n)})</td>
+            <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
+          </tr>
+        </table>
+
+        <h4 style="font-size:12pt;margin:16px 0 6px">II. SO SÁNH GIỮA CÁC LỚP</h4>
+        <table border="1" cellspacing="0" cellpadding="5" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt">
+          <tr style="background:#f1f5f9;font-weight:bold">
+            <th>Lớp</th>
+            <th>Sĩ số</th>
+            <th>ĐTB</th>
+            <th>Min</th>
+            <th>Max</th>
+            <th>Giỏi</th>
+            <th>Khá</th>
+            <th>TB</th>
+            <th>Yếu</th>
+            <th>% Đạt</th>
+          </tr>
+          ${cl.map(c => {
+            const cs = stats(st.filter(s => s.cls === c), cfg);
+            return `
+              <tr>
+                <td style="font-weight:bold">${c}</td>
+                <td>${cs.n}</td>
+                <td style="font-weight:bold">${fm(cs.mean)}</td>
+                <td>${fm(cs.min)}</td>
+                <td>${fm(cs.max)}</td>
+                <td>${cs.c.gioi}</td>
+                <td>${cs.c.kha}</td>
+                <td>${cs.c.tb}</td>
+                <td style="color:#c0392b">${cs.c.yeu}</td>
+                <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </table>
+
+        <h4 style="font-size:12pt;margin:16px 0 6px">III. KẾ HOẠCH HÀNH ĐỘNG SƯ PHẠM</h4>
+        <p style="margin:4px 0 2px"><strong>1. Can thiệp nhóm học sinh Yếu (${yeuArr.length} em):</strong></p>
+        <ul style="margin:2px 0 10px;padding-left:20px;font-size:10.5pt">
+          <li><strong>⭐ Lớp VIP bứt phá (${nearYeuArr.length} em):</strong> Điểm 4.5 – 4.9. Ôn tập tập trung 3 buổi, mục tiêu vượt ngưỡng 5.0.</li>
+          <li><strong>📚 Phụ đạo tập trung (${yeuArr.length - nearYeuArr.length - veryWeakArr.length} em):</strong> Điểm 3.0 – 4.4. Học phụ đạo 2 buổi/tuần chiều T3-T5.</li>
+          <li><strong>👨‍🏫 Kèm 1-1 (${veryWeakArr.length} em):</strong> Điểm < 3.0. Phân công đôi bạn cùng tiến và giáo viên kèm riêng.</li>
+        </ul>
+        <p style="margin:4px 0 2px"><strong>2. Bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} em):</strong></p>
+        <ul style="margin:2px 0 10px;padding-left:20px;font-size:10.5pt">
+          <li><strong>🏆 Đội tuyển HSG:</strong> Bồi dưỡng dự thi học sinh giỏi và dự án STEM.</li>
+          <li><strong>🌐 Tự học số:</strong> Cung cấp ngân hàng bài tập vận dụng cao trực tuyến.</li>
+          <li><strong>🤝 Mentor:</strong> Học sinh giỏi hướng dẫn bạn trong các nhóm học tập.</li>
+        </ul>
+
+        <table style="width:100%;border:none;margin-top:28px">
+          <tr>
+            <td style="width:50%;text-align:center;vertical-align:top">
+              <strong>TỔ TRƯỞNG CHUYÊN MÔN KHTN</strong><br>
+              <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
+              <strong>Thầy Thạch Thanh Tâm</strong>
+            </td>
+            <td style="width:50%;text-align:center;vertical-align:top">
+              <em>Hà Nội, ngày ${dateStr}</em><br>
+              <strong>${signerRole.toUpperCase()}</strong><br>
+              <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
+              <strong>${signerName}</strong>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn" onclick="closeModal()">Đóng</button>
+      <button class="btn btn-primary" onclick="exportPDF()">🖨️ In ra máy in / Lưu PDF ngay</button>
+    </div>
+  `;
+  openModal('📄 Xem trước bản in Báo Cáo A4', html);
+};
+
+// ===== EXCEL EXPORT IMPLEMENTATION (5 SHEETS WITH !COLS) =====
 window.exportExcel = function() {
   const cfg = getCfg();
   const st = S();
@@ -1943,7 +2161,7 @@ window.exportExcel = function() {
 
   // Sheet 1: Tổng quan
   const sheet1Data = [
-    ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH'],
+    ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH (KHTNReport)'],
     ['Trường THPT FPT - Tổ Khoa Học Tự Nhiên'],
     ['Môn học:', currentSubject],
     ['Kỳ kiểm tra:', cfg.exam],
@@ -1951,14 +2169,14 @@ window.exportExcel = function() {
     ['Ngày xuất:', new Date().toLocaleDateString('vi-VN')],
     [],
     ['I. THỐNG KÊ CHẤT LƯỢNG TOÀN KHỐI'],
-    ['Chỉ số', 'Giá trị'],
-    ['Tổng số học sinh', sStats.n],
-    ['Số lớp học', cl.length],
-    ['Điểm trung bình (ĐTB)', sStats.mean],
-    ['Trung vị (Median)', sStats.med],
-    ['Điểm cao nhất (Max)', sStats.max],
-    ['Điểm thấp nhất (Min)', sStats.min],
-    ['Độ lệch chuẩn (SD)', sStats.sd],
+    ['Chỉ số', 'Giá trị', 'Đơn vị tính'],
+    ['Tổng số học sinh', sStats.n, 'Học sinh'],
+    ['Số lớp học', cl.length, 'Lớp'],
+    ['Điểm trung bình (ĐTB)', +sStats.mean.toFixed(2), 'Điểm'],
+    ['Trung vị (Median)', +sStats.med.toFixed(2), 'Điểm'],
+    ['Điểm cao nhất (Max)', sStats.max, 'Điểm'],
+    ['Điểm thấp nhất (Min)', sStats.min, 'Điểm'],
+    ['Độ lệch chuẩn (SD)', +sStats.sd.toFixed(2), 'Điểm'],
     [],
     ['II. CƠ CẤU 4 TẦNG HỌC SINH'],
     ['Phân tầng', 'Ngưỡng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)'],
@@ -1969,30 +2187,35 @@ window.exportExcel = function() {
     ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)]
   ];
   const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+  ws1['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
 
   // Sheet 2: So sánh lớp
   const sheet2Data = [
-    ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt']
+    ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt (%)']
   ];
   cl.forEach(c => {
     const cs = stats(st.filter(s => s.cls === c), cfg);
     sheet2Data.push([
-      c, cs.n, cs.mean, cs.med, cs.max, cs.min, cs.sd,
+      c, cs.n, +cs.mean.toFixed(2), +cs.med.toFixed(2), cs.max, cs.min, +cs.sd.toFixed(2),
       cs.c.gioi, cs.c.kha, cs.c.tb, cs.c.yeu, pc(cs.pass)
     ]);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+  ws2['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
 
-  // Sheet 3: Danh sách học sinh
+  // Sheet 3: Danh sách toàn khối
   const sheet3Data = [
-    ['Hạng khối', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Đề xuất giải pháp']
+    ['Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
   ];
   const rk = buildRanks();
   const sorted = [...st].sort((a,b) => b.score - a.score);
   sorted.forEach(s => {
     const t = tier(s.score, cfg);
+    const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
+    const diff = Math.round((target - s.score)*100)/100;
+    const isNear = diff > 0 && diff <= 0.5;
     let sol = '';
     if (t === 'yeu') {
       if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
@@ -2002,17 +2225,68 @@ window.exportExcel = function() {
       if (s.score >= 9.5) sol = '🏆 Đội tuyển HSG';
       else sol = '🌐 Tự học trên website';
     } else {
-      sol = 'Tiếp tục rèn luyện';
+      sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
     }
-    sheet3Data.push([rk[s.id].all, s.name, s.cls, s.score, tLabel(t), sol]);
+    sheet3Data.push([rk[s.id].all, s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
   });
   const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
-  XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách học sinh');
+  ws3['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách toàn khối');
 
-  XLSX.writeFile(wb, `EduReport_${currentSubject}_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('Đã xuất file Excel môn ' + currentSubject);
+  // Sheet 4: DS Can thiệp Yếu & VIP
+  const sheet4Data = [
+    ['Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
+  ];
+  const yeuList = st.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
+  yeuList.forEach(s => {
+    let grp = '', span = '', act = '';
+    if (s.score >= 4.5) {
+      grp = '⭐ Lớp VIP Nâng hạng';
+      span = '4.5 - 4.9';
+      act = 'Luyện đề thực chiến cấp tốc, rèn kỹ năng tránh sai sót để đạt chuẩn 5.0';
+    } else if (s.score >= 3.0) {
+      grp = '📚 Phụ đạo tập trung';
+      span = '3.0 - 4.4';
+      act = 'Học phụ đạo 2 buổi/tuần chiều T3-T5, lấp lỗ hổng chuyên đề trọng tâm';
+    } else {
+      grp = '👨‍🏫 Kèm 1-1';
+      span = '< 3.0';
+      act = 'Đôi bạn cùng tiến (HS Giỏi kèm) + GV kèm riêng 1 buổi/tuần';
+    }
+    sheet4Data.push([s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
+  });
+  const ws4 = XLSX.utils.aoa_to_sheet(sheet4Data);
+  ws4['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp Yếu & VIP');
+
+  // Sheet 5: DS Bồi dưỡng Giỏi
+  const sheet5Data = [
+    ['Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
+  ];
+  const gioiList = st.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
+  gioiList.forEach(s => {
+    let mod = '', content = '';
+    if (s.score >= 9.5) {
+      mod = '🏆 Đội tuyển HSG & STEM';
+      content = 'Bồi dưỡng chuyên đề nâng cao, dự thi HSG cấp trường và cụm trường';
+    } else if (s.score >= 8.5) {
+      mod = '🤝 Mentor trợ giảng';
+      content = 'Được phân công hướng dẫn và hỗ trợ bạn trong nhóm học tập tại lớp';
+    } else {
+      mod = '🌐 Tự học trên nền tảng';
+      content = 'Cấp tài khoản ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến';
+    }
+    sheet5Data.push([s.name, s.cls, s.score, mod, content]);
+  });
+  const ws5 = XLSX.utils.aoa_to_sheet(sheet5Data);
+  ws5['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 48 }];
+  XLSX.utils.book_append_sheet(wb, ws5, 'DS Bồi dưỡng Giỏi');
+
+  XLSX.writeFile(wb, `KHTNReport_${currentSubject}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Đã xuất file Excel môn ' + currentSubject + ' (5 Sheet)');
 };
 
+// ===== EXPORT ALL 5 SUBJECTS TO EXCEL =====
 window.exportAllExcel = function() {
   const wb = XLSX.utils.book_new();
   const subjects = currentUser ? currentUser.subjects : ['Toán'];
@@ -2021,26 +2295,85 @@ window.exportAllExcel = function() {
     const sData = allData[sb];
     if (!sData || !sData.students.length) return;
     const sStats = stats(sData.students, sData.cfg);
-    const cl = [...new Set(sData.students.map(s => s.cls))].sort();
 
     const data = [
-      [`BÁO CÁO MÔN: ${sb.toUpperCase()}`],
-      ['Tổng số HS', sStats.n, 'ĐTB', sStats.mean, 'Tỉ lệ đạt', pc(sStats.pass)],
+      [`BÁO CÁO MÔN: ${sb.toUpperCase()} (TỔ KHOA HỌC TỰ NHIÊN - THPT FPT)`],
+      ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
       ['Giỏi', sStats.c.gioi, 'Khá', sStats.c.kha, 'TB', sStats.c.tb, 'Yếu', sStats.c.yeu],
       [],
-      ['DANH SÁCH CHI TIẾT'],
-      ['Họ tên', 'Lớp', 'Điểm', 'Xếp loại']
+      ['DANH SÁCH HỌC SINH MÔN ' + sb.toUpperCase()],
+      ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại', 'Giải pháp can thiệp']
     ];
-    sData.students.forEach(s => {
-      data.push([s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg))]);
+    sData.students.forEach((s, idx) => {
+      const t = tier(s.score, sData.cfg);
+      let sol = '';
+      if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo tập trung';
+      else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
+      else sol = 'Rèn luyện';
+      data.push([idx + 1, s.name, s.cls, s.score, tLabel(t), sol]);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 24 }];
     XLSX.utils.book_append_sheet(wb, ws, sb);
   });
 
-  XLSX.writeFile(wb, `EduReport_ToanToKHTN_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('Đã xuất file Excel tổng hợp 5 môn');
+  XLSX.writeFile(wb, `KHTNReport_ToanToKHTN_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Đã xuất file Excel tổng hợp 5 môn KHTNReport');
+};
+
+// ===== EXPORT SPECIAL GROUPS (VIP & PHỤ ĐẠO) =====
+window.exportSpecialGroupExcel = function(groupType) {
+  const cfg = getCfg();
+  const st = S();
+  const wb = XLSX.utils.book_new();
+
+  if (groupType === 'vip') {
+    const list = st.filter(s => s.score >= 4.5 && s.score < 5.0).sort((a,b) => b.score - a.score);
+    const data = [
+      [`DANH SÁCH HỌC SINH LỚP VIP BỨT PHÁ (CẬN CHUẨN ĐẠT)`],
+      [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+      [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 4.5 đến 4.9 (Thiếu ≤ 0.5 điểm để đạt chuẩn)`],
+      [`Tổng số học sinh: ${list.length} em`],
+      [],
+      ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Thiếu (điểm)', 'Mục tiêu', 'Giải pháp can thiệp', 'Giáo viên phụ trách']
+    ];
+    list.forEach((s, i) => {
+      data.push([
+        i + 1, s.name, s.cls, s.score, +(5.0 - s.score).toFixed(2),
+        '≥ 5.5', 'Lớp VIP bứt phá cấp tốc, luyện đề chống mất điểm oan', ''
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 42 }, { wch: 22 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Lop_VIP_ButPha');
+    XLSX.writeFile(wb, `KHTNReport_${currentSubject}_Lop_VIP_ButPha_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast(`Đã tải danh sách Lớp VIP (${list.length} học sinh)`);
+  } else if (groupType === 'phudao') {
+    const list = st.filter(s => s.score < 4.5).sort((a,b) => a.score - b.score);
+    const data = [
+      [`DANH SÁCH HỌC SINH PHỤ ĐẠO TẬP TRUNG & KÈM 1-1`],
+      [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+      [`Kỳ thi: ${cfg.exam} · Phân bổ: Dưới 3.0 điểm kèm 1-1, từ 3.0 đến 4.4 phụ đạo 2 buổi/tuần`],
+      [`Tổng số học sinh: ${list.length} em`],
+      [],
+      ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Mô hình can thiệp', 'Lịch học đề xuất', 'Ghi chú']
+    ];
+    list.forEach((s, i) => {
+      const isOneOnOne = s.score < 3.0;
+      data.push([
+        i + 1, s.name, s.cls, s.score,
+        isOneOnOne ? '👨‍🏫 Kèm 1-1 (Đôi bạn + GV)' : '📚 Phụ đạo tập trung',
+        isOneOnOne ? '1 buổi kèm riêng/tuần' : 'Chiều Thứ 3 & Thứ 5 (16h30 - 17h45)',
+        isOneOnOne ? 'Mất gốc kiến thức, cần kèm sát' : 'Hổng kiến thức chuyên đề trọng tâm'
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 32 }, { wch: 34 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'PhuDao_Kem1-1');
+    XLSX.writeFile(wb, `KHTNReport_${currentSubject}_PhuDao_Kem1-1_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast(`Đã tải danh sách Phụ đạo & Kèm 1-1 (${list.length} học sinh)`);
+  }
 };
 
 })();

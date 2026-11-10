@@ -1,6 +1,7 @@
-# 📊 EduReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh
+# 📊 KHTNReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh
+**Trường THPT FPT · Tổ Khoa Học Tự Nhiên**
 
-Hệ thống web phân tích phổ điểm, so sánh đa chiều các lớp và phân loại học sinh 4 tầng sau kỳ thi, kèm đề xuất giải pháp sư phạm (Phụ đạo, VIP, Kèm 1-1, Tự học trực tuyến) và xuất file báo cáo Word/PDF/Excel nộp Ban Giám Hiệu.
+Hệ thống web phân tích phổ điểm, so sánh đa chiều các lớp và phân loại học sinh 4 tầng sau kỳ thi, kèm đề xuất giải pháp sư phạm (Phụ đạo, VIP, Kèm 1-1, Tự học trực tuyến) và xuất file báo cáo Word/PDF/Excel nộp Ban Giám Hiệu theo nhận diện thương hiệu FPT.
 
 ---
 
