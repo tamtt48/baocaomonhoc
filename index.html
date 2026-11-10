@@ -1148,57 +1148,50 @@ function hist(list, step) {
   return bins;
 }
 
-// Infallible SVG Fallback for Histogram (never blank)
-function renderSvgHist(canvas, list, step, t, cfg) {
-  if (!canvas || !canvas.parentElement) return;
+// ===== NATIVE SVG CHART GENERATORS (100% RELIABLE, NEVER BLANK) =====
+function renderSvgHist(container, list, step, t, cfg) {
+  if (!container) return;
   const bins = hist(list, step);
   const max = Math.max(1, ...bins);
-  const w = 560, h = 260, padL = 40, padB = 40, padT = 25, padR = 20;
+  const w = 620, h = 270, padL = 42, padB = 40, padT = 25, padR = 20;
   const plotW = w - padL - padR, plotH = h - padT - padB;
-  const barW = Math.max(14, (plotW / bins.length) - 6);
+  const barW = Math.max(14, (plotW / bins.length) - 8);
 
-  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif;display:block" xmlns="http://www.w3.org/2000/svg">`;
+  
   for (let stepIdx = 0; stepIdx <= 4; stepIdx++) {
     const yVal = Math.round((max / 4) * stepIdx);
     const yPos = padT + plotH - (plotH * (yVal / max));
     svg += `<line x1="${padL}" y1="${yPos}" x2="${w - padR}" y2="${yPos}" stroke="${t.line}" stroke-dasharray="3,3" />`;
-    svg += `<text x="${padL - 6}" y="${yPos + 4}" font-size="10" fill="${t.ink2}" text-anchor="end">${yVal}</text>`;
+    svg += `<text x="${padL - 8}" y="${yPos + 4}" font-size="11" fill="${t.ink2}" text-anchor="end">${yVal}</text>`;
   }
 
   bins.forEach((b, i) => {
-    const x = padL + i * (plotW / bins.length) + 3;
+    const x = padL + i * (plotW / bins.length) + ((plotW / bins.length - barW) / 2);
     const barH = (b / max) * plotH;
     const y = padT + plotH - barH;
     const color = t[tier((i + 0.5) * step, cfg)];
-    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${color}">
-      <title>Khoảng điểm ${f1(i * step)}–${f1((i + 1) * step)}: ${b} học sinh</title>
-    </rect>`;
+    svg += `<g class="svg-bar">
+      <rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${color}">
+        <title>Khoảng điểm ${f1(i * step)}–${f1((i + 1) * step)}: ${b} học sinh (${pc(b / (list.length || 1))})</title>
+      </rect>`;
     if (b > 0) {
-      svg += `<text x="${x + barW/2}" y="${y - 5}" font-size="11" font-weight="700" fill="${t.ink}" text-anchor="middle">${b}</text>`;
+      svg += `<text x="${x + barW/2}" y="${y - 6}" font-size="11" font-weight="700" fill="${t.ink}" text-anchor="middle">${b}</text>`;
     }
-    svg += `<text x="${x + barW/2}" y="${h - 15}" font-size="10" fill="${t.ink2}" text-anchor="middle">${f1(i * step)}</text>`;
+    svg += `<text x="${x + barW/2}" y="${h - 15}" font-size="10.5" fill="${t.ink2}" text-anchor="middle">${f1(i * step)}–${f1((i + 1) * step)}</text>
+    </g>`;
   });
   svg += `</svg>`;
-
-  canvas.style.display = 'none';
-  let fb = canvas.parentElement.querySelector('.svg-chart-fallback');
-  if (!fb) {
-    fb = document.createElement('div');
-    fb.className = 'svg-chart-fallback';
-    fb.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center';
-    canvas.parentElement.appendChild(fb);
-  }
-  fb.innerHTML = svg;
+  container.innerHTML = svg;
 }
 
-// Infallible SVG Fallback for Donut (never blank)
-function renderSvgPie(canvas, all, t) {
-  if (!canvas || !canvas.parentElement) return;
+function renderSvgPie(container, all, t) {
+  if (!container) return;
   const n = all.n || 1;
-  const data = TIERS.map(x => ({ label: x.label, count: all.c[x.k], color: t[x.k], pct: Math.round(all.c[x.k] / n * 100) }));
+  const data = TIERS.map(x => ({ label: x.label, key: x.k, count: all.c[x.k], color: t[x.k], pct: Math.round(all.c[x.k] / n * 100) }));
   
-  let currentAngle = 0;
-  const cx = 130, cy = 130, r = 88, rIn = 50;
+  let currentAngle = -Math.PI / 2;
+  const cx = 130, cy = 135, r = 90, rIn = 54;
   let paths = '';
 
   data.forEach(d => {
@@ -1224,72 +1217,140 @@ function renderSvgPie(canvas, all, t) {
 
   let legend = '';
   data.forEach((d, i) => {
-    const y = 50 + i * 40;
+    const y = 45 + i * 44;
     legend += `
-      <rect x="250" y="${y}" width="14" height="14" rx="3" fill="${d.color}" />
-      <text x="272" y="${y + 12}" font-size="12" font-weight="600" fill="${t.ink}">${d.label}: ${d.count} HS (${d.pct}%)</text>
+      <g>
+        <rect x="250" y="${y}" width="16" height="16" rx="4" fill="${d.color}" />
+        <text x="274" y="${y + 13}" font-size="12.5" font-weight="700" fill="${t.ink}">${d.label}: ${d.count} HS</text>
+        <text x="274" y="${y + 27}" font-size="11" fill="${t.ink2}">Tỉ lệ: ${d.pct}% toàn khối</text>
+      </g>
     `;
   });
 
-  const svg = `<svg viewBox="0 0 450 260" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif" xmlns="http://www.w3.org/2000/svg">
+  const svg = `<svg viewBox="0 0 460 270" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif;display:block" xmlns="http://www.w3.org/2000/svg">
     ${paths}
-    <text x="${cx}" y="${cy - 4}" font-size="20" font-weight="800" fill="${t.ink}" text-anchor="middle">${n}</text>
-    <text x="${cx}" y="${cy + 16}" font-size="11" fill="${t.ink2}" text-anchor="middle">HỌC SINH</text>
+    <text x="${cx}" y="${cy - 3}" font-size="22" font-weight="800" fill="${t.ink}" text-anchor="middle">${all.n || 0}</text>
+    <text x="${cx}" y="${cy + 17}" font-size="11" font-weight="600" fill="${t.ink2}" text-anchor="middle">HỌC SINH</text>
     ${legend}
   </svg>`;
-
-  canvas.style.display = 'none';
-  let fb = canvas.parentElement.querySelector('.svg-chart-fallback');
-  if (!fb) {
-    fb = document.createElement('div');
-    fb.className = 'svg-chart-fallback';
-    fb.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center';
-    canvas.parentElement.appendChild(fb);
-  }
-  fb.innerHTML = svg;
+  container.innerHTML = svg;
 }
 
-function histChart(canvas, list, step, t, cfg) {
-  if (!canvas) return null;
-  if (typeof Chart === 'undefined') {
-    renderSvgHist(canvas, list, step, t, cfg);
-    return null;
-  }
-  const bins = hist(list, step);
-  const labels = bins.map((_, i) => f1(i * step) + '–' + f1((i + 1) * step));
-  const colors = bins.map((_, i) => t[tier((i + 0.5) * step, cfg)]);
-  try {
-    if (canvas.parentElement) {
-      canvas.parentElement.querySelectorAll('.svg-chart-fallback').forEach(el => el.remove());
-      canvas.style.display = '';
-    }
-    return new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Số lượng học sinh',
-          data: bins,
-          backgroundColor: colors,
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: t.line } },
-          x: { grid: { display: false } }
+function renderSvgMean(container, cl, per, allMean, t) {
+  if (!container || !cl.length) return;
+  const w = 620, h = 270, padL = 45, padB = 40, padT = 30, padR = 25;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const barW = Math.max(18, Math.min(50, (plotW / cl.length) - 14));
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif;display:block" xmlns="http://www.w3.org/2000/svg">`;
+
+  [0, 2.5, 5, 7.5, 10].forEach(val => {
+    const yPos = padT + plotH - (plotH * (val / 10));
+    svg += `<line x1="${padL}" y1="${yPos}" x2="${w - padR}" y2="${yPos}" stroke="${t.line}" stroke-dasharray="3,3" />`;
+    svg += `<text x="${padL - 8}" y="${yPos + 4}" font-size="11" fill="${t.ink2}" text-anchor="end">${val}</text>`;
+  });
+
+  cl.forEach((c, i) => {
+    const p = per[i];
+    const mean = p ? p.mean : 0;
+    const x = padL + i * (plotW / cl.length) + ((plotW / cl.length - barW) / 2);
+    const barH = (mean / 10) * plotH;
+    const y = padT + plotH - barH;
+    svg += `<g>
+      <rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${t.accent}">
+        <title>Lớp ${c}: ĐTB ${fm(mean)}</title>
+      </rect>
+      <text x="${x + barW/2}" y="${y - 6}" font-size="11.5" font-weight="700" fill="${t.ink}" text-anchor="middle">${fm(mean)}</text>
+      <text x="${x + barW/2}" y="${h - 15}" font-size="11.5" font-weight="600" fill="${t.ink}" text-anchor="middle">${c}</text>
+    </g>`;
+  });
+
+  const yAll = padT + plotH - (plotH * (allMean / 10));
+  svg += `
+    <line x1="${padL}" y1="${yAll}" x2="${w - padR}" y2="${yAll}" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,4" />
+    <text x="${w - padR}" y="${yAll - 6}" font-size="11" font-weight="700" fill="#dc2626" text-anchor="end">ĐTB Khối: ${fm(allMean)}</text>
+  `;
+
+  svg += `</svg>`;
+  container.innerHTML = svg;
+}
+
+function renderSvgStack(container, cl, per, t) {
+  if (!container || !cl.length) return;
+  const rowH = 36;
+  const h = Math.max(260, cl.length * rowH + 65);
+  const w = 620, padL = 65, padR = 25, padT = 20;
+  const plotW = w - padL - padR;
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif;display:block" xmlns="http://www.w3.org/2000/svg">`;
+
+  cl.forEach((c, i) => {
+    const p = per[i];
+    const y = padT + i * rowH;
+    const n = (p && p.n) ? p.n : 1;
+
+    svg += `<text x="${padL - 10}" y="${y + 16}" font-size="12" font-weight="700" fill="${t.ink}" text-anchor="end">${c}</text>`;
+
+    let curX = padL;
+    TIERS.forEach(tierObj => {
+      const count = (p && p.c && p.c[tierObj.k]) || 0;
+      const segW = (count / n) * plotW;
+      const pct = Math.round(count / n * 100);
+      if (segW > 0) {
+        svg += `
+          <rect x="${curX}" y="${y}" width="${segW}" height="22" rx="3" fill="${t[tierObj.k]}">
+            <title>Lớp ${c} - ${tierObj.label}: ${count} HS (${pct}%)</title>
+          </rect>
+        `;
+        if (segW >= 28) {
+          svg += `<text x="${curX + segW/2}" y="${y + 15}" font-size="10.5" font-weight="700" fill="#fff" text-anchor="middle">${pct}%</text>`;
         }
+        curX += segW;
       }
     });
-  } catch (err) {
-    console.error('Error creating histChart, using SVG fallback:', err);
-    renderSvgHist(canvas, list, step, t, cfg);
-    return null;
-  }
+  });
+
+  const legY = padT + cl.length * rowH + 20;
+  let legX = padL + 10;
+  TIERS.forEach(tierObj => {
+    svg += `
+      <rect x="${legX}" y="${legY}" width="14" height="14" rx="3" fill="${t[tierObj.k]}" />
+      <text x="${legX + 18}" y="${legY + 11}" font-size="11" font-weight="600" fill="${t.ink}">${tierObj.label}</text>
+    `;
+    legX += 115;
+  });
+
+  svg += `</svg>`;
+  container.innerHTML = svg;
+}
+
+function renderSvgMiniHist(container, list, step, t, cfg) {
+  if (!container) return;
+  const bins = hist(list, step);
+  const max = Math.max(1, ...bins);
+  const w = 260, h = 170, padL = 25, padB = 30, padT = 15, padR = 15;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const barW = Math.max(10, (plotW / bins.length) - 4);
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif;display:block" xmlns="http://www.w3.org/2000/svg">`;
+  
+  bins.forEach((b, i) => {
+    const x = padL + i * (plotW / bins.length) + 2;
+    const barH = (b / max) * plotH;
+    const y = padT + plotH - barH;
+    const color = t[tier((i + 0.5) * step, cfg)];
+    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${color}">
+      <title>${f1(i * step)}–${f1((i + 1) * step)}: ${b} HS</title>
+    </rect>`;
+    if (b > 0) {
+      svg += `<text x="${x + barW/2}" y="${y - 3}" font-size="9" font-weight="700" fill="${t.ink}" text-anchor="middle">${b}</text>`;
+    }
+    if (i % 2 === 0) {
+      svg += `<text x="${x + barW/2}" y="${h - 10}" font-size="9" fill="${t.ink2}" text-anchor="middle">${f1(i * step)}</text>`;
+    }
+  });
+  svg += `</svg>`;
+  container.innerHTML = svg;
 }
 
 function renderCharts() {
@@ -1297,26 +1358,40 @@ function renderCharts() {
   if (!st.length) { el.innerHTML = emptyState(); return; }
 
   const cl = classes(), all = stats(st, cfg);
-  el.innerHTML = head(meta(), `Phổ điểm & Đồ thị phân tích môn ${esc(currentSubject)}`) + `
+  el.innerHTML = head(meta(), `Phổ điểm & Đồ thị phân tích môn ${esc(currentSubject)}`, `
+    <button class="btn btn-export" onclick="go('export')">📥 Xuất file báo cáo</button>
+  `) + `
   <div class="grid2">
     <section class="block">
-      <h3>Phổ điểm toàn khối môn ${esc(currentSubject)}</h3>
-      <div class="cwrap"><canvas id="cHist"></canvas></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">Phổ điểm toàn khối môn ${esc(currentSubject)}</h3>
+        <span class="hint">Thang điểm 0–10 · Sĩ số ${all.n} HS</span>
+      </div>
+      <div class="cwrap" id="cHistWrap"></div>
     </section>
     <section class="block">
-      <h3>Tỉ lệ 4 tầng học sinh</h3>
-      <div class="cwrap"><canvas id="cPie"></canvas></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">Tỉ lệ 4 tầng học sinh</h3>
+        <span class="hint">Đạt: ${pc(all.pass)} · ĐTB: ${fm(all.mean)}</span>
+      </div>
+      <div class="cwrap" id="cPieWrap"></div>
     </section>
   </div>
   ${cl.length > 1 ? `
   <div class="grid2">
     <section class="block">
-      <h3>So sánh Điểm trung bình các lớp</h3>
-      <div class="cwrap"><canvas id="cMean"></canvas></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">So sánh Điểm trung bình các lớp</h3>
+        <span class="hint">ĐTB Khối: ${fm(all.mean)}</span>
+      </div>
+      <div class="cwrap" id="cMeanWrap"></div>
     </section>
     <section class="block">
-      <h3>Tỉ lệ phân tầng theo từng lớp</h3>
-      <div class="cwrap" style="height:${Math.max(300, cl.length * 32 + 80)}px"><canvas id="cStack"></canvas></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">Tỉ lệ phân tầng theo từng lớp</h3>
+        <span class="hint">Cơ cấu % 4 nhóm</span>
+      </div>
+      <div class="cwrap" id="cStackWrap" style="height:${Math.max(280, cl.length * 36 + 70)}px"></div>
     </section>
   </div>` : ''}
   <section class="block">
@@ -1325,7 +1400,7 @@ function renderCharts() {
       ${cl.map((c, i) => `
         <div>
           <h4>Lớp ${esc(c)} <span class="hint">· ĐTB ${fm(stats(st.filter(s => s.cls === c), cfg).mean)}</span></h4>
-          <div class="cwrap sm"><canvas id="cm${i}"></canvas></div>
+          <div class="cwrap sm" id="cmWrap${i}"></div>
         </div>
       `).join('')}
     </div>
@@ -1333,138 +1408,20 @@ function renderCharts() {
 
   const t = tc();
 
-  if (typeof Chart === 'undefined') {
-    const chHist = $('#cHist'), chPie = $('#cPie');
-    if (chHist) renderSvgHist(chHist, st, 1, t, cfg);
-    if (chPie) renderSvgPie(chPie, all, t);
-    setTimeout(() => {
-      if (cur === 'charts' && typeof Chart !== 'undefined') renderCharts();
-    }, 200);
-    return;
-  }
-
-  try {
-    Chart.defaults.color = t.ink2;
-    Chart.defaults.borderColor = t.line;
-    Chart.defaults.font.family = "'Be Vietnam Pro',sans-serif";
-  } catch (e) {}
-
-  const chHist = $('#cHist');
-  if (chHist) {
-    const h = histChart(chHist, st, 1, t, cfg);
-    if (h) charts.push(h);
-  }
-
-  const chPie = $('#cPie');
-  if (chPie) {
-    try {
-      if (chPie.parentElement) {
-        chPie.parentElement.querySelectorAll('.svg-chart-fallback').forEach(el => el.remove());
-        chPie.style.display = '';
-      }
-      charts.push(new Chart(chPie, {
-        type: 'doughnut',
-        data: {
-          labels: TIERS.map(x => x.label),
-          datasets: [{
-            data: TIERS.map(x => all.c[x.k]),
-            backgroundColor: TIERS.map(x => t[x.k]),
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 250 },
-          cutout: '58%',
-          plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } }
-          }
-        }
-      }));
-    } catch (e) {
-      console.error('Error creating cPie, using SVG fallback:', e);
-      renderSvgPie(chPie, all, t);
-    }
-  }
+  // Render pure SVG charts immediately - guaranteed 100% visible with zero blank frames
+  renderSvgHist($('#cHistWrap'), st, 1, t, cfg);
+  renderSvgPie($('#cPieWrap'), all, t);
 
   if (cl.length > 1) {
     const per = cl.map(c => stats(st.filter(s => s.cls === c), cfg));
-    const chMean = $('#cMean');
-    if (chMean) {
-      try {
-        charts.push(new Chart(chMean, {
-          type: 'bar',
-          data: {
-            labels: cl,
-            datasets: [
-              {
-                type: 'bar',
-                label: 'ĐTB Lớp',
-                data: per.map(p => Math.round(p.mean * 100) / 100),
-                backgroundColor: t.accent,
-                borderRadius: 4,
-                maxBarThickness: 55
-              },
-              {
-                type: 'line',
-                label: `ĐTB Toàn khối (${fm(all.mean)})`,
-                data: cl.map(() => Math.round(all.mean * 100) / 100),
-                borderColor: t.ink2,
-                borderDash: [6, 4],
-                pointRadius: 0,
-                borderWidth: 2
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 250 },
-            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
-            scales: {
-              y: { min: 0, max: 10, grid: { color: t.line } },
-              x: { grid: { display: false } }
-            }
-          }
-        }));
-      } catch (e) { console.error('Error creating cMean:', e); }
-    }
-
-    const chStack = $('#cStack');
-    if (chStack) {
-      try {
-        charts.push(new Chart(chStack, {
-          type: 'bar',
-          data: {
-            labels: cl,
-            datasets: TIERS.map(x => ({
-              label: x.label,
-              data: per.map(p => Math.round(p.c[x.k] / p.n * 1000) / 10),
-              backgroundColor: t[x.k]
-            }))
-          },
-          options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 250 },
-            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } },
-            scales: {
-              x: { stacked: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: t.line } },
-              y: { stacked: true, grid: { display: false } }
-            }
-          }
-        }));
-      } catch (e) { console.error('Error creating cStack:', e); }
-    }
+    renderSvgMean($('#cMeanWrap'), cl, per, all.mean, t);
+    renderSvgStack($('#cStackWrap'), cl, per, t);
   }
 
   cl.forEach((c, i) => {
-    const chMin = $('#cm' + i);
-    if (chMin) {
-      const h = histChart(chMin, st.filter(s => s.cls === c), 1, t, cfg);
-      if (h) charts.push(h);
+    const wrap = $('#cmWrap' + i);
+    if (wrap) {
+      renderSvgMiniHist(wrap, st.filter(s => s.cls === c), 1, t, cfg);
     }
   });
 }
@@ -2173,7 +2130,7 @@ function renderExport() {
         <div>
           <div class="icon">📄</div>
           <h4>Báo Cáo Word (.doc)</h4>
-          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT: Quốc hiệu, Bảng phân tích 4 tầng, So sánh lớp, Danh sách 100% học sinh can thiệp & Giỏi, Phụ lục điểm toàn khối và chữ ký phê duyệt.</p>
+          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT: Quốc hiệu, Bảng phân bố phổ điểm chi tiết (10 khoảng), Bảng phân tích 4 nhóm, So sánh lớp, Kế hoạch giải pháp can thiệp & Danh sách 100% học sinh, Phụ lục điểm toàn khối và chữ ký phê duyệt.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportWord(false)">
@@ -2192,7 +2149,7 @@ function renderExport() {
         <div>
           <div class="icon">📊</div>
           <h4>Sổ Điểm Excel (.xlsx)</h4>
-          <p>Bao gồm <strong>5 Sheet</strong> chuyên sâu: Tổng quan số liệu, So sánh các lớp, Danh sách toàn khối (có STT), Danh sách nhóm Yếu/VIP và Danh sách bồi dưỡng Giỏi 100% học sinh.</p>
+          <p>Bao gồm <strong>6 Sheet</strong> chuyên sâu: Tổng quan số liệu, Phổ điểm chi tiết (10 khoảng), So sánh các lớp, Danh sách toàn khối (có STT), Danh sách nhóm Yếu/VIP và Danh sách bồi dưỡng Giỏi 100% học sinh.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportExcel()">
@@ -2326,6 +2283,11 @@ window.exportWord = function(isAll) {
     const gioiArr = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
     const sortedAll = [...stList].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
 
+    const sBins = hist(stList, 1);
+    const maxBin = Math.max(1, ...sBins);
+    const peakBinIdx = sBins.indexOf(maxBin);
+    const peakBinLabel = `${f1(peakBinIdx)}–${f1(peakBinIdx + 1)}`;
+
     bodyContent += `
       ${(isAll && subjectsToExport.length > 1) || sIdx > 0 ? '<br style="page-break-before:always;" />' : ''}
       <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:24px">
@@ -2333,7 +2295,40 @@ window.exportWord = function(isAll) {
       </h2>
       <p style="font-size:12pt"><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh: <strong>${sStats.n}</strong> học sinh (${clList.length} lớp học)</em></p>
 
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">1. Bảng tổng hợp chất lượng & Cơ cấu 4 tầng học sinh</h3>
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">I. Bảng phân bố phổ điểm chi tiết môn ${sb} (Thang điểm 0–10)</h3>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10.5pt;margin-bottom:12px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th style="width:16%">Khoảng điểm</th>
+          <th style="width:14%">Số lượng HS</th>
+          <th style="width:12%">Tỉ lệ (%)</th>
+          <th style="width:38%">Biểu đồ phân bố mật độ phổ điểm</th>
+          <th style="width:20%">Xếp loại phân tầng</th>
+        </tr>
+        ${sBins.map((cnt, bIdx) => {
+          const bTier = tier((bIdx + 0.5), sData.cfg || cfg);
+          const barColor = bTier === 'gioi' ? '#00904b' : bTier === 'kha' ? '#0054a6' : bTier === 'tb' ? '#d97706' : '#dc2626';
+          const tierText = bTier === 'gioi' ? '🟢 Giỏi' : bTier === 'kha' ? '🔵 Khá' : bTier === 'tb' ? '🟡 Trung bình' : '🔴 Yếu';
+          const barW = Math.round((cnt / (maxBin || 1)) * 180);
+          return `
+            <tr style="text-align:center;background:${bIdx === peakBinIdx ? '#fff9e6' : '#ffffff'}">
+              <td style="font-weight:bold">${f1(bIdx)} – ${f1(bIdx + 1)}</td>
+              <td style="font-weight:bold;color:${barColor}">${cnt} HS</td>
+              <td>${pc(cnt / (sStats.n || 1))}</td>
+              <td style="text-align:left;padding-left:12px">
+                <div style="display:inline-block;background:${barColor};width:${Math.max(3, barW)}px;height:14px;border-radius:3px"></div>
+                <span style="font-size:9pt;color:#64748b;margin-left:6px">${cnt > 0 ? cnt + ' HS' : ''}</span>
+              </td>
+              <td style="font-weight:600;color:${barColor}">${tierText}</td>
+            </tr>
+          `;
+        }).join('')}
+      </table>
+      <p style="margin-top:6px;font-size:11pt">
+        • <strong>Đặc điểm phổ điểm:</strong> Đỉnh phổ điểm tập trung nhiều nhất ở khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).<br>
+        • <strong>Chỉ số thống kê:</strong> ĐTB Khối: <strong>${fm(sStats.mean)}</strong> · Trung vị: <strong>${fm(sStats.med)}</strong> · Điểm cao nhất: <strong>${fm(sStats.max)}</strong> · Điểm thấp nhất: <strong>${fm(sStats.min)}</strong> · Độ lệch chuẩn (SD): <strong>${fm(sStats.sd)}</strong> · Tỉ lệ Đạt chuẩn (≥5.0): <strong>${pc(sStats.pass)}</strong> (${sStats.n - sStats.c.yeu}/${sStats.n} HS).
+      </p>
+
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:20px">II. Cơ cấu & Bảng phân tích 4 nhóm học sinh (Giỏi - Khá - Trung bình - Yếu)</h3>
       <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:11pt">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th>Chỉ số</th>
@@ -2364,11 +2359,7 @@ window.exportWord = function(isAll) {
         </tr>
       </table>
 
-      <p style="margin-top:8px;font-size:11pt">
-        • Điểm trung bình khối: <strong>${fm(sStats.mean)}</strong> · Trung vị: <strong>${fm(sStats.med)}</strong> · Điểm cao nhất: <strong>${fm(sStats.max)}</strong> · Điểm thấp nhất: <strong>${fm(sStats.min)}</strong> · Độ lệch chuẩn (SD): <strong>${fm(sStats.sd)}</strong>
-      </p>
-
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">2. Bảng so sánh chất lượng giữa các lớp trong khối</h3>
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:20px">III. Bảng so sánh chất lượng giữa các lớp trong khối</h3>
       <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th>Lớp</th>
@@ -2401,7 +2392,7 @@ window.exportWord = function(isAll) {
         }).join('')}
       </table>
 
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">3. Kế hoạch giải pháp sư phạm & Danh sách học sinh phân loại đầy đủ</h3>
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">IV. Kế hoạch giải pháp can thiệp sư phạm (4 nhóm học sinh)</h3>
       <p><strong>A. Kế hoạch can thiệp nhóm học sinh Yếu (${yeuArr.length} học sinh):</strong></p>
       <ul>
         <li><strong>⭐ Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Học sinh cận chuẩn (4.5–4.9 điểm). Tổ chức ôn luyện trọng tâm cấp tốc 3 buổi để đảm bảo đạt chuẩn kỳ tiếp theo.</li>
@@ -2462,7 +2453,7 @@ window.exportWord = function(isAll) {
         `).join('')}
       </table>`}
 
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:18px">4. Phụ lục: Bảng điểm chi tiết toàn bộ học sinh (${stList.length} học sinh)</h3>
+      <h3 style="font-size:13pt;color:#1e293b;margin-top:18px">V. Phụ lục: Bảng điểm chi tiết toàn bộ học sinh (${stList.length} học sinh đối soát)</h3>
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th style="width:6%">STT</th>
@@ -2574,6 +2565,9 @@ window.previewReportModal = function() {
   const dateStr = new Date().toLocaleDateString('vi-VN');
   const signerRole = currentUser ? currentUser.roleLabel : 'Trưởng bộ môn';
   const signerName = currentUser ? currentUser.name : '';
+  const sBins = hist(st, 1);
+  const maxBin = Math.max(1, ...sBins);
+  const peakBinIdx = sBins.indexOf(maxBin);
   const yeuArr = st.filter(s => s.score < 5.0);
   const nearYeuArr = yeuArr.filter(s => s.score >= 4.5);
   const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
@@ -2603,7 +2597,38 @@ window.previewReportModal = function() {
           <p style="margin:2px 0;font-size:11pt"><em>Kỳ kiểm tra: ${esc(cfg.exam)} · Sĩ số: ${sStats.n} học sinh (${cl.length} lớp)</em></p>
         </div>
 
-        <h4 style="font-size:12pt;margin:12px 0 6px">I. BẢNG THỐNG KÊ CHẤT LƯỢNG VÀ PHÂN TẦNG</h4>
+        <h4 style="font-size:12pt;margin:12px 0 6px">I. BẢNG PHÂN BỐ PHỔ ĐIỂM CHI TIẾT (THANG ĐIỂM 0–10)</h4>
+        <table border="1" cellspacing="0" cellpadding="4" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt;margin-bottom:10px">
+          <tr style="background:#0054A6;color:#ffffff;font-weight:bold">
+            <th style="width:18%">Khoảng điểm</th>
+            <th style="width:16%">Số lượng</th>
+            <th style="width:14%">Tỉ lệ</th>
+            <th style="width:36%">Mật độ phổ điểm</th>
+            <th style="width:16%">Phân tầng</th>
+          </tr>
+          ${sBins.map((cnt, bIdx) => {
+            const bTier = tier((bIdx + 0.5), cfg);
+            const barColor = bTier === 'gioi' ? '#00904b' : bTier === 'kha' ? '#0054a6' : bTier === 'tb' ? '#d97706' : '#dc2626';
+            const tierText = bTier === 'gioi' ? 'Giỏi' : bTier === 'kha' ? 'Khá' : bTier === 'tb' ? 'TB' : 'Yếu';
+            const barW = Math.round((cnt / (maxBin || 1)) * 140);
+            return `
+              <tr style="${bIdx === peakBinIdx ? 'background:#fff9e6' : ''}">
+                <td style="font-weight:bold">${f1(bIdx)} – ${f1(bIdx + 1)}</td>
+                <td style="font-weight:bold;color:${barColor}">${cnt} HS</td>
+                <td>${pc(cnt / (sStats.n || 1))}</td>
+                <td style="text-align:left;padding-left:8px">
+                  <div style="display:inline-block;background:${barColor};width:${Math.max(3, barW)}px;height:12px;border-radius:2px"></div>
+                </td>
+                <td style="font-weight:bold;color:${barColor}">${tierText}</td>
+              </tr>
+            `;
+          }).join('')}
+        </table>
+        <p style="font-size:10.5pt;margin:4px 0 12px">
+          • Đỉnh phổ điểm tập trung tại khoảng <strong>${f1(peakBinIdx)}–${f1(peakBinIdx + 1)} điểm</strong> (${maxBin} HS, chiếm ${pc(maxBin / sStats.n)}).
+        </p>
+
+        <h4 style="font-size:12pt;margin:14px 0 6px">II. BẢNG THỐNG KÊ CHẤT LƯỢNG VÀ CƠ CẤU 4 TẦNG HỌC SINH</h4>
         <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;text-align:center;font-size:10.5pt">
           <tr style="background:#f1f5f9;font-weight:bold">
             <th>Tổng số HS</th>
@@ -2633,7 +2658,7 @@ window.previewReportModal = function() {
           </tr>
         </table>
 
-        <h4 style="font-size:12pt;margin:16px 0 6px">II. SO SÁNH GIỮA CÁC LỚP</h4>
+        <h4 style="font-size:12pt;margin:16px 0 6px">III. BẢNG SO SÁNH GIỮA CÁC LỚP TRONG KHỐI</h4>
         <table border="1" cellspacing="0" cellpadding="5" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt">
           <tr style="background:#f1f5f9;font-weight:bold">
             <th>Lớp</th>
@@ -2666,7 +2691,7 @@ window.previewReportModal = function() {
           }).join('')}
         </table>
 
-        <h4 style="font-size:12pt;margin:16px 0 6px">III. KẾ HOẠCH HÀNH ĐỘNG SƯ PHẠM</h4>
+        <h4 style="font-size:12pt;margin:16px 0 6px">IV. KẾ HOẠCH HÀNH ĐỘNG SƯ PHẠM (4 NHÓM CAN THIỆP & BỒI DƯỠNG)</h4>
         <p style="margin:4px 0 2px"><strong>1. Can thiệp nhóm học sinh Yếu (${yeuArr.length} em):</strong></p>
         <ul style="margin:2px 0 10px;padding-left:20px;font-size:10.5pt">
           <li><strong>⭐ Lớp VIP bứt phá (${nearYeuArr.length} em):</strong> Điểm 4.5 – 4.9. Ôn tập tập trung 3 buổi, mục tiêu vượt ngưỡng 5.0.</li>
@@ -2814,7 +2839,31 @@ window.exportExcel = function() {
       ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)]
     ];
 
-    // Sheet 2: So sánh lớp
+    // Sheet 2: Phổ điểm chi tiết (10 khoảng điểm)
+    const sBins = hist(st, 1);
+    const maxBin = Math.max(1, ...sBins);
+    const peakBinIdx = sBins.indexOf(maxBin);
+    const sheetPhoDiemData = [
+      ['BẢNG PHÂN BỐ PHỔ ĐIỂM CHI TIẾT (THANG ĐIỂM 0 - 10)'],
+      ['Môn học:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      ['Tổng số học sinh:', sStats.n, 'Điểm trung bình (ĐTB):', +sStats.mean.toFixed(2)],
+      [],
+      ['STT', 'Khoảng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)', 'Phân tầng', 'Đánh giá mật độ']
+    ];
+    sBins.forEach((cnt, idx) => {
+      const bTier = tier((idx + 0.5), cfg);
+      const isPeak = idx === peakBinIdx;
+      sheetPhoDiemData.push([
+        idx + 1,
+        `${f1(idx)} - ${f1(idx + 1)}`,
+        cnt,
+        pc(cnt / (sStats.n || 1)),
+        tLabel(bTier),
+        isPeak ? 'Đỉnh phổ điểm (Mật độ cao nhất)' : ''
+      ]);
+    });
+
+    // Sheet 3: So sánh lớp
     const sheet2Data = [
       ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt (%)']
     ];
@@ -2826,7 +2875,7 @@ window.exportExcel = function() {
       ]);
     });
 
-    // Sheet 3: Danh sách toàn khối
+    // Sheet 4: Danh sách toàn khối (100% HS)
     const sheet3Data = [
       ['STT', 'Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
     ];
@@ -2852,7 +2901,7 @@ window.exportExcel = function() {
       sheet3Data.push([idx + 1, rk[s.id] ? rk[s.id].all : '', s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
     });
 
-    // Sheet 4: DS Can thiệp Yếu & VIP
+    // Sheet 5: DS Can thiệp Yếu & VIP
     const sheet4Data = [
       ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
     ];
@@ -2875,7 +2924,7 @@ window.exportExcel = function() {
       sheet4Data.push([idx + 1, s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
     });
 
-    // Sheet 5: DS Bồi dưỡng Giỏi
+    // Sheet 6: DS Bồi dưỡng Giỏi
     const sheet5Data = [
       ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
     ];
@@ -2901,6 +2950,10 @@ window.exportExcel = function() {
       ws1['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 16 }];
       XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
 
+      const wsPhoDiem = XLSX.utils.aoa_to_sheet(sheetPhoDiemData);
+      wsPhoDiem['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 38 }];
+      XLSX.utils.book_append_sheet(wb, wsPhoDiem, 'Phổ điểm');
+
       const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
       ws2['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 }];
       XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
@@ -2921,17 +2974,18 @@ window.exportExcel = function() {
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
-      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (5 Sheet)`);
+      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (6 Sheet Đầy Đủ)`);
     } else {
       exportTableToExcelFile(fileName, [
         { name: 'Tổng quan', data: sheet1Data },
+        { name: 'Phổ điểm', data: sheetPhoDiemData },
         { name: 'So sánh lớp', data: sheet2Data },
         { name: 'Danh sách toàn khối', data: sheet3Data },
         { name: 'DS Can thiệp Yếu & VIP', data: sheet4Data },
         { name: 'DS Bồi dưỡng Giỏi', data: sheet5Data }
       ]);
       saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
-      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (Chế độ tương thích)`);
+      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (Chế độ tương thích - 6 Sheet)`);
     }
   } catch (err) {
     console.error('Export Excel Error:', err);
