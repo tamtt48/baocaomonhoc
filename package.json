@@ -1,0 +1,15 @@
+{
+  "name": "khtnreport",
+  "version": "1.0.0",
+  "description": "KHTNReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh THPT FPT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "khtnreport",
+    "fpt-school"
+  ],
+  "author": "tamtt48",
+  "license": "MIT"
+}
