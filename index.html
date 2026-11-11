@@ -218,9 +218,11 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
 .toast[hidden]{display:none}
 
 @media print{
-  .band,.login-overlay,nav.tabs,.btn,.filters,.dz,.subject-toolbar{display:none!important}
-  .block{break-inside:avoid;box-shadow:none;border:1px solid #ddd}
-  body{background:#fff}
+  body > * { display: none !important; }
+  #printArea { display: block !important; position: static !important; width: 100% !important; background: #fff !important; color: #000 !important; font-family: 'Times New Roman', serif !important; }
+  #printArea * { visibility: visible !important; }
+  @page { margin: 12mm 15mm; size: A4; }
+  .page-break { page-break-before: always; }
 }
 @media(max-width:600px){
   .band h1{font-size:20px}
@@ -231,6 +233,8 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
 </style>
 </head>
 <body>
+
+<div id="printArea" style="display:none"></div>
 
 <!-- LOGIN SCREEN -->
 <div class="login-overlay" id="loginScreen">
@@ -1149,8 +1153,7 @@ function hist(list, step) {
 }
 
 // ===== NATIVE SVG CHART GENERATORS (100% RELIABLE, NEVER BLANK) =====
-function renderSvgHist(container, list, step, t, cfg) {
-  if (!container) return;
+function getSvgHist(list, step, t, cfg) {
   const bins = hist(list, step);
   const max = Math.max(1, ...bins);
   const w = 620, h = 270, padL = 42, padB = 40, padT = 25, padR = 20;
@@ -1182,11 +1185,13 @@ function renderSvgHist(container, list, step, t, cfg) {
     </g>`;
   });
   svg += `</svg>`;
-  container.innerHTML = svg;
+  return svg;
+}
+function renderSvgHist(container, list, step, t, cfg) {
+  if (container) container.innerHTML = getSvgHist(list, step, t, cfg);
 }
 
-function renderSvgPie(container, all, t) {
-  if (!container) return;
+function getSvgPie(all, t) {
   const n = all.n || 1;
   const data = TIERS.map(x => ({ label: x.label, key: x.k, count: all.c[x.k], color: t[x.k], pct: Math.round(all.c[x.k] / n * 100) }));
   
@@ -1233,11 +1238,14 @@ function renderSvgPie(container, all, t) {
     <text x="${cx}" y="${cy + 17}" font-size="11" font-weight="600" fill="${t.ink2}" text-anchor="middle">HỌC SINH</text>
     ${legend}
   </svg>`;
-  container.innerHTML = svg;
+  return svg;
+}
+function renderSvgPie(container, all, t) {
+  if (container) container.innerHTML = getSvgPie(all, t);
 }
 
-function renderSvgMean(container, cl, per, allMean, t) {
-  if (!container || !cl.length) return;
+function getSvgMean(cl, per, allMean, t) {
+  if (!cl || !cl.length) return '';
   const w = 620, h = 270, padL = 45, padB = 40, padT = 30, padR = 25;
   const plotW = w - padL - padR, plotH = h - padT - padB;
   const barW = Math.max(18, Math.min(50, (plotW / cl.length) - 14));
@@ -1272,11 +1280,14 @@ function renderSvgMean(container, cl, per, allMean, t) {
   `;
 
   svg += `</svg>`;
-  container.innerHTML = svg;
+  return svg;
+}
+function renderSvgMean(container, cl, per, allMean, t) {
+  if (container) container.innerHTML = getSvgMean(cl, per, allMean, t);
 }
 
-function renderSvgStack(container, cl, per, t) {
-  if (!container || !cl.length) return;
+function getSvgStack(cl, per, t) {
+  if (!cl || !cl.length) return '';
   const rowH = 36;
   const h = Math.max(260, cl.length * rowH + 65);
   const w = 620, padL = 65, padR = 25, padT = 20;
@@ -1321,7 +1332,10 @@ function renderSvgStack(container, cl, per, t) {
   });
 
   svg += `</svg>`;
-  container.innerHTML = svg;
+  return svg;
+}
+function renderSvgStack(container, cl, per, t) {
+  if (container) container.innerHTML = getSvgStack(cl, per, t);
 }
 
 function renderSvgMiniHist(container, list, step, t, cfg) {
@@ -2200,26 +2214,358 @@ function renderExport() {
   `;
 }
 
-// ===== WORD EXPORT IMPLEMENTATION =====
-window.exportWord = function(isAll) {
+// ===== MASTER REPORT BUILDER SUITE (6 CORE SECTIONS + APPENDIX) =====
+function getProfessionalInsights(stList, sStats, cfg, clList) {
+  const per = clList.map(c => ({ c, st: stats(stList.filter(s => s.cls === c), cfg) }));
+  const means = per.map(p => p.st.mean);
+  const ins = [];
+  ins.push(`Toàn khối có <strong>${sStats.n}</strong> học sinh, Điểm trung bình môn: <strong>${fm(sStats.mean)}</strong>, Tỉ lệ đạt chuẩn (≥${f1(cfg.tb)}): <strong>${pc(sStats.pass)}</strong> (${sStats.n - sStats.c.yeu}/${sStats.n} HS).`);
+  if (per.length > 1) {
+    const so = [...per].sort((a,b) => b.st.mean - a.st.mean);
+    ins.push(`Lớp có điểm trung bình cao nhất là <strong>${so[0].c}</strong> (ĐTB: ${fm(so[0].st.mean)}), thấp nhất là <strong>${so[so.length-1].c}</strong> (ĐTB: ${fm(so[so.length-1].st.mean)}), độ chênh lệch là <strong>${fm(so[0].st.mean - so[so.length-1].st.mean)}</strong> điểm.`);
+    const wk = [...per].sort((a,b) => (b.st.c.yeu/b.st.n) - (a.st.c.yeu/a.st.n))[0];
+    if (wk && wk.st.c.yeu > 0) {
+      ins.push(`Lớp <strong>${wk.c}</strong> có tỉ lệ học sinh Yếu cao nhất khối: ${wk.st.c.yeu}/${wk.st.n} HS (${pc(wk.st.c.yeu/wk.st.n)}) — Cần ưu tiên bố trí giáo viên phụ đạo và theo dõi sát.`);
+    }
+  }
+  const np = stList.filter(s => {
+    const t = tier(s.score, cfg);
+    return t === 'yeu' && (5.0 - s.score) <= 0.5 && (5.0 - s.score) > 0;
+  }).length;
+  if (np > 0) {
+    ins.push(`Có <strong>${np}</strong> học sinh Yếu sát ngưỡng đạt (thiếu ≤0.5 điểm) — Đây là đối tượng vàng của Lớp VIP nâng hạng để bứt phá đạt chuẩn.`);
+  }
+  const sdDesc = sStats.sd > 1.8 ? 'Độ phân tán điểm (SD) ở mức cao, có sự phân hóa đáng kể giữa các tầng học sinh.' : 'Độ phân tán điểm (SD) ở mức vừa phải, chất lượng học sinh toàn khối tương đối đồng đều.';
+  ins.push(`Độ lệch chuẩn SD = <strong>${fm(sStats.sd)}</strong>: ${sdDesc}`);
+  return ins;
+}
+
+function buildSubjectReportHTML(sb, forPrint) {
+  const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
+  const stList = sData.students;
+  const cfg = sData.cfg || getCfg();
+  const sStats = stats(stList, cfg);
+  if (!sStats) return '';
+
+  const clList = [...new Set(stList.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
+  const insights = getProfessionalInsights(stList, sStats, cfg, clList);
+
+  const near = [];
+  stList.forEach(s => {
+    const t = tier(s.score, cfg);
+    const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
+    const diff = Math.round((target - s.score)*100)/100;
+    if (diff > 0 && diff <= 0.5) near.push({ s, gap: diff });
+  });
+
+  const yeuArr = stList.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
+  const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
+  const nearYeuArr = near.filter(x => x.s.score >= 4.5 && x.s.score < 5.0);
+  const regularWeakArr = yeuArr.filter(s => s.score >= 3.0 && s.score < 4.5);
+  const gioiArr = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
+  const sortedAll = [...stList].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
+
+  const sBins = hist(stList, 1);
+  const maxBin = Math.max(1, ...sBins);
+  const peakBinIdx = sBins.indexOf(maxBin);
+  const peakBinLabel = `${f1(peakBinIdx)}–${f1(peakBinIdx + 1)}`;
+  const tColors = tc();
+
+  return `
+    <div class="subject-report-section" style="margin-bottom:30px">
+      <h2 style="font-size:15pt;color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:24px">
+        BÁO CÁO KẾT QUẢ CHUYÊN MÔN MÔN ${sb.toUpperCase()}
+      </h2>
+      <p style="font-size:11pt;margin:4px 0 16px"><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh: <strong>${sStats.n}</strong> HS (${clList.length} lớp học)</em></p>
+
+      <!-- 1. TỔNG QUAN KẾT QUẢ MÔN HỌC -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">1. Tổng quan kết quả môn ${sb}</h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10pt;margin-bottom:10px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th>Sĩ số</th>
+          <th>Số lớp</th>
+          <th>Điểm TB</th>
+          <th>Trung vị</th>
+          <th>Cao nhất</th>
+          <th>Thấp nhất</th>
+          <th>Độ lệch (SD)</th>
+          <th>Tỉ lệ Đạt (≥5.0)</th>
+          <th>Giỏi & Khá</th>
+        </tr>
+        <tr style="text-align:center;font-size:10.5pt">
+          <td><strong>${sStats.n} HS</strong></td>
+          <td>${clList.length} lớp</td>
+          <td style="font-weight:bold;color:#f26f21">${fm(sStats.mean)}</td>
+          <td>${fm(sStats.med)}</td>
+          <td style="font-weight:bold;color:#00904b">${fm(sStats.max)}</td>
+          <td style="color:#c0392b">${fm(sStats.min)}</td>
+          <td>${fm(sStats.sd)}</td>
+          <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
+          <td style="font-weight:bold;color:#0054a6">${pc((sStats.c.gioi + sStats.c.kha)/sStats.n)}</td>
+        </tr>
+      </table>
+
+      <!-- 2. CƠ CẤU 4 TẦNG HỌC SINH -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">2. Cơ cấu 4 tầng học sinh</h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10pt;margin-bottom:10px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th>Phân tầng</th>
+          <th>Ngưỡng điểm chuẩn</th>
+          <th>Số lượng (HS)</th>
+          <th>Tỉ lệ (%)</th>
+          <th>Đánh giá chất lượng</th>
+        </tr>
+        <tr style="text-align:center">
+          <td style="font-weight:bold;color:#00904b;text-align:left;padding-left:10px">🟢 Giỏi</td>
+          <td>≥ ${f1(cfg.gioi)} điểm</td>
+          <td><strong>${sStats.c.gioi} HS</strong></td>
+          <td style="font-weight:bold;color:#00904b">${pc(sStats.c.gioi/sStats.n)}</td>
+          <td>Đạt chuẩn năng lực xuất sắc & mũi nhọn</td>
+        </tr>
+        <tr style="text-align:center">
+          <td style="font-weight:bold;color:#0054a6;text-align:left;padding-left:10px">🔵 Khá</td>
+          <td>${f1(cfg.kha)} – ${f1(cfg.gioi - 0.1)} điểm</td>
+          <td><strong>${sStats.c.kha} HS</strong></td>
+          <td style="font-weight:bold;color:#0054a6">${pc(sStats.c.kha/sStats.n)}</td>
+          <td>Nắm vững kiến thức, tiếp tục phát triển</td>
+        </tr>
+        <tr style="text-align:center">
+          <td style="font-weight:bold;color:#d97706;text-align:left;padding-left:10px">🟡 Trung bình</td>
+          <td>${f1(cfg.tb)} – ${f1(cfg.kha - 0.1)} điểm</td>
+          <td><strong>${sStats.c.tb} HS</strong></td>
+          <td style="font-weight:bold;color:#d97706">${pc(sStats.c.tb/sStats.n)}</td>
+          <td>Đạt yêu cầu tối thiểu, cần bứt phá lên Khá</td>
+        </tr>
+        <tr style="text-align:center">
+          <td style="font-weight:bold;color:#dc2626;text-align:left;padding-left:10px">🔴 Yếu</td>
+          <td>< ${f1(cfg.tb)} điểm</td>
+          <td><strong>${sStats.c.yeu} HS</strong></td>
+          <td style="font-weight:bold;color:#dc2626">${pc(sStats.c.yeu/sStats.n)}</td>
+          <td>Chưa đạt chuẩn, diện bắt buộc can thiệp sư phạm</td>
+        </tr>
+        <tr style="text-align:center;background:#f8fafc;font-weight:bold">
+          <td style="text-align:left;padding-left:10px">Tổng cộng / Tỉ lệ đạt</td>
+          <td>≥ 5.0 điểm</td>
+          <td>${sStats.n - sStats.c.yeu}/${sStats.n} HS</td>
+          <td style="color:#00904b">${pc(sStats.pass)}</td>
+          <td>100% học sinh toàn khối</td>
+        </tr>
+      </table>
+
+      <!-- 3. NHẬN XÉT CHUYÊN MÔN -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">3. Nhận xét chuyên môn</h3>
+      <ul style="line-height:1.6;margin:4px 0 12px;padding-left:22px;font-size:10.5pt">
+        ${insights.map(i => `<li style="margin-bottom:4px">${i}</li>`).join('')}
+      </ul>
+
+      <!-- 4. BẢNG SO SÁNH CHI TIẾT CÁC LỚP -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">4. Bảng so sánh chi tiết các lớp môn ${sb}</h3>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th>Lớp</th>
+          <th>Sĩ số</th>
+          <th>ĐTB</th>
+          <th>Trung vị</th>
+          <th>Cao nhất</th>
+          <th>Thấp nhất</th>
+          <th>Độ lệch (SD)</th>
+          <th>🟢 Giỏi</th>
+          <th>🔵 Khá</th>
+          <th>🟡 TB</th>
+          <th>🔴 Yếu</th>
+          <th>Tỉ lệ đạt</th>
+        </tr>
+        ${clList.map(c => {
+          const cs = stats(stList.filter(s => s.cls === c), cfg);
+          return `
+            <tr style="text-align:center">
+              <td style="text-align:left;font-weight:bold;padding-left:8px">${c}</td>
+              <td>${cs.n}</td>
+              <td style="font-weight:bold;color:#f26f21">${fm(cs.mean)}</td>
+              <td>${fm(cs.med)}</td>
+              <td>${fm(cs.max)}</td>
+              <td>${fm(cs.min)}</td>
+              <td>${fm(cs.sd)}</td>
+              <td>${cs.c.gioi} (${pc(cs.c.gioi/cs.n)})</td>
+              <td>${cs.c.kha} (${pc(cs.c.kha/cs.n)})</td>
+              <td>${cs.c.tb} (${pc(cs.c.tb/cs.n)})</td>
+              <td style="color:#c0392b;font-weight:bold">${cs.c.yeu} (${pc(cs.c.yeu/cs.n)})</td>
+              <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
+            </tr>
+          `;
+        }).join('')}
+        <tr style="text-align:center;background:#f8fafc;font-weight:bold">
+          <td style="text-align:left;padding-left:8px">Toàn khối</td>
+          <td>${sStats.n}</td>
+          <td style="color:#f26f21">${fm(sStats.mean)}</td>
+          <td>${fm(sStats.med)}</td>
+          <td>${fm(sStats.max)}</td>
+          <td>${fm(sStats.min)}</td>
+          <td>${fm(sStats.sd)}</td>
+          <td>${sStats.c.gioi} (${pc(sStats.c.gioi/sStats.n)})</td>
+          <td>${sStats.c.kha} (${pc(sStats.c.kha/sStats.n)})</td>
+          <td>${sStats.c.tb} (${pc(sStats.c.tb/sStats.n)})</td>
+          <td style="color:#c0392b">${sStats.c.yeu} (${pc(sStats.c.yeu/sStats.n)})</td>
+          <td style="color:#00904b">${pc(sStats.pass)}</td>
+        </tr>
+      </table>
+
+      <!-- 5. PHỔ ĐIỂM & ĐỒ THỊ PHÂN TÍCH -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">5. Phổ điểm & Đồ thị phân tích môn ${sb}</h3>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:8px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th style="width:16%">Khoảng điểm</th>
+          <th style="width:14%">Số lượng HS</th>
+          <th style="width:12%">Tỉ lệ (%)</th>
+          <th style="width:38%">Biểu đồ phân bố mật độ phổ điểm</th>
+          <th style="width:20%">Xếp loại phân tầng</th>
+        </tr>
+        ${sBins.map((cnt, bIdx) => {
+          const bTier = tier((bIdx + 0.5), cfg);
+          const barColor = bTier === 'gioi' ? '#00904b' : bTier === 'kha' ? '#0054a6' : bTier === 'tb' ? '#d97706' : '#dc2626';
+          const tierText = bTier === 'gioi' ? '🟢 Giỏi' : bTier === 'kha' ? '🔵 Khá' : bTier === 'tb' ? '🟡 Trung bình' : '🔴 Yếu';
+          const barW = Math.round((cnt / (maxBin || 1)) * 180);
+          return `
+            <tr style="text-align:center;background:${bIdx === peakBinIdx ? '#fff9e6' : '#ffffff'}">
+              <td style="font-weight:bold">${f1(bIdx)} – ${f1(bIdx + 1)}</td>
+              <td style="font-weight:bold;color:${barColor}">${cnt} HS</td>
+              <td>${pc(cnt / (sStats.n || 1))}</td>
+              <td style="text-align:left;padding-left:12px">
+                <div style="display:inline-block;background:${barColor};width:${Math.max(3, barW)}px;height:12px;border-radius:2px"></div>
+                <span style="font-size:8.5pt;color:#64748b;margin-left:6px">${cnt > 0 ? cnt + ' HS' : ''}</span>
+              </td>
+              <td style="font-weight:600;color:${barColor}">${tierText}</td>
+            </tr>
+          `;
+        }).join('')}
+      </table>
+      <p style="margin-top:4px;font-size:10.5pt">
+        • <strong>Đặc trưng phổ điểm:</strong> Điểm tập trung cao nhất ở khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
+      </p>
+
+      ${forPrint ? `
+        <div style="display:flex;gap:14px;margin:12px 0;page-break-inside:avoid">
+          <div style="flex:1;border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
+            <div style="font-size:9.5pt;font-weight:bold;margin-bottom:4px;text-align:center;color:#004f9e">Đồ thị Phổ điểm toàn khối môn ${sb}</div>
+            <div style="height:190px">${getSvgHist(stList, 1, tColors, cfg)}</div>
+          </div>
+          <div style="flex:1;border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
+            <div style="font-size:9.5pt;font-weight:bold;margin-bottom:4px;text-align:center;color:#004f9e">Đồ thị Tỉ lệ 4 tầng học sinh</div>
+            <div style="height:190px">${getSvgPie(sStats, tColors)}</div>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- 6. KẾ HOẠCH GIẢI PHÁP SƯ PHẠM -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">6. Kế hoạch giải pháp sư phạm môn ${sb}</h3>
+      <p style="margin:4px 0"><strong>A. Kế hoạch can thiệp nhóm học sinh Yếu & Cận chuẩn (${yeuArr.length} học sinh):</strong></p>
+      <ul style="line-height:1.55;margin:4px 0 10px;padding-left:22px;font-size:10.5pt">
+        <li><strong>⭐ Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Học sinh cận chuẩn (4.5–4.9 điểm). Tổ chức ôn luyện trọng tâm cấp tốc 3 buổi để đảm bảo đạt chuẩn kỳ tiếp theo.</li>
+        <li><strong>📚 Phụ đạo tập trung (${regularWeakArr.length} HS):</strong> Học sinh từ 3.0–4.4 điểm. Tổ chức học phụ đạo 2 buổi/tuần vào chiều thứ Ba & thứ Năm, củng cố kiến thức hổng.</li>
+        <li><strong>👨‍🏫 Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Học sinh dưới 3.0 điểm. Mô hình Đôi bạn cùng tiến (HS Giỏi kèm) kết hợp GV kèm riêng 1 buổi/tuần.</li>
+      </ul>
+      <p style="font-weight:bold;margin-top:8px;color:#c0392b;font-size:10pt">Bảng danh sách toàn bộ học sinh diện can thiệp (${yeuArr.length} học sinh):</p>
+      ${yeuArr.length === 0 ? '<p style="font-style:italic">Không có học sinh yếu môn này.</p>' : `
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#fee2e2;font-weight:bold;text-align:center">
+          <th style="width:6%">STT</th>
+          <th style="width:28%">Họ và tên</th>
+          <th style="width:12%">Lớp</th>
+          <th style="width:12%">Điểm số</th>
+          <th style="width:22%">Mô hình phân bổ</th>
+          <th style="width:20%">Mục tiêu can thiệp</th>
+        </tr>
+        ${yeuArr.map((s, idx) => `
+          <tr style="text-align:center">
+            <td>${idx + 1}</td>
+            <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
+            <td>${esc(s.cls)}</td>
+            <td style="color:#c0392b;font-weight:bold">${s.score}</td>
+            <td>${s.score < 3 ? '👨‍🏫 Kèm 1-1' : s.score >= 4.5 ? '⭐ VIP nâng hạng' : '📚 Phụ đạo tập trung'}</td>
+            <td>${s.score >= 4.5 ? 'Đạt ≥ 5.5' : 'Đạt chuẩn 5.0'}</td>
+          </tr>
+        `).join('')}
+      </table>`}
+
+      <p style="margin:12px 0 4px"><strong>B. Kế hoạch bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} học sinh):</strong></p>
+      <ul style="line-height:1.55;margin:4px 0 10px;padding-left:22px;font-size:10.5pt">
+        <li><strong>🏆 Đội tuyển HSG & Dự án STEM:</strong> Chọn lọc học sinh đạt từ 9.0 trở lên tham gia bồi dưỡng chuyên sâu.</li>
+        <li><strong>🌐 Tự học trên nền tảng Website:</strong> Cung cấp ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến.</li>
+        <li><strong>🤝 Phong trào Mentor trợ giảng:</strong> Huy động học sinh giỏi kèm cặp và hướng dẫn các bạn yếu trong nhóm học tập tại lớp.</li>
+      </ul>
+      <p style="font-weight:bold;margin-top:8px;color:#00904b;font-size:10pt">Bảng danh sách toàn bộ học sinh Giỏi (${gioiArr.length} học sinh):</p>
+      ${gioiArr.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#dcfce7;font-weight:bold;text-align:center">
+          <th style="width:6%">STT</th>
+          <th style="width:28%">Họ và tên</th>
+          <th style="width:12%">Lớp</th>
+          <th style="width:12%">Điểm số</th>
+          <th style="width:22%">Mô hình bồi dưỡng</th>
+          <th style="width:20%">Nhiệm vụ trọng tâm</th>
+        </tr>
+        ${gioiArr.map((s, idx) => `
+          <tr style="text-align:center">
+            <td>${idx + 1}</td>
+            <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
+            <td>${esc(s.cls)}</td>
+            <td style="color:#00904b;font-weight:bold">${s.score}</td>
+            <td>${s.score >= 9.5 ? '🏆 Đội tuyển HSG & STEM' : s.score >= 8.5 ? '🤝 Mentor trợ giảng' : '🌐 Tự học nâng cao'}</td>
+            <td>${s.score >= 9.5 ? 'Bồi dưỡng chuyên đề thi HSG' : s.score >= 8.5 ? 'Hỗ trợ nhóm bạn học tại lớp' : 'Luyện đề vận dụng cao online'}</td>
+          </tr>
+        `).join('')}
+      </table>`}
+
+      <!-- 7. PHỤ LỤC DANH SÁCH TOÀN BỘ HỌC SINH -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">7. Phụ lục: Bảng điểm chi tiết toàn bộ học sinh môn ${sb} (${stList.length} học sinh đối soát)</h3>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th style="width:6%">STT</th>
+          <th style="width:34%">Họ và tên</th>
+          <th style="width:12%">Lớp</th>
+          <th style="width:12%">Điểm số</th>
+          <th style="width:16%">Xếp loại</th>
+          <th style="width:20%">Đề xuất sư phạm</th>
+        </tr>
+        ${sortedAll.map((s, idx) => {
+          const t = tier(s.score, cfg);
+          let sol = '';
+          if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'Lớp VIP' : 'Phụ đạo tập trung';
+          else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
+          else sol = 'Rèn luyện';
+          return `
+            <tr style="text-align:center">
+              <td>${idx + 1}</td>
+              <td style="text-align:left;padding-left:6px">${esc(s.name)}</td>
+              <td>${esc(s.cls)}</td>
+              <td style="font-weight:bold;${s.score < 5 ? 'color:#c0392b' : s.score >= 8 ? 'color:#00904b' : ''}">${s.score}</td>
+              <td>${tLabel(t)}</td>
+              <td>${sol}</td>
+            </tr>
+          `;
+        }).join('')}
+      </table>
+    </div>
+  `;
+}
+
+function buildFullReportHTML(targetSubject, isAll, forPrint) {
   const cfg = getCfg();
   const dateStr = new Date().toLocaleDateString('vi-VN');
   const signerRole = currentUser ? currentUser.roleLabel : 'Trưởng bộ môn';
   const signerName = currentUser ? currentUser.name : '';
-
-  let bodyContent = '';
   const subjectsToExport = isAll
     ? (currentUser && currentUser.subjects && currentUser.subjects.length > 1 ? currentUser.subjects : ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý'])
-    : [currentSubject];
+    : [targetSubject || currentSubject];
 
-  // Nếu xuất tổng hợp 5 môn, thêm Bảng Tổng Quan So Sánh Cả 5 Môn ở đầu văn bản
+  let masterComparison = '';
   if (isAll && subjectsToExport.length > 1) {
-    bodyContent += `
-      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:15px">
+    masterComparison = `
+      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:15px;font-size:14pt">
         TỔNG HỢP SO SÁNH CHẤT LƯỢNG 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN
       </h2>
-      <p style="font-size:12pt"><em>Kỳ kiểm tra: ${cfg.exam} · Trường THPT FPT · Tổ KHTN</em></p>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt;margin-bottom:28px">
+      <p style="font-size:11pt"><em>Kỳ kiểm tra: ${cfg.exam} · Trường THPT FPT · Tổ KHTN</em></p>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10pt;margin-bottom:24px">
         <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
           <th>STT</th>
           <th>Bộ môn</th>
@@ -2260,242 +2606,12 @@ window.exportWord = function(isAll) {
     `;
   }
 
-  subjectsToExport.forEach((sb, sIdx) => {
-    const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
-    const stList = sData.students;
-    const sStats = stats(stList, sData.cfg || cfg);
-    const clList = [...new Set(stList.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
+  const subjectsHTML = subjectsToExport.map((sb, idx) => {
+    return (idx > 0 ? '<div class="page-break" style="page-break-before:always;margin-top:20px"></div>' : '') + buildSubjectReportHTML(sb, forPrint);
+  }).join('');
 
-    if (!sStats) return;
-
-    const near = [];
-    stList.forEach(s => {
-      const t = tier(s.score, sData.cfg || cfg);
-      const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
-      const diff = Math.round((target - s.score)*100)/100;
-      if (diff > 0 && diff <= 0.5) near.push({ s, gap: diff });
-    });
-
-    const yeuArr = stList.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
-    const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
-    const nearYeuArr = near.filter(x => x.s.score >= 4.5 && x.s.score < 5.0);
-    const regularWeakArr = yeuArr.filter(s => s.score >= 3.0 && s.score < 4.5);
-    const gioiArr = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
-    const sortedAll = [...stList].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
-
-    const sBins = hist(stList, 1);
-    const maxBin = Math.max(1, ...sBins);
-    const peakBinIdx = sBins.indexOf(maxBin);
-    const peakBinLabel = `${f1(peakBinIdx)}–${f1(peakBinIdx + 1)}`;
-
-    bodyContent += `
-      ${(isAll && subjectsToExport.length > 1) || sIdx > 0 ? '<br style="page-break-before:always;" />' : ''}
-      <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:24px">
-        ${isAll ? `PHẦN ${sIdx + 1}: BÁO CÁO KẾT QUẢ BỘ MÔN ${sb.toUpperCase()}` : `BÁO CÁO KẾT QUẢ BỘ MÔN ${sb.toUpperCase()}`}
-      </h2>
-      <p style="font-size:12pt"><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh: <strong>${sStats.n}</strong> học sinh (${clList.length} lớp học)</em></p>
-
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">I. Bảng phân bố phổ điểm chi tiết môn ${sb} (Thang điểm 0–10)</h3>
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10.5pt;margin-bottom:12px">
-        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
-          <th style="width:16%">Khoảng điểm</th>
-          <th style="width:14%">Số lượng HS</th>
-          <th style="width:12%">Tỉ lệ (%)</th>
-          <th style="width:38%">Biểu đồ phân bố mật độ phổ điểm</th>
-          <th style="width:20%">Xếp loại phân tầng</th>
-        </tr>
-        ${sBins.map((cnt, bIdx) => {
-          const bTier = tier((bIdx + 0.5), sData.cfg || cfg);
-          const barColor = bTier === 'gioi' ? '#00904b' : bTier === 'kha' ? '#0054a6' : bTier === 'tb' ? '#d97706' : '#dc2626';
-          const tierText = bTier === 'gioi' ? '🟢 Giỏi' : bTier === 'kha' ? '🔵 Khá' : bTier === 'tb' ? '🟡 Trung bình' : '🔴 Yếu';
-          const barW = Math.round((cnt / (maxBin || 1)) * 180);
-          return `
-            <tr style="text-align:center;background:${bIdx === peakBinIdx ? '#fff9e6' : '#ffffff'}">
-              <td style="font-weight:bold">${f1(bIdx)} – ${f1(bIdx + 1)}</td>
-              <td style="font-weight:bold;color:${barColor}">${cnt} HS</td>
-              <td>${pc(cnt / (sStats.n || 1))}</td>
-              <td style="text-align:left;padding-left:12px">
-                <div style="display:inline-block;background:${barColor};width:${Math.max(3, barW)}px;height:14px;border-radius:3px"></div>
-                <span style="font-size:9pt;color:#64748b;margin-left:6px">${cnt > 0 ? cnt + ' HS' : ''}</span>
-              </td>
-              <td style="font-weight:600;color:${barColor}">${tierText}</td>
-            </tr>
-          `;
-        }).join('')}
-      </table>
-      <p style="margin-top:6px;font-size:11pt">
-        • <strong>Đặc điểm phổ điểm:</strong> Đỉnh phổ điểm tập trung nhiều nhất ở khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).<br>
-        • <strong>Chỉ số thống kê:</strong> ĐTB Khối: <strong>${fm(sStats.mean)}</strong> · Trung vị: <strong>${fm(sStats.med)}</strong> · Điểm cao nhất: <strong>${fm(sStats.max)}</strong> · Điểm thấp nhất: <strong>${fm(sStats.min)}</strong> · Độ lệch chuẩn (SD): <strong>${fm(sStats.sd)}</strong> · Tỉ lệ Đạt chuẩn (≥5.0): <strong>${pc(sStats.pass)}</strong> (${sStats.n - sStats.c.yeu}/${sStats.n} HS).
-      </p>
-
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:20px">II. Cơ cấu & Bảng phân tích 4 nhóm học sinh (Giỏi - Khá - Trung bình - Yếu)</h3>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:11pt">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th>Chỉ số</th>
-          <th>Toàn khối ${sb}</th>
-          <th>🟢 Giỏi (≥${f1(sData.cfg.gioi)})</th>
-          <th>🔵 Khá (${f1(sData.cfg.kha)}–${f1(sData.cfg.gioi-0.1)})</th>
-          <th>🟡 TB (${f1(sData.cfg.tb)}–${f1(sData.cfg.kha-0.1)})</th>
-          <th>🔴 Yếu (<${f1(sData.cfg.tb)})</th>
-          <th>Tỉ lệ Đạt (≥5.0)</th>
-        </tr>
-        <tr style="text-align:center">
-          <td><strong>Số lượng</strong></td>
-          <td><strong>${sStats.n} HS</strong></td>
-          <td>${sStats.c.gioi} HS</td>
-          <td>${sStats.c.kha} HS</td>
-          <td>${sStats.c.tb} HS</td>
-          <td style="color:#c0392b;font-weight:bold">${sStats.c.yeu} HS</td>
-          <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
-        </tr>
-        <tr style="text-align:center">
-          <td><strong>Tỉ lệ (%)</strong></td>
-          <td>100%</td>
-          <td>${pc(sStats.c.gioi/sStats.n)}</td>
-          <td>${pc(sStats.c.kha/sStats.n)}</td>
-          <td>${pc(sStats.c.tb/sStats.n)}</td>
-          <td style="color:#c0392b;font-weight:bold">${pc(sStats.c.yeu/sStats.n)}</td>
-          <td>${sStats.n - sStats.c.yeu}/${sStats.n} HS</td>
-        </tr>
-      </table>
-
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:20px">III. Bảng so sánh chất lượng giữa các lớp trong khối</h3>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th>Lớp</th>
-          <th>Sĩ số</th>
-          <th>ĐTB</th>
-          <th>Cao nhất</th>
-          <th>Thấp nhất</th>
-          <th>Giỏi</th>
-          <th>Khá</th>
-          <th>TB</th>
-          <th>Yếu</th>
-          <th>Tỉ lệ đạt</th>
-        </tr>
-        ${clList.map(c => {
-          const cs = stats(stList.filter(s => s.cls === c), sData.cfg || cfg);
-          return `
-            <tr style="text-align:center">
-              <td style="text-align:left;font-weight:bold">${c}</td>
-              <td>${cs.n}</td>
-              <td style="font-weight:bold;color:#f26f21">${fm(cs.mean)}</td>
-              <td>${fm(cs.max)}</td>
-              <td>${fm(cs.min)}</td>
-              <td>${cs.c.gioi} (${pc(cs.c.gioi/cs.n)})</td>
-              <td>${cs.c.kha} (${pc(cs.c.kha/cs.n)})</td>
-              <td>${cs.c.tb} (${pc(cs.c.tb/cs.n)})</td>
-              <td style="color:#c0392b;font-weight:bold">${cs.c.yeu} (${pc(cs.c.yeu/cs.n)})</td>
-              <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </table>
-
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:16px">IV. Kế hoạch giải pháp can thiệp sư phạm (4 nhóm học sinh)</h3>
-      <p><strong>A. Kế hoạch can thiệp nhóm học sinh Yếu (${yeuArr.length} học sinh):</strong></p>
-      <ul>
-        <li><strong>⭐ Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Học sinh cận chuẩn (4.5–4.9 điểm). Tổ chức ôn luyện trọng tâm cấp tốc 3 buổi để đảm bảo đạt chuẩn kỳ tiếp theo.</li>
-        <li><strong>📚 Phụ đạo tập trung (${regularWeakArr.length} HS):</strong> Học sinh từ 3.0–4.4 điểm. Tổ chức học phụ đạo 2 buổi/tuần vào chiều thứ Ba & thứ Năm, củng cố kiến thức hổng.</li>
-        <li><strong>👨‍🏫 Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Học sinh dưới 3.0 điểm. Mô hình Đôi bạn cùng tiến (HS Giỏi kèm) kết hợp GV kèm riêng 1 buổi/tuần.</li>
-      </ul>
-
-      <p style="font-weight:bold;margin-top:10px;color:#c0392b">Bảng danh sách toàn bộ học sinh diện can thiệp (${yeuArr.length} học sinh):</p>
-      ${yeuArr.length === 0 ? '<p style="font-style:italic">Không có học sinh yếu môn này.</p>' : `
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
-        <tr style="background:#fee2e2;font-weight:bold;text-align:center">
-          <th style="width:6%">STT</th>
-          <th style="width:28%">Họ và tên</th>
-          <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm số</th>
-          <th style="width:22%">Mô hình phân bổ</th>
-          <th style="width:20%">Mục tiêu can thiệp</th>
-        </tr>
-        ${yeuArr.map((s, idx) => `
-          <tr style="text-align:center">
-            <td>${idx + 1}</td>
-            <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
-            <td>${esc(s.cls)}</td>
-            <td style="color:#c0392b;font-weight:bold">${s.score}</td>
-            <td>${s.score < 3 ? '👨‍🏫 Kèm 1-1' : s.score >= 4.5 ? '⭐ VIP nâng hạng' : '📚 Phụ đạo tập trung'}</td>
-            <td>${s.score >= 4.5 ? 'Đạt ≥ 5.5' : 'Đạt chuẩn 5.0'}</td>
-          </tr>
-        `).join('')}
-      </table>`}
-
-      <p style="margin-top:16px"><strong>B. Kế hoạch bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} học sinh):</strong></p>
-      <ul>
-        <li><strong>🏆 Đội tuyển HSG & Dự án STEM:</strong> Chọn lọc học sinh đạt từ 9.0 trở lên tham gia bồi dưỡng chuyên sâu.</li>
-        <li><strong>🌐 Tự học trên nền tảng Website:</strong> Cung cấp ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến.</li>
-        <li><strong>🤝 Phong trào Mentor trợ giảng:</strong> Huy động học sinh giỏi kèm cặp và hướng dẫn các bạn yếu trong nhóm học tập tại lớp.</li>
-      </ul>
-
-      <p style="font-weight:bold;margin-top:10px;color:#00904b">Bảng danh sách toàn bộ học sinh Giỏi (${gioiArr.length} học sinh):</p>
-      ${gioiArr.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
-        <tr style="background:#dcfce7;font-weight:bold;text-align:center">
-          <th style="width:6%">STT</th>
-          <th style="width:28%">Họ và tên</th>
-          <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm số</th>
-          <th style="width:22%">Mô hình bồi dưỡng</th>
-          <th style="width:20%">Nhiệm vụ trọng tâm</th>
-        </tr>
-        ${gioiArr.map((s, idx) => `
-          <tr style="text-align:center">
-            <td>${idx + 1}</td>
-            <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
-            <td>${esc(s.cls)}</td>
-            <td style="color:#00904b;font-weight:bold">${s.score}</td>
-            <td>${s.score >= 9.5 ? '🏆 Đội tuyển HSG & STEM' : s.score >= 8.5 ? '🤝 Mentor trợ giảng' : '🌐 Tự học nâng cao'}</td>
-            <td>${s.score >= 9.5 ? 'Bồi dưỡng chuyên đề thi HSG' : s.score >= 8.5 ? 'Hỗ trợ nhóm bạn học tại lớp' : 'Luyện đề vận dụng cao online'}</td>
-          </tr>
-        `).join('')}
-      </table>`}
-
-      <h3 style="font-size:13pt;color:#1e293b;margin-top:18px">V. Phụ lục: Bảng điểm chi tiết toàn bộ học sinh (${stList.length} học sinh đối soát)</h3>
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th style="width:6%">STT</th>
-          <th style="width:34%">Họ và tên</th>
-          <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm số</th>
-          <th style="width:16%">Xếp loại</th>
-          <th style="width:20%">Đề xuất sư phạm</th>
-        </tr>
-        ${sortedAll.map((s, idx) => {
-          const t = tier(s.score, sData.cfg || cfg);
-          let sol = '';
-          if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'Lớp VIP' : 'Phụ đạo tập trung';
-          else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
-          else sol = 'Rèn luyện';
-          return `
-            <tr style="text-align:center">
-              <td>${idx + 1}</td>
-              <td style="text-align:left">${esc(s.name)}</td>
-              <td>${esc(s.cls)}</td>
-              <td style="font-weight:bold;${s.score < 5 ? 'color:#c0392b' : s.score >= 8 ? 'color:#00904b' : ''}">${s.score}</td>
-              <td>${tLabel(t)}</td>
-              <td>${sol}</td>
-            </tr>
-          `;
-        }).join('')}
-      </table>
-    `;
-  });
-
-  const fullWordHTML = `
-    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-    <head>
-      <meta charset='utf-8'>
-      <title>KHTNReport - Báo cáo chuyên môn Tổ KHTN</title>
-      <style>
-        body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.45; }
-        table { border-collapse: collapse; }
-        h1, h2, h3, h4 { font-family: 'Times New Roman', serif; }
-      </style>
-    </head>
-    <body>
+  return `
+    <div class="full-official-report" style="font-family:'Times New Roman',serif;color:#000;line-height:1.45;padding:10px">
       <table style="width:100%;border:none;margin-bottom:20px">
         <tr>
           <td style="width:45%;text-align:center;vertical-align:top">
@@ -2511,18 +2627,18 @@ window.exportWord = function(isAll) {
         </tr>
       </table>
 
-      <div style="text-align:center;margin:25px 0 30px">
-        <h1 style="font-size:18pt;margin:0;color:#004f9e">BÁO CÁO KẾT QUẢ KIỂM TRA CHUYÊN MÔN</h1>
-        <h2 style="font-size:14pt;font-weight:normal;margin:6px 0">
-          ${isAll ? 'TỔNG HỢP 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN (KHTNReport)' : `BỘ MÔN: ${currentSubject.toUpperCase()} (KHTNReport)`}
+      <div style="text-align:center;margin:20px 0 26px">
+        <h1 style="font-size:17pt;margin:0;color:#004f9e;text-transform:uppercase">BÁO CÁO PHÂN TÍCH CHUYÊN MÔN & KẾ HOẠCH PHÂN TẦNG SƯ PHẠM</h1>
+        <h2 style="font-size:13pt;font-weight:bold;margin:6px 0;color:#334155">
+          ${isAll ? 'TỔNG HỢP 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN (KHTNReport)' : `BỘ MÔN: ${targetSubject.toUpperCase()} (KHTNReport)`}
         </h2>
-        <p style="margin:4px 0"><em>Kỳ kiểm tra: ${cfg.exam}</em></p>
+        <p style="margin:4px 0;font-size:11pt"><em>Kỳ kiểm tra: ${cfg.exam} · Năm học 2026 – 2027</em></p>
       </div>
 
-      ${bodyContent}
+      ${masterComparison}
+      ${subjectsHTML}
 
-      <br><br>
-      <table style="width:100%;border:none;margin-top:35px">
+      <table style="width:100%;border:none;margin-top:35px;page-break-inside:avoid">
         <tr>
           <td style="width:50%;text-align:center;vertical-align:top">
             <strong>TỔ TRƯỞNG CHUYÊN MÔN KHTN</strong><br>
@@ -2537,6 +2653,27 @@ window.exportWord = function(isAll) {
           </td>
         </tr>
       </table>
+    </div>
+  `;
+}
+
+// ===== WORD EXPORT IMPLEMENTATION =====
+window.exportWord = function(isAll) {
+  const cfg = getCfg();
+  const fullContent = buildFullReportHTML(currentSubject, isAll, false);
+  const fullWordHTML = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>KHTNReport - Báo cáo chuyên môn Tổ KHTN</title>
+      <style>
+        body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.45; }
+        table { border-collapse: collapse; }
+        h1, h2, h3, h4 { font-family: 'Times New Roman', serif; }
+      </style>
+    </head>
+    <body>
+      ${fullContent}
     </body>
     </html>
   `;
@@ -2548,217 +2685,35 @@ window.exportWord = function(isAll) {
 
   downloadFile('\ufeff' + fullWordHTML, fileName, 'application/msword;charset=utf-8');
   saveLastReport(currentSubject, currentExam, isAll ? 'Tải Word 5 môn' : `Tải Word môn ${currentSubject}`);
-  toast(`Đã xuất file Word KHTNReport ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) thành công!`);
+  toast(`Đã xuất file Word KHTNReport ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) đầy đủ 6 hạng mục!`);
 };
 
 // ===== PDF & MODAL PREVIEW =====
 window.exportPDF = function() {
-  saveLastReport(currentSubject, currentExam, 'In / Lưu PDF');
-  window.print();
+  const content = buildFullReportHTML(currentSubject, false, true);
+  let pa = document.getElementById('printArea');
+  if (!pa) {
+    pa = document.createElement('div');
+    pa.id = 'printArea';
+    document.body.appendChild(pa);
+  }
+  pa.innerHTML = content;
+  saveLastReport(currentSubject, currentExam, `In / Lưu PDF môn ${currentSubject}`);
+  setTimeout(() => window.print(), 150);
 };
 
 window.previewReportModal = function() {
-  const cfg = getCfg();
-  const st = S();
-  const sStats = stats(st, cfg);
-  const cl = classes();
-  const dateStr = new Date().toLocaleDateString('vi-VN');
-  const signerRole = currentUser ? currentUser.roleLabel : 'Trưởng bộ môn';
-  const signerName = currentUser ? currentUser.name : '';
-  const sBins = hist(st, 1);
-  const maxBin = Math.max(1, ...sBins);
-  const peakBinIdx = sBins.indexOf(maxBin);
-  const yeuArr = st.filter(s => s.score < 5.0);
-  const nearYeuArr = yeuArr.filter(s => s.score >= 4.5);
-  const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
-  const gioiArr = st.filter(s => s.score >= 8.0);
-
+  const content = buildFullReportHTML(currentSubject, false, true);
   const html = `
-    <div style="max-height:75vh;overflow-y:auto;padding:8px">
-      <div style="background:#fff;padding:24px;border:1px solid #cbd5e1;border-radius:8px;font-family:'Times New Roman',serif;font-size:12.5pt;line-height:1.45;color:#000">
-        <table style="width:100%;border:none;margin-bottom:18px">
-          <tr>
-            <td style="width:50%;text-align:center;vertical-align:top">
-              <strong>TRƯỜNG THPT FPT</strong><br>
-              <strong>TỔ KHOA HỌC TỰ NHIÊN</strong><br>
-              <div style="width:80px;height:1px;background:#000;margin:4px auto"></div>
-            </td>
-            <td style="width:50%;text-align:center;vertical-align:top">
-              <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
-              <strong>Độc lập - Tự do - Hạnh phúc</strong><br>
-              <div style="width:120px;height:1px;background:#000;margin:4px auto"></div>
-            </td>
-          </tr>
-        </table>
-
-        <div style="text-align:center;margin:18px 0 22px">
-          <h2 style="font-size:16pt;margin:0;font-weight:bold;color:#004f9e">BÁO CÁO PHÂN TÍCH CHUYÊN MÔN & KẾ HOẠCH PHÂN TẦNG</h2>
-          <h3 style="font-size:13pt;font-weight:normal;margin:4px 0">BỘ MÔN: ${currentSubject.toUpperCase()} (KHTNReport)</h3>
-          <p style="margin:2px 0;font-size:11pt"><em>Kỳ kiểm tra: ${esc(cfg.exam)} · Sĩ số: ${sStats.n} học sinh (${cl.length} lớp)</em></p>
-        </div>
-
-        <h4 style="font-size:12pt;margin:12px 0 6px">I. BẢNG PHÂN BỐ PHỔ ĐIỂM CHI TIẾT (THANG ĐIỂM 0–10)</h4>
-        <table border="1" cellspacing="0" cellpadding="4" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt;margin-bottom:10px">
-          <tr style="background:#0054A6;color:#ffffff;font-weight:bold">
-            <th style="width:18%">Khoảng điểm</th>
-            <th style="width:16%">Số lượng</th>
-            <th style="width:14%">Tỉ lệ</th>
-            <th style="width:36%">Mật độ phổ điểm</th>
-            <th style="width:16%">Phân tầng</th>
-          </tr>
-          ${sBins.map((cnt, bIdx) => {
-            const bTier = tier((bIdx + 0.5), cfg);
-            const barColor = bTier === 'gioi' ? '#00904b' : bTier === 'kha' ? '#0054a6' : bTier === 'tb' ? '#d97706' : '#dc2626';
-            const tierText = bTier === 'gioi' ? 'Giỏi' : bTier === 'kha' ? 'Khá' : bTier === 'tb' ? 'TB' : 'Yếu';
-            const barW = Math.round((cnt / (maxBin || 1)) * 140);
-            return `
-              <tr style="${bIdx === peakBinIdx ? 'background:#fff9e6' : ''}">
-                <td style="font-weight:bold">${f1(bIdx)} – ${f1(bIdx + 1)}</td>
-                <td style="font-weight:bold;color:${barColor}">${cnt} HS</td>
-                <td>${pc(cnt / (sStats.n || 1))}</td>
-                <td style="text-align:left;padding-left:8px">
-                  <div style="display:inline-block;background:${barColor};width:${Math.max(3, barW)}px;height:12px;border-radius:2px"></div>
-                </td>
-                <td style="font-weight:bold;color:${barColor}">${tierText}</td>
-              </tr>
-            `;
-          }).join('')}
-        </table>
-        <p style="font-size:10.5pt;margin:4px 0 12px">
-          • Đỉnh phổ điểm tập trung tại khoảng <strong>${f1(peakBinIdx)}–${f1(peakBinIdx + 1)} điểm</strong> (${maxBin} HS, chiếm ${pc(maxBin / sStats.n)}).
-        </p>
-
-        <h4 style="font-size:12pt;margin:14px 0 6px">II. BẢNG THỐNG KÊ CHẤT LƯỢNG VÀ CƠ CẤU 4 TẦNG HỌC SINH</h4>
-        <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;text-align:center;font-size:10.5pt">
-          <tr style="background:#f1f5f9;font-weight:bold">
-            <th>Tổng số HS</th>
-            <th>ĐTB</th>
-            <th>Trung vị</th>
-            <th>Min</th>
-            <th>Max</th>
-            <th>SD</th>
-            <th>🟢 Giỏi</th>
-            <th>🔵 Khá</th>
-            <th>🟡 TB</th>
-            <th>🔴 Yếu</th>
-            <th>Tỉ lệ Đạt</th>
-          </tr>
-          <tr>
-            <td><strong>${sStats.n}</strong></td>
-            <td><strong>${fm(sStats.mean)}</strong></td>
-            <td>${fm(sStats.med)}</td>
-            <td>${fm(sStats.min)}</td>
-            <td>${fm(sStats.max)}</td>
-            <td>${fm(sStats.sd)}</td>
-            <td>${sStats.c.gioi} (${pc(sStats.c.gioi/sStats.n)})</td>
-            <td>${sStats.c.kha} (${pc(sStats.c.kha/sStats.n)})</td>
-            <td>${sStats.c.tb} (${pc(sStats.c.tb/sStats.n)})</td>
-            <td style="color:#c0392b;font-weight:bold">${sStats.c.yeu} (${pc(sStats.c.yeu/sStats.n)})</td>
-            <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
-          </tr>
-        </table>
-
-        <h4 style="font-size:12pt;margin:16px 0 6px">III. BẢNG SO SÁNH GIỮA CÁC LỚP TRONG KHỐI</h4>
-        <table border="1" cellspacing="0" cellpadding="5" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt">
-          <tr style="background:#f1f5f9;font-weight:bold">
-            <th>Lớp</th>
-            <th>Sĩ số</th>
-            <th>ĐTB</th>
-            <th>Min</th>
-            <th>Max</th>
-            <th>Giỏi</th>
-            <th>Khá</th>
-            <th>TB</th>
-            <th>Yếu</th>
-            <th>% Đạt</th>
-          </tr>
-          ${cl.map(c => {
-            const cs = stats(st.filter(s => s.cls === c), cfg);
-            return `
-              <tr>
-                <td style="font-weight:bold">${c}</td>
-                <td>${cs.n}</td>
-                <td style="font-weight:bold">${fm(cs.mean)}</td>
-                <td>${fm(cs.min)}</td>
-                <td>${fm(cs.max)}</td>
-                <td>${cs.c.gioi}</td>
-                <td>${cs.c.kha}</td>
-                <td>${cs.c.tb}</td>
-                <td style="color:#c0392b">${cs.c.yeu}</td>
-                <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
-              </tr>
-            `;
-          }).join('')}
-        </table>
-
-        <h4 style="font-size:12pt;margin:16px 0 6px">IV. KẾ HOẠCH HÀNH ĐỘNG SƯ PHẠM (4 NHÓM CAN THIỆP & BỒI DƯỠNG)</h4>
-        <p style="margin:4px 0 2px"><strong>1. Can thiệp nhóm học sinh Yếu (${yeuArr.length} em):</strong></p>
-        <ul style="margin:2px 0 10px;padding-left:20px;font-size:10.5pt">
-          <li><strong>⭐ Lớp VIP bứt phá (${nearYeuArr.length} em):</strong> Điểm 4.5 – 4.9. Ôn tập tập trung 3 buổi, mục tiêu vượt ngưỡng 5.0.</li>
-          <li><strong>📚 Phụ đạo tập trung (${yeuArr.length - nearYeuArr.length - veryWeakArr.length} em):</strong> Điểm 3.0 – 4.4. Học phụ đạo 2 buổi/tuần chiều T3-T5.</li>
-          <li><strong>👨‍🏫 Kèm 1-1 (${veryWeakArr.length} em):</strong> Điểm < 3.0. Phân công đôi bạn cùng tiến và giáo viên kèm riêng.</li>
-        </ul>
-        <table border="1" cellspacing="0" cellpadding="4" style="width:100%;border-collapse:collapse;text-align:center;font-size:9.5pt;margin-bottom:12px">
-          <tr style="background:#fee2e2;font-weight:bold">
-            <th>STT</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th><th>Phân loại</th><th>Mục tiêu</th>
-          </tr>
-          ${yeuArr.map((s, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
-              <td>${esc(s.cls)}</td>
-              <td style="color:#c0392b;font-weight:bold">${s.score}</td>
-              <td>${s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'VIP nâng hạng' : 'Phụ đạo'}</td>
-              <td>${s.score >= 4.5 ? '≥ 5.5' : 'Đạt 5.0'}</td>
-            </tr>
-          `).join('')}
-        </table>
-
-        <p style="margin:8px 0 2px"><strong>2. Bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} em):</strong></p>
-        <ul style="margin:2px 0 10px;padding-left:20px;font-size:10.5pt">
-          <li><strong>🏆 Đội tuyển HSG:</strong> Bồi dưỡng dự thi học sinh giỏi và dự án STEM.</li>
-          <li><strong>🌐 Tự học số:</strong> Cung cấp ngân hàng bài tập vận dụng cao trực tuyến.</li>
-          <li><strong>🤝 Mentor:</strong> Học sinh giỏi hướng dẫn bạn trong các nhóm học tập.</li>
-        </ul>
-        <table border="1" cellspacing="0" cellpadding="4" style="width:100%;border-collapse:collapse;text-align:center;font-size:9.5pt;margin-bottom:12px">
-          <tr style="background:#dcfce7;font-weight:bold">
-            <th>STT</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th><th>Mô hình</th><th>Nội dung</th>
-          </tr>
-          ${gioiArr.map((s, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td style="text-align:left;font-weight:bold">${esc(s.name)}</td>
-              <td>${esc(s.cls)}</td>
-              <td style="color:#00904b;font-weight:bold">${s.score}</td>
-              <td>${s.score >= 9.5 ? '🏆 Đội HSG' : s.score >= 8.5 ? '🤝 Mentor' : '🌐 Tự học số'}</td>
-              <td>${s.score >= 9.5 ? 'Chuyên đề HSG' : s.score >= 8.5 ? 'Trợ giảng lớp' : 'Luyện online'}</td>
-            </tr>
-          `).join('')}
-        </table>
-
-        <table style="width:100%;border:none;margin-top:28px">
-          <tr>
-            <td style="width:50%;text-align:center;vertical-align:top">
-              <strong>TỔ TRƯỞNG CHUYÊN MÔN KHTN</strong><br>
-              <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
-              <strong>Thầy Thạch Thanh Tâm</strong>
-            </td>
-            <td style="width:50%;text-align:center;vertical-align:top">
-              <em>Hà Nội, ngày ${dateStr}</em><br>
-              <strong>${signerRole.toUpperCase()}</strong><br>
-              <em>(Ký và ghi rõ họ tên)</em><br><br><br><br>
-              <strong>${signerName}</strong>
-            </td>
-          </tr>
-        </table>
-      </div>
+    <div style="max-height:75vh;overflow-y:auto;padding:12px;background:#fff;border-radius:8px">
+      ${content}
     </div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn" onclick="closeModal()">Đóng</button>
       <button class="btn btn-primary" onclick="closeModal(); setTimeout(exportPDF, 300)">🖨️ In ra máy in / Lưu PDF ngay</button>
     </div>
   `;
-  openModal('📄 Bản Xem Trước Báo Cáo Chuyên Môn A4', html);
+  openModal(`📄 Bản Xem Trước Báo Cáo Chuyên Môn A4 - Môn ${esc(currentSubject)}`, html);
 };
 
 // Fallback HTML-Excel generator in case SheetJS is not loaded
@@ -2836,8 +2791,16 @@ window.exportExcel = function() {
       ['🔵 Khá', `${f1(cfg.kha)} - ${f1(cfg.gioi - 0.1)}`, sStats.c.kha, pc(sStats.c.kha / sStats.n)],
       ['🟡 Trung bình', `${f1(cfg.tb)} - ${f1(cfg.kha - 0.1)}`, sStats.c.tb, pc(sStats.c.tb / sStats.n)],
       ['🔴 Yếu', `< ${f1(cfg.tb)}`, sStats.c.yeu, pc(sStats.c.yeu / sStats.n)],
-      ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)]
+      ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)],
+      [],
+      ['III. NHẬN XÉT CHUYÊN MÔN SƯ PHẠM'],
+      ['STT', 'Nội dung phân tích chuyên môn', 'Khuyến nghị sư phạm']
     ];
+    const insList = getProfessionalInsights(st, sStats, cfg, cl);
+    insList.forEach((it, idx) => {
+      const cleanTxt = it.replace(/<[^>]*>/g, '');
+      sheet1Data.push([idx + 1, cleanTxt, 'Đưa vào kế hoạch sinh hoạt tổ và phân công theo dõi']);
+    });
 
     // Sheet 2: Phổ điểm chi tiết (10 khoảng điểm)
     const sBins = hist(st, 1);
