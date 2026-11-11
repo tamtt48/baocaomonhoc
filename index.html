@@ -613,11 +613,11 @@ initDefaultDataset();
 
 function getCfg() {
   const gEl = $('#cfgGioi'), kEl = $('#cfgKha'), tEl = $('#cfgTb'), eEl = $('#cfgExam');
-  const g = gEl ? +gEl.value : 8.0;
-  const k = kEl ? +kEl.value : 6.5;
-  const t = tEl ? +tEl.value : 5.0;
+  const g = (gEl && gEl.value) ? +gEl.value : 8.0;
+  const k = (kEl && kEl.value) ? +kEl.value : 6.5;
+  const t = (tEl && tEl.value) ? +tEl.value : 5.0;
   const curExObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
-  const examName = (eEl && eEl.value.trim()) ? eEl.value.trim() : curExObj.name;
+  const examName = (eEl && typeof eEl.value === 'string' && eEl.value.trim()) ? eEl.value.trim() : curExObj.name;
   return {
     subject: currentSubject,
     exam: examName,
@@ -695,6 +695,7 @@ function saveLastReport(sb = currentSubject, ex = currentExam, source = 'Xuất 
     console.error('Lỗi khi lưu lần báo cáo cuối cùng:', e);
   }
 }
+window.saveLastReport = saveLastReport;
 
 function getLastReport(sb = currentSubject, ex = currentExam) {
   try {
@@ -968,9 +969,16 @@ window.addEventListener('DOMContentLoaded', () => {
 const TABS = ['overview', 'charts', 'tiers', 'solutions', 'students', 'data', 'export'];
 
 function go(t) {
-  location.hash = t;
-  if (cur === t) renderTab(t);
+  show(t);
+  try {
+    if (location.hash.slice(1) !== t) {
+      location.hash = t;
+    }
+  } catch (e) {}
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+window.go = go;
+
 function show(t) {
   if (!TABS.includes(t)) t = 'overview';
   cur = t;
@@ -984,8 +992,53 @@ function show(t) {
   });
   renderTab(t);
 }
+window.show = show;
 $$('nav.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
 window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+window.openExportQuickMenu = function() {
+  const sb = currentSubject;
+  const cfg = getCfg();
+  const curEx = EXAMS.find(e => e.id === currentExam) || { short: currentExam };
+  const sData = allData[sb] || { students: [] };
+  const sStats = stats(sData.students, cfg);
+  const html = `
+    <div style="padding:6px 2px">
+      <p style="margin:0 0 16px;font-size:13.5px;color:#334155;line-height:1.5">
+        Chọn định dạng báo cáo cho bộ môn <strong>${esc(sb)}</strong> (Kỳ thi: <strong>${esc(curEx.short)}</strong> · Sĩ số: <strong>${sStats ? sStats.n : 0} HS</strong>):
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <button class="btn btn-primary" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px" onclick="closeModal(); exportWord(false)">
+          <span style="font-size:24px">📄</span>
+          <strong>Tải File Word (.doc)</strong>
+          <span style="font-size:11px;opacity:0.9">Kèm đầy đủ biểu đồ & 6 hạng mục</span>
+        </button>
+        <button class="btn btn-success" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px" onclick="closeModal(); exportPDF()">
+          <span style="font-size:24px">🖨️</span>
+          <strong>In / Lưu PDF A4</strong>
+          <span style="font-size:11px;opacity:0.9">Khổ giấy A4 chuẩn nộp BGH</span>
+        </button>
+        <button class="btn btn-export" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px" onclick="closeModal(); exportExcel()">
+          <span style="font-size:24px">📊</span>
+          <strong>Tải File Excel (.xlsx)</strong>
+          <span style="font-size:11px;opacity:0.9">Sổ điểm 6 Sheet phân tích</span>
+        </button>
+        <button class="btn" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px;border:1px solid #cbd5e1" onclick="closeModal(); previewReportModal()">
+          <span style="font-size:24px">👁️</span>
+          <strong>Xem Trước Báo Cáo A4</strong>
+          <span style="font-size:11px;color:#64748b">Xem trước bản in chính thức</span>
+        </button>
+      </div>
+      <div style="text-align:center;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#64748b">Cần xuất tổng hợp cả 5 môn hoặc tải DS VIP?</span>
+        <button class="btn" style="font-size:12px;color:var(--fpt-blue);font-weight:600" onclick="closeModal(); go('export')">
+          ⚙️ Đến Trung tâm Xuất file đầy đủ →
+        </button>
+      </div>
+    </div>
+  `;
+  openModal(`📥 Xuất Báo Cáo Nộp BGH - Môn ${esc(sb)}`, html);
+};
 
 function refresh() {
   $('#cnt').textContent = S().length;
@@ -1062,7 +1115,7 @@ function renderOverview() {
   }
 
   el.innerHTML = head(meta(), `Tổng quan kết quả môn ${esc(currentSubject)}`, `
-    <button class="btn btn-export" onclick="go('export')">📥 Xuất file nộp</button>
+    <button class="btn btn-export" onclick="openExportQuickMenu()">📥 Xuất file nộp</button>
   `) + `
   <div class="strip">
     <div><p class="l">Tổng số học sinh</p><p class="v">${all.n}</p><p class="s">${cl.length} lớp học</p></div>
@@ -1373,7 +1426,7 @@ function renderCharts() {
 
   const cl = classes(), all = stats(st, cfg);
   el.innerHTML = head(meta(), `Phổ điểm & Đồ thị phân tích môn ${esc(currentSubject)}`, `
-    <button class="btn btn-export" onclick="go('export')">📥 Xuất file báo cáo</button>
+    <button class="btn btn-export" onclick="openExportQuickMenu()">📥 Xuất file báo cáo</button>
   `) + `
   <div class="grid2">
     <section class="block">
@@ -1534,7 +1587,7 @@ function renderSolutions() {
   const weakStandard = yeuList.filter(s => s.score >= 3.0 && (!nearYeu.some(ny => ny.s.id === s.id)));
 
   let html = head(meta(), `Kế hoạch giải pháp sư phạm môn ${esc(currentSubject)}`, `
-    <button class="btn btn-export" onclick="go('export')">📥 Xuất giải pháp nộp BGH</button>
+    <button class="btn btn-export" onclick="openExportQuickMenu()">📥 Xuất giải pháp nộp BGH</button>
   `);
 
   // Section 1: Nhóm Yếu
@@ -2352,6 +2405,23 @@ function buildSubjectReportHTML(sb, forPrint) {
         </tr>
       </table>
 
+      <!-- BIỂU ĐỒ 1: THANH CƠ CẤU 4 TẦNG HỌC SINH (HIỂN THỊ TRỰC QUAN TRÊN MỌI MÔI TRƯỜNG WORD/PDF) -->
+      <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;margin-bottom:12px;background:#ffffff">
+        <tr style="background:#f8fafc">
+          <td style="padding:8px">
+            <div style="font-weight:bold;font-size:9.5pt;color:#004f9e;margin-bottom:6px">Biểu đồ thanh ngang tỉ lệ 4 tầng học sinh:</div>
+            <table style="width:100%;border-collapse:collapse;height:24px;border:1px solid #cbd5e1">
+              <tr>
+                ${sStats.c.gioi > 0 ? `<td style="width:${Math.round(sStats.c.gioi/sStats.n*100)}%;background:#00904b;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Giỏi ${Math.round(sStats.c.gioi/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.kha > 0 ? `<td style="width:${Math.round(sStats.c.kha/sStats.n*100)}%;background:#0054a6;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Khá ${Math.round(sStats.c.kha/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.tb > 0 ? `<td style="width:${Math.round(sStats.c.tb/sStats.n*100)}%;background:#d97706;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">TB ${Math.round(sStats.c.tb/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.yeu > 0 ? `<td style="width:${Math.round(sStats.c.yeu/sStats.n*100)}%;background:#dc2626;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Yếu ${Math.round(sStats.c.yeu/sStats.n*100)}%</td>` : ''}
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
       <!-- 3. NHẬN XÉT CHUYÊN MÔN -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">3. Nhận xét chuyên môn</h3>
       <ul style="line-height:1.6;margin:4px 0 12px;padding-left:22px;font-size:10.5pt">
@@ -2410,29 +2480,68 @@ function buildSubjectReportHTML(sb, forPrint) {
         </tr>
       </table>
 
+      <!-- BIỂU ĐỒ 2: SO SÁNH ĐIỂM TRUNG BÌNH CÁC LỚP VỚI ĐTB KHỐI -->
+      ${clList.length > 1 ? `
+      <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px;background:#ffffff">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th colspan="3" style="color:#004f9e;padding:6px">Biểu đồ so sánh Điểm trung bình các lớp với ĐTB toàn khối (${fm(sStats.mean)} điểm)</th>
+        </tr>
+        ${clList.map(c => {
+          const cs = stats(stList.filter(s => s.cls === c), cfg);
+          const barPct = Math.round((cs.mean / 10) * 100);
+          const isAbove = cs.mean >= sStats.mean;
+          return `
+            <tr>
+              <td style="width:14%;font-weight:bold;padding-left:8px;text-align:left">Lớp ${c}</td>
+              <td style="width:72%;padding:4px 8px">
+                <table style="width:100%;border-collapse:collapse;border:none">
+                  <tr>
+                    <td style="width:${barPct}%;background:${isAbove ? '#00904b' : '#0054a6'};height:14px;border-radius:2px;border:none"></td>
+                    <td style="width:${100 - barPct}%;border:none;padding-left:6px;font-size:8.5pt;font-weight:bold;color:${isAbove ? '#00904b' : '#0054a6'}">
+                      ${fm(cs.mean)} điểm
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td style="width:14%;text-align:center;font-size:8pt;color:${isAbove ? '#00904b' : '#c0392b'};font-weight:bold">
+                ${isAbove ? `+${fm(cs.mean - sStats.mean)}` : `${fm(cs.mean - sStats.mean)}`}
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </table>` : ''}
+
       <!-- 5. PHỔ ĐIỂM & ĐỒ THỊ PHÂN TÍCH -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">5. Phổ điểm & Đồ thị phân tích môn ${sb}</h3>
+      
+      <!-- BIỂU ĐỒ 3: PHỔ ĐIỂM TOÀN KHỐI (BẢNG TRỰC QUAN MẬT ĐỘ TỪNG KHOẢNG ĐIỂM) -->
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:8px">
         <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
           <th style="width:16%">Khoảng điểm</th>
-          <th style="width:14%">Số lượng HS</th>
-          <th style="width:12%">Tỉ lệ (%)</th>
-          <th style="width:38%">Biểu đồ phân bố mật độ phổ điểm</th>
-          <th style="width:20%">Xếp loại phân tầng</th>
+          <th style="width:13%">Số HS</th>
+          <th style="width:11%">Tỉ lệ</th>
+          <th style="width:44%">Biểu đồ phân bố mật độ phổ điểm</th>
+          <th style="width:16%">Phân tầng</th>
         </tr>
         ${sBins.map((cnt, bIdx) => {
           const bTier = tier((bIdx + 0.5), cfg);
           const barColor = bTier === 'gioi' ? '#00904b' : bTier === 'kha' ? '#0054a6' : bTier === 'tb' ? '#d97706' : '#dc2626';
           const tierText = bTier === 'gioi' ? '🟢 Giỏi' : bTier === 'kha' ? '🔵 Khá' : bTier === 'tb' ? '🟡 Trung bình' : '🔴 Yếu';
-          const barW = Math.round((cnt / (maxBin || 1)) * 180);
+          const barPct = Math.round((cnt / (maxBin || 1)) * 100);
           return `
             <tr style="text-align:center;background:${bIdx === peakBinIdx ? '#fff9e6' : '#ffffff'}">
               <td style="font-weight:bold">${f1(bIdx)} – ${f1(bIdx + 1)}</td>
               <td style="font-weight:bold;color:${barColor}">${cnt} HS</td>
               <td>${pc(cnt / (sStats.n || 1))}</td>
-              <td style="text-align:left;padding-left:12px">
-                <div style="display:inline-block;background:${barColor};width:${Math.max(3, barW)}px;height:12px;border-radius:2px"></div>
-                <span style="font-size:8.5pt;color:#64748b;margin-left:6px">${cnt > 0 ? cnt + ' HS' : ''}</span>
+              <td style="text-align:left;padding:3px 8px">
+                <table style="width:100%;border-collapse:collapse;border:none">
+                  <tr>
+                    <td style="width:${barPct}%;background:${barColor};height:15px;border-radius:2px;border:none"></td>
+                    <td style="width:${100 - barPct}%;border:none;padding-left:6px;font-size:8.5pt;color:#64748b">
+                      ${cnt > 0 ? `<strong>${cnt} HS</strong> (${pc(cnt / sStats.n)})` : '0'}
+                    </td>
+                  </tr>
+                </table>
               </td>
               <td style="font-weight:600;color:${barColor}">${tierText}</td>
             </tr>
@@ -2443,18 +2552,23 @@ function buildSubjectReportHTML(sb, forPrint) {
         • <strong>Đặc trưng phổ điểm:</strong> Điểm tập trung cao nhất ở khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
       </p>
 
-      ${forPrint ? `
-        <div style="display:flex;gap:14px;margin:12px 0;page-break-inside:avoid">
-          <div style="flex:1;border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
-            <div style="font-size:9.5pt;font-weight:bold;margin-bottom:4px;text-align:center;color:#004f9e">Đồ thị Phổ điểm toàn khối môn ${sb}</div>
-            <div style="height:190px">${getSvgHist(stList, 1, tColors, cfg)}</div>
-          </div>
-          <div style="flex:1;border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
-            <div style="font-size:9.5pt;font-weight:bold;margin-bottom:4px;text-align:center;color:#004f9e">Đồ thị Tỉ lệ 4 tầng học sinh</div>
-            <div style="height:190px">${getSvgPie(sStats, tColors)}</div>
-          </div>
-        </div>
-      ` : ''}
+      <!-- KHUNG ĐỒ THỊ VECTOR SVG (TÍCH HỢP ĐẦY ĐỦ TRÊN MỌI BẢN XUẤT) -->
+      <table style="width:100%;border:none;margin:12px 0;page-break-inside:avoid">
+        <tr>
+          <td style="width:50%;padding:4px;vertical-align:top;border:none">
+            <div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
+              <div style="font-size:9.5pt;font-weight:bold;margin-bottom:4px;text-align:center;color:#004f9e">Đồ thị Phổ điểm toàn khối môn ${sb}</div>
+              <div style="height:190px">${getSvgHist(stList, 1, tColors, cfg)}</div>
+            </div>
+          </td>
+          <td style="width:50%;padding:4px;vertical-align:top;border:none">
+            <div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
+              <div style="font-size:9.5pt;font-weight:bold;margin-bottom:4px;text-align:center;color:#004f9e">Đồ thị Tỉ lệ 4 tầng học sinh môn ${sb}</div>
+              <div style="height:190px">${getSvgPie(sStats, tColors)}</div>
+            </div>
+          </td>
+        </tr>
+      </table>
 
       <!-- 6. KẾ HOẠCH GIẢI PHÁP SƯ PHẠM -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">6. Kế hoạch giải pháp sư phạm môn ${sb}</h3>
@@ -2656,11 +2770,12 @@ function buildFullReportHTML(targetSubject, isAll, forPrint) {
     </div>
   `;
 }
+window.buildFullReportHTML = buildFullReportHTML;
 
 // ===== WORD EXPORT IMPLEMENTATION =====
 window.exportWord = function(isAll) {
   const cfg = getCfg();
-  const fullContent = buildFullReportHTML(currentSubject, isAll, false);
+  const fullContent = buildFullReportHTML(currentSubject, isAll, true);
   const fullWordHTML = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
