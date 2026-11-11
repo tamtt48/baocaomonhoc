@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>KHTNReport - Báo Cáo Chuyên Môn & Phân Tầng Học Sinh</title>
+<title>Báo Cáo Chuyên Môn & Phân Tầng Học Sinh - Trường THPT FPT Cần Thơ</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:wght@500;600;700&display=swap">
 <script src="js/chart.umd.min.js"></script>
 <script src="js/xlsx.full.min.js"></script>
@@ -1580,100 +1580,98 @@ function renderSolutions() {
   if (!st.length) { el.innerHTML = emptyState(); return; }
 
   const all = stats(st, cfg);
-  const yeuList = st.filter(s => tier(s.score, cfg) === 'yeu').sort((a,b) => a.score - b.score);
-  const gioiList = st.filter(s => tier(s.score, cfg) === 'gioi').sort((a,b) => b.score - a.score);
-  const nearYeu = nearList().filter(x => x.from === 'yeu');
-  const veryWeak = yeuList.filter(s => s.score < 3.0);
-  const weakStandard = yeuList.filter(s => s.score >= 3.0 && (!nearYeu.some(ny => ny.s.id === s.id)));
+  const listKem11 = st.filter(s => s.score < 3.0).sort((a,b) => a.score - b.score);
+  const listVIP = st.filter(s => s.score >= 3.0 && s.score < 4.0).sort((a,b) => a.score - b.score);
+  const listPhuDao = st.filter(s => s.score >= 4.0 && s.score < 5.0).sort((a,b) => a.score - b.score);
+  const listTuHocHuongDan = st.filter(s => s.score >= 5.0 && s.score < 7.0).sort((a,b) => a.score - b.score);
+  const listTuHoc = st.filter(s => s.score >= 7.0).sort((a,b) => b.score - a.score);
+  const listGioi = st.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
 
   let html = head(meta(), `Kế hoạch giải pháp sư phạm môn ${esc(currentSubject)}`, `
     <button class="btn btn-export" onclick="openExportQuickMenu()">📥 Xuất giải pháp nộp BGH</button>
   `);
 
-  // Section 1: Nhóm Yếu
+  // Section 1: Nhóm Can thiệp trọng điểm
   html += `
   <section class="block">
-    <h3>🔴 Nhóm 1: Giải pháp can thiệp cho Học sinh Yếu (${yeuList.length} HS · ${pc(yeuList.length/all.n)})</h3>
-    <p class="hint" style="margin-bottom:16px">Phân tầng cụ thể thành 3 hình thức hỗ trợ trực tiếp để tối ưu nguồn lực giảng dạy của bộ môn.</p>
+    <h3>🔴 Nhóm Can Thiệp Trọng Điểm (< 5.0 điểm: ${listKem11.length + listVIP.length + listPhuDao.length} HS · ${pc((listKem11.length + listVIP.length + listPhuDao.length)/all.n)})</h3>
+    <p class="hint" style="margin-bottom:16px">Phân tầng cụ thể thành 3 hình thức hỗ trợ trực tiếp để bứt phá đạt chuẩn kiến thức.</p>
     <div class="sol-grid">
       
-      <!-- Card: Phụ đạo tập trung -->
-      <div class="sol-card phu-dao">
-        <h4>
-          <span>📚 1. Lớp Phụ Đạo Tập Trung</span>
-          <span class="sol-tag" style="background:var(--yeu);color:#fff">${weakStandard.length} HS</span>
-        </h4>
-        <p><strong>Đối tượng:</strong> Điểm từ 3.0 đến dưới ${f1(cfg.tb)} (hổng kiến thức vừa phải, có thể bù đắp qua lớp nhóm).</p>
-        <ul>
-          <li><strong>Thời lượng:</strong> 2 buổi/tuần (90 phút/buổi) ngoài giờ chính khóa.</li>
-          <li><strong>Trọng tâm:</strong> Rà soát lý thuyết cốt lõi, luyện tập dạng bài nhận biết & thông hiểu.</li>
-          <li><strong>Đánh giá:</strong> Mini-quiz 15 phút đầu giờ để theo dõi tiến bộ hàng tuần.</li>
-          <li><strong>Giảng viên:</strong> Phân công giáo viên chuyên trách môn ${esc(currentSubject)}.</li>
-        </ul>
-        ${weakStandard.length ? `
-          <details style="border:0;margin-top:10px">
-            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${weakStandard.length} HS phụ đạo</summary>
-            <div class="tw tall" style="padding:0">
-              <table>
-                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Cần bù</th></tr></thead>
-                <tbody>
-                  ${weakStandard.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n">${fm(s.score)}</td><td class="n">+${fm(Math.round((cfg.tb - s.score)*100)/100)}</td></tr>`).join('')}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        ` : ''}
-      </div>
-
-      <!-- Card: VIP nâng hạng -->
-      <div class="sol-card vip">
-        <h4>
-          <span>⭐ 2. Nhóm VIP Nâng Hạng</span>
-          <span class="sol-tag" style="background:var(--vip);color:#fff">${nearYeu.length} HS</span>
-        </h4>
-        <p><strong>Đối tượng:</strong> Điểm từ ${f1(cfg.tb - 0.5)} đến dưới ${f1(cfg.tb)} (chỉ thiếu ≤0.5 điểm để đạt chuẩn).</p>
-        <ul>
-          <li><strong>Mục tiêu:</strong> "Cứu nguy" cấp tốc để đạt tỉ lệ tốt nghiệp/đạt môn 100%.</li>
-          <li><strong>Phương pháp:</strong> Huấn luyện kỹ năng tránh mất điểm oan ở bài thi trắc nghiệm.</li>
-          <li><strong>Luyện đề mục tiêu:</strong> Giải các bộ đề sát sườn với ngân hàng đề thi kỳ tới.</li>
-          <li><strong>Thời hạn cam kết:</strong> Đạt điểm trên ${f1(cfg.tb)} trong đợt khảo sát 2 tuần sau.</li>
-        </ul>
-        ${nearYeu.length ? `
-          <details style="border:0;margin-top:10px">
-            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${nearYeu.length} HS nhóm VIP</summary>
-            <div class="tw tall" style="padding:0">
-              <table>
-                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Thiếu</th></tr></thead>
-                <tbody>
-                  ${nearYeu.map(x => `<tr><td>${esc(x.s.name)}</td><td>${esc(x.s.cls)}</td><td class="n">${fm(x.s.score)}</td><td class="n" style="color:var(--vip);font-weight:700">-${fm(x.gap)}</td></tr>`).join('')}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        ` : ''}
-      </div>
-
       <!-- Card: Kèm 1-1 -->
       <div class="sol-card kem11">
         <h4>
-          <span>👨‍🏫 3. Kèm Cặp 1-1 (Buddy)</span>
-          <span class="sol-tag" style="background:#ea580c;color:#fff">${veryWeak.length} HS</span>
+          <span>👨‍🏫 1. Kèm 1-1 (Dưới 3.0 điểm)</span>
+          <span class="sol-tag" style="background:#ea580c;color:#fff">${listKem11.length} HS</span>
         </h4>
-        <p><strong>Đối tượng:</strong> Điểm dưới 3.0 (mất gốc nghiêm trọng hoặc gặp trở ngại tâm lý/chuyên cần).</p>
+        <p><strong>Đối tượng:</strong> Điểm dưới 3.0 (mất gốc nghiêm trọng, cần hỗ trợ khẩn cấp).</p>
         <ul>
-          <li><strong>Mô hình đôi bạn cùng tiến (Buddy):</strong> 1 HS Giỏi kèm 1 HS Yếu trong lớp.</li>
-          <li><strong>Kèm trực tiếp từ GV:</strong> 1 buổi/tuần gặp riêng để tháo gỡ khó khăn cá nhân.</li>
-          <li><strong>Liên hệ gia đình:</strong> Thông báo phụ huynh đồng hành kiểm tra việc tự học tại nhà.</li>
-          <li><strong>Lộ trình cá nhân hóa:</strong> Học từ căn bản lớp dưới trước khi vào bài mới.</li>
+          <li><strong>Mô hình:</strong> Đôi bạn cùng tiến kết hợp GV kèm riêng 1 buổi/tuần.</li>
+          <li><strong>Trọng tâm:</strong> Bù đắp kiến thức rỗng từ căn bản, giải tỏa áp lực tâm lý.</li>
+          <li><strong>Phối hợp:</strong> Giáo viên chủ nhiệm & gia đình cùng giám sát chuyên cần.</li>
         </ul>
-        ${veryWeak.length ? `
+        ${listKem11.length ? `
           <details style="border:0;margin-top:10px">
-            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${veryWeak.length} HS cần kèm 1-1</summary>
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${listKem11.length} HS Kèm 1-1</summary>
             <div class="tw tall" style="padding:0">
               <table>
                 <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th></tr></thead>
                 <tbody>
-                  ${veryWeak.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n" style="color:var(--yeu);font-weight:700">${fm(s.score)}</td></tr>`).join('')}
+                  ${listKem11.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n" style="color:var(--yeu);font-weight:700">${fm(s.score)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
+      </div>
+
+      <!-- Card: VIP -->
+      <div class="sol-card vip">
+        <h4>
+          <span>⭐ 2. Lớp VIP (3.0 – Dưới 4.0 điểm)</span>
+          <span class="sol-tag" style="background:var(--vip);color:#fff">${listVIP.length} HS</span>
+        </h4>
+        <p><strong>Đối tượng:</strong> Điểm từ 3.0 đến dưới 4.0 (thiếu hụt kiến thức trọng yếu).</p>
+        <ul>
+          <li><strong>Mục tiêu:</strong> Lấy lại nền tảng, bứt phá nâng hạng lên mức phụ đạo và đạt chuẩn.</li>
+          <li><strong>Phương pháp:</strong> Rèn kỹ năng làm bài nhận biết - thông hiểu, tránh mất điểm oan.</li>
+          <li><strong>Luyện tập:</strong> Hệ thống câu hỏi trọng tâm sát với đề khảo sát định kỳ.</li>
+        </ul>
+        ${listVIP.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${listVIP.length} HS lớp VIP</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Mục tiêu</th></tr></thead>
+                <tbody>
+                  ${listVIP.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n" style="color:var(--vip);font-weight:700">${fm(s.score)}</td><td class="n">≥ 5.0</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
+      </div>
+
+      <!-- Card: Phụ đạo -->
+      <div class="sol-card phu-dao">
+        <h4>
+          <span>📚 3. Lớp Phụ Đạo (4.0 – Dưới 5.0 điểm)</span>
+          <span class="sol-tag" style="background:var(--yeu);color:#fff">${listPhuDao.length} HS</span>
+        </h4>
+        <p><strong>Đối tượng:</strong> Điểm từ 4.0 đến dưới 5.0 (sát ngưỡng đạt, cần củng cố).</p>
+        <ul>
+          <li><strong>Thời lượng:</strong> 2 buổi/tuần chiều T3-T5 ngoài giờ chính khóa.</li>
+          <li><strong>Mục tiêu:</strong> Đưa 100% học sinh nhóm này vượt mốc 5.0 điểm trong kỳ tới.</li>
+          <li><strong>Đánh giá:</strong> Kiểm tra ngắn 15 phút định kỳ mỗi tuần để đánh giá tiến độ.</li>
+        </ul>
+        ${listPhuDao.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${listPhuDao.length} HS phụ đạo</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Cần bù</th></tr></thead>
+                <tbody>
+                  ${listPhuDao.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n">${fm(s.score)}</td><td class="n">+${fm(Math.round((5.0 - s.score)*100)/100)}</td></tr>`).join('')}
                 </tbody>
               </table>
             </div>
@@ -1683,61 +1681,67 @@ function renderSolutions() {
     </div>
   </section>`;
 
-  // Section 2: Nhóm Giỏi
+  // Section 2: Nhóm Tự học & Phát triển năng lực
   html += `
   <section class="block">
-    <h3>🟢 Nhóm 2: Giải pháp phát triển cho Học sinh Giỏi (${gioiList.length} HS · ${pc(gioiList.length/all.n)})</h3>
-    <p class="hint" style="margin-bottom:16px">Tạo không gian tự học số và thử thách học thuật để phát huy năng khiếu chuyên môn.</p>
+    <h3>🟢 Nhóm Tự Học & Phát Triển Năng Lực (≥ 5.0 điểm: ${listTuHocHuongDan.length + listTuHoc.length} HS · ${pc((listTuHocHuongDan.length + listTuHoc.length)/all.n)})</h3>
+    <p class="hint" style="margin-bottom:16px">Phát huy tính chủ động tự học và năng lực tự nghiên cứu của học sinh.</p>
     <div class="sol-grid">
       
-      <!-- Card: Tự học trên website -->
+      <!-- Card: Tự học có hướng dẫn (5.0 - 7.0) -->
       <div class="sol-card tu-hoc">
         <h4>
-          <span>🌐 1. Tự Học Trên Nền Tảng Số</span>
-          <span class="sol-tag" style="background:var(--self);color:#fff">Học chủ động</span>
+          <span>🧭 4. Tự Học Có Hướng Dẫn (5.0 – Dưới 7.0 điểm)</span>
+          <span class="sol-tag" style="background:var(--kha);color:#fff">${listTuHocHuongDan.length} HS</span>
         </h4>
-        <p>Môi trường học tập trực tuyến dành riêng cho học sinh có năng lực tự học cao:</p>
+        <p><strong>Đối tượng:</strong> Điểm từ 5.0 đến dưới 7.0 (nắm được kiến thức cơ bản, cần bứt phá lên mức Khá - Giỏi).</p>
         <ul>
-          <li><strong>Ngân hàng đề chuyên sâu:</strong> Bộ câu hỏi vận dụng cao (VDC) có lời giải chi tiết.</li>
-          <li><strong>Thư viện bài giảng số:</strong> Chuyên đề nâng cao môn ${esc(currentSubject)}.</li>
-          <li><strong>Bảng thành tích ảo (Gamification):</strong> Xếp hạng giải bài tập online tuần/tháng.</li>
-          <li><strong>Học tập dự án:</strong> Tự chọn chủ đề ứng dụng thực tế để thuyết trình.</li>
+          <li><strong>Nội dung:</strong> Cung cấp tài liệu và phiếu học tập tự luyện theo từng chuyên đề.</li>
+          <li><strong>Hướng dẫn:</strong> Giáo viên bộ môn định hướng phương pháp tư duy và tự giải bài tập.</li>
+          <li><strong>Mục tiêu:</strong> Nâng cao năng lực tự học, từng bước tiếp cận bài tập vận dụng.</li>
         </ul>
+        ${listTuHocHuongDan.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${listTuHocHuongDan.length} HS Tự học có hướng dẫn</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ tên</th><th>Lớp</th><th class="n">Điểm</th><th class="n">Mục tiêu</th></tr></thead>
+                <tbody>
+                  ${listTuHocHuongDan.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td class="n">${fm(s.score)}</td><td class="n">≥ 7.0</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
       </div>
 
-      <!-- Card: Bồi dưỡng & Đội tuyển -->
+      <!-- Card: Tự học (>= 7.0) -->
       <div class="sol-card nang-cao">
         <h4>
-          <span>🏆 2. Đội Tuyển & Mentor Bạn Học</span>
-          <span class="sol-tag" style="background:var(--gioi);color:#fff">${gioiList.filter(s => s.score >= 9.0).length} HS xuất sắc</span>
+          <span>🌱 5. Tự Học (Từ 7.0 điểm trở lên)</span>
+          <span class="sol-tag" style="background:var(--gioi);color:#fff">${listTuHoc.length} HS (Trong đó ${listGioi.length} HS Giỏi)</span>
         </h4>
-        <p>Tận dụng năng lực của nhóm dẫn đầu vừa nâng cao vừa hỗ trợ cộng đồng lớp:</p>
+        <p><strong>Đối tượng:</strong> Điểm từ 7.0 trở lên (đặc biệt học sinh đạt loại Giỏi ≥ 8.0).</p>
         <ul>
-          <li><strong>CLB Học thuật & HSG:</strong> Bồi dưỡng thi Olympic, HSG cấp Tỉnh / FPT Edu.</li>
-          <li><strong>Chương trình Mentor:</strong> HS giỏi đảm nhiệm vai trò trợ giảng, hỗ trợ bạn yếu.</li>
-          <li><strong>Nghiên cứu khoa học STEM:</strong> Giao đề tài đổi mới sáng tạo kỹ thuật.</li>
+          <li><strong>Hình thức:</strong> Tự học nâng cao trên nền tảng số, rèn luyện tư duy vận dụng cao.</li>
+          <li><strong>Tài nguyên:</strong> Ngân hàng câu hỏi nâng cao, đề thi phân hóa và tài liệu chuyên sâu.</li>
+          <li><strong>Định hướng:</strong> Khuyến khích tham gia giải quyết các vấn đề thực tiễn, đề tài STEM và thử sức bài thi thử thách.</li>
         </ul>
+        ${listTuHoc.length ? `
+          <details style="border:0;margin-top:10px">
+            <summary style="padding:6px 0;font-size:12.5px;font-weight:700">📋 Xem danh sách ${listTuHoc.length} HS nhóm Tự học</summary>
+            <div class="tw tall" style="padding:0">
+              <table>
+                <thead><tr><th>Họ và tên</th><th>Lớp</th><th class="n">Điểm</th><th>Phân loại</th></tr></thead>
+                <tbody>
+                  ${listTuHoc.map(s => `<tr><td><strong>${esc(s.name)}</strong></td><td>${esc(s.cls)}</td><td class="n" style="color:var(--gioi);font-weight:700">${fm(s.score)}</td><td>${s.score >= 8.0 ? 'Loại Giỏi (≥ 8.0)' : 'Loại Khá cao (7.0 - < 8.0)'}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ` : ''}
       </div>
     </div>
-
-    ${gioiList.length ? `
-      <details style="border:0;margin-top:16px">
-        <summary style="padding:8px 0;font-size:13.5px;font-weight:700">📋 Danh sách ${gioiList.length} HS Giỏi môn ${esc(currentSubject)} và định hướng phân công</summary>
-        <div class="tw tall" style="padding:0">
-          <table>
-            <thead><tr><th>Họ và tên</th><th>Lớp</th><th class="n">Điểm</th><th>Định hướng đề xuất</th></tr></thead>
-            <tbody>
-              ${gioiList.map(s => {
-                let role = '🌐 Tự học trên website bộ môn';
-                if (s.score >= 9.5) role = '🏆 Đội tuyển HSG xuất sắc + Dự án STEM';
-                else if (s.score >= 8.75) role = '🤝 Mentor lớp kèm cặp bạn yếu + Tự học nâng cao';
-                return `<tr><td><strong>${esc(s.name)}</strong></td><td>${esc(s.cls)}</td><td class="n" style="color:var(--gioi);font-weight:700">${fm(s.score)}</td><td>${role}</td></tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </details>
-    ` : ''}
   </section>`;
 
   el.innerHTML = html;
@@ -1853,15 +1857,16 @@ function openStudent(id) {
   const nxt = { yeu: ['tb', cfg.tb], tb: ['kha', cfg.kha], kha: ['gioi', cfg.gioi] }[t];
 
   let sol = '';
-  if (t === 'yeu') {
-    if (s.score < 3.0) sol = '👨‍🏫 <strong>Kèm cặp 1-1 (Buddy):</strong> Cần hỗ trợ khẩn cấp, bù đắp lỗ hổng căn bản.';
-    else if (nxt && Math.round((nxt[1] - s.score)*100)/100 <= 0.5) sol = '⭐ <strong>Lớp VIP Nâng Hạng:</strong> Mục tiêu tăng 0.1–0.5 điểm để đạt chuẩn.';
-    else sol = '📚 <strong>Phụ Đạo Tập Trung:</strong> Ôn tập theo chuyên đề 2 buổi/tuần.';
-  } else if (t === 'gioi') {
-    if (s.score >= 9.5) sol = '🏆 <strong>Ứng viên Đội tuyển HSG:</strong> Bồi dưỡng chuyên sâu & Nghiên cứu STEM.';
-    else sol = '🌐 <strong>Tự học trên website:</strong> Làm bài tập nâng cao & đảm nhận vai trò Mentor.';
+  if (s.score < 3.0) {
+    sol = '👨‍🏫 <strong>Kèm 1-1:</strong> Hỗ trợ trực tiếp kèm cặp 1-1 bù đắp lỗ hổng căn bản.';
+  } else if (s.score < 4.0) {
+    sol = '⭐ <strong>VIP:</strong> Lớp học trọng điểm VIP tập trung lấy lại kiến thức cốt lõi.';
+  } else if (s.score < 5.0) {
+    sol = '📚 <strong>Phụ đạo:</strong> Lớp phụ đạo củng cố nền tảng đạt chuẩn ≥ 5.0.';
+  } else if (s.score < 7.0) {
+    sol = '🧭 <strong>Tự học có hướng dẫn:</strong> Tự học theo chuyên đề có giáo viên định hướng.';
   } else {
-    sol = '📖 Tiếp tục phát huy, ôn tập củng cố kiến thức để nâng lên tầng cao hơn.';
+    sol = '🌱 <strong>Tự học:</strong> Tự học nâng cao, rèn luyện tư duy và chủ động phát triển năng lực.';
   }
 
   const seg = [[0, cfg.tb, 'yeu'], [cfg.tb, cfg.kha, 'tb'], [cfg.kha, cfg.gioi, 'kha'], [cfg.gioi, 10, 'gioi']];
@@ -2296,26 +2301,23 @@ function getProfessionalInsights(stList, sStats, cfg, clList) {
 function buildSubjectReportHTML(sb, forPrint) {
   const sData = allData[sb] || { students: [], absent: [], cfg: { gioi: 8, kha: 6.5, tb: 5 } };
   const stList = sData.students;
-  const cfg = sData.cfg || getCfg();
+  const globalCfg = getCfg();
+  const curExObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
+  const examCleanName = (curExObj.name || '').replace(/·\s*NH\s*2026-2027/i, '').replace(/·\s*Năm học\s*2026-2027/i, '').trim() || 'Giữa kỳ 1';
+  const cfg = { ...globalCfg, ...(sData.cfg || {}), exam: examCleanName };
   const sStats = stats(stList, cfg);
   if (!sStats) return '';
 
   const clList = [...new Set(stList.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
   const insights = getProfessionalInsights(stList, sStats, cfg, clList);
 
-  const near = [];
-  stList.forEach(s => {
-    const t = tier(s.score, cfg);
-    const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
-    const diff = Math.round((target - s.score)*100)/100;
-    if (diff > 0 && diff <= 0.5) near.push({ s, gap: diff });
-  });
-
-  const yeuArr = stList.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
-  const veryWeakArr = yeuArr.filter(s => s.score < 3.0);
-  const nearYeuArr = near.filter(x => x.s.score >= 4.5 && x.s.score < 5.0);
-  const regularWeakArr = yeuArr.filter(s => s.score >= 3.0 && s.score < 4.5);
-  const gioiArr = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
+  const listKem11 = stList.filter(s => s.score < 3.0).sort((a,b) => a.score - b.score);
+  const listVIP = stList.filter(s => s.score >= 3.0 && s.score < 4.0).sort((a,b) => a.score - b.score);
+  const listPhuDao = stList.filter(s => s.score >= 4.0 && s.score < 5.0).sort((a,b) => a.score - b.score);
+  const listCanThiep = stList.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
+  const listTuHocHuongDan = stList.filter(s => s.score >= 5.0 && s.score < 7.0).sort((a,b) => a.score - b.score);
+  const listTuHoc = stList.filter(s => s.score >= 7.0).sort((a,b) => b.score - a.score);
+  const listGioi = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
   const sortedAll = [...stList].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
 
   const sBins = hist(stList, 1);
@@ -2329,7 +2331,7 @@ function buildSubjectReportHTML(sb, forPrint) {
       <h2 style="font-size:15pt;color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:24px">
         BÁO CÁO KẾT QUẢ CHUYÊN MÔN MÔN ${sb.toUpperCase()}
       </h2>
-      <p style="font-size:11pt;margin:4px 0 16px"><em>Kỳ kiểm tra: ${cfg.exam} · Tổng số học sinh: <strong>${sStats.n}</strong> HS (${clList.length} lớp học)</em></p>
+      <p style="font-size:11pt;margin:4px 0 16px"><em>Kỳ kiểm tra: ${cfg.exam} · Năm học 2026 – 2027 · Sĩ số: <strong>${sStats.n}</strong> HS (${clList.length} lớp học)</em></p>
 
       <!-- 1. TỔNG QUAN KẾT QUẢ MÔN HỌC -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">1. Tổng quan kết quả môn ${sb}</h3>
@@ -2552,7 +2554,8 @@ function buildSubjectReportHTML(sb, forPrint) {
         • <strong>Đặc trưng phổ điểm:</strong> Điểm tập trung cao nhất ở khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
       </p>
 
-      <!-- KHUNG ĐỒ THỊ VECTOR SVG (TÍCH HỢP ĐẦY ĐỦ TRÊN MỌI BẢN XUẤT) -->
+      <!-- KHUNG ĐỒ THỊ VECTOR SVG (CHỈ HIỂN THỊ TRÊN BẢN IN/PDF/WEB, LOẠI BỎ KHỎI WORD ĐỂ TRÁNH LỖI KÝ TỰ SỐ DỒN NHAU) -->
+      ${forPrint ? `
       <table style="width:100%;border:none;margin:12px 0;page-break-inside:avoid">
         <tr>
           <td style="width:50%;padding:4px;vertical-align:top;border:none">
@@ -2568,64 +2571,111 @@ function buildSubjectReportHTML(sb, forPrint) {
             </div>
           </td>
         </tr>
-      </table>
+      </table>` : ''}
 
       <!-- 6. KẾ HOẠCH GIẢI PHÁP SƯ PHẠM -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">6. Kế hoạch giải pháp sư phạm môn ${sb}</h3>
-      <p style="margin:4px 0"><strong>A. Kế hoạch can thiệp nhóm học sinh Yếu & Cận chuẩn (${yeuArr.length} học sinh):</strong></p>
-      <ul style="line-height:1.55;margin:4px 0 10px;padding-left:22px;font-size:10.5pt">
-        <li><strong>⭐ Lớp VIP Nâng hạng (${nearYeuArr.length} HS):</strong> Học sinh cận chuẩn (4.5–4.9 điểm). Tổ chức ôn luyện trọng tâm cấp tốc 3 buổi để đảm bảo đạt chuẩn kỳ tiếp theo.</li>
-        <li><strong>📚 Phụ đạo tập trung (${regularWeakArr.length} HS):</strong> Học sinh từ 3.0–4.4 điểm. Tổ chức học phụ đạo 2 buổi/tuần vào chiều thứ Ba & thứ Năm, củng cố kiến thức hổng.</li>
-        <li><strong>👨‍🏫 Kèm cặp 1-1 (${veryWeakArr.length} HS):</strong> Học sinh dưới 3.0 điểm. Mô hình Đôi bạn cùng tiến (HS Giỏi kèm) kết hợp GV kèm riêng 1 buổi/tuần.</li>
-      </ul>
-      <p style="font-weight:bold;margin-top:8px;color:#c0392b;font-size:10pt">Bảng danh sách toàn bộ học sinh diện can thiệp (${yeuArr.length} học sinh):</p>
-      ${yeuArr.length === 0 ? '<p style="font-style:italic">Không có học sinh yếu môn này.</p>' : `
+      <p style="margin:4px 0 8px;font-size:10.5pt">Phân tầng các nhóm giải pháp sư phạm can thiệp và tự học:</p>
+      
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:14px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th style="width:20%">Phân nhóm giải pháp</th>
+          <th style="width:14%">Khoảng điểm</th>
+          <th style="width:12%">Số lượng HS</th>
+          <th style="width:10%">Tỉ lệ</th>
+          <th style="width:44%">Nội dung triển khai & Mục tiêu</th>
+        </tr>
+        <tr style="background:#fef2f2">
+          <td style="font-weight:bold;color:#dc2626;padding-left:8px">👨‍🏫 Kèm 1-1</td>
+          <td style="text-align:center;font-weight:bold">&lt; 3.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#dc2626">${listKem11.length} HS</td>
+          <td style="text-align:center">${pc(listKem11.length / sStats.n)}</td>
+          <td>Mô hình Đôi bạn cùng tiến kết hợp GV bộ môn kèm riêng 1 buổi/tuần, khắc phục mất gốc căn bản.</td>
+        </tr>
+        <tr style="background:#faf5ff">
+          <td style="font-weight:bold;color:#7c3aed;padding-left:8px">⭐ VIP</td>
+          <td style="text-align:center;font-weight:bold">3.0 – &lt; 4.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#7c3aed">${listVIP.length} HS</td>
+          <td style="text-align:center">${pc(listVIP.length / sStats.n)}</td>
+          <td>Lớp VIP bổ trợ kiến thức trọng yếu, luyện bài tập nhận biết - thông hiểu, nâng lên nhóm Phụ đạo.</td>
+        </tr>
+        <tr style="background:#fff7ed">
+          <td style="font-weight:bold;color:#c2410c;padding-left:8px">📚 Phụ đạo</td>
+          <td style="text-align:center;font-weight:bold">4.0 – &lt; 5.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#c2410c">${listPhuDao.length} HS</td>
+          <td style="text-align:center">${pc(listPhuDao.length / sStats.n)}</td>
+          <td>Học phụ đạo tập trung 2 buổi/tuần chiều T3-T5, ôn luyện chuyên đề sát chuẩn, bứt phá vượt ngưỡng 5.0.</td>
+        </tr>
+        <tr style="background:#eff6ff">
+          <td style="font-weight:bold;color:#0054a6;padding-left:8px">🧭 Tự học có hướng dẫn</td>
+          <td style="text-align:center;font-weight:bold">5.0 – &lt; 7.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#0054a6">${listTuHocHuongDan.length} HS</td>
+          <td style="text-align:center">${pc(listTuHocHuongDan.length / sStats.n)}</td>
+          <td>Cung cấp hệ thống phiếu bài tập và tài liệu tự học có hướng dẫn phương pháp giải, nâng lên mức Khá.</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="font-weight:bold;color:#00904b;padding-left:8px">🌱 Tự học</td>
+          <td style="text-align:center;font-weight:bold">≥ 7.0 (Đặc biệt ≥ 8.0)</td>
+          <td style="text-align:center;font-weight:bold;color:#00904b">${listTuHoc.length} HS</td>
+          <td style="text-align:center">${pc(listTuHoc.length / sStats.n)}</td>
+          <td>Cấp tài khoản ngân hàng câu hỏi vận dụng cao và chuyên đề tự học trực tuyến, tự học phát huy năng lực.</td>
+        </tr>
+      </table>
+
+      <!-- BẢNG DANH SÁCH TOÀN BỘ HỌC SINH DIỆN CAN THIỆP -->
+      <p style="font-weight:bold;margin:12px 0 4px;color:#c0392b;font-size:10pt">
+        Bảng danh sách toàn bộ học sinh diện can thiệp (Kèm 1-1, VIP, Phụ đạo - Tổng số: ${listCanThiep.length} học sinh):
+      </p>
+      ${listCanThiep.length === 0 ? '<p style="font-style:italic">Không có học sinh dưới 5.0 điểm môn này.</p>' : `
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
         <tr style="background:#fee2e2;font-weight:bold;text-align:center">
           <th style="width:6%">STT</th>
           <th style="width:28%">Họ và tên</th>
           <th style="width:12%">Lớp</th>
           <th style="width:12%">Điểm số</th>
-          <th style="width:22%">Mô hình phân bổ</th>
+          <th style="width:22%">Phân nhóm giải pháp</th>
           <th style="width:20%">Mục tiêu can thiệp</th>
         </tr>
-        ${yeuArr.map((s, idx) => `
-          <tr style="text-align:center">
-            <td>${idx + 1}</td>
-            <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
-            <td>${esc(s.cls)}</td>
-            <td style="color:#c0392b;font-weight:bold">${s.score}</td>
-            <td>${s.score < 3 ? '👨‍🏫 Kèm 1-1' : s.score >= 4.5 ? '⭐ VIP nâng hạng' : '📚 Phụ đạo tập trung'}</td>
-            <td>${s.score >= 4.5 ? 'Đạt ≥ 5.5' : 'Đạt chuẩn 5.0'}</td>
-          </tr>
-        `).join('')}
+        ${listCanThiep.map((s, idx) => {
+          let grp = '', obj = '', clr = '';
+          if (s.score < 3.0) { grp = '👨‍🏫 Kèm 1-1'; obj = 'Khắc phục mất gốc căn bản'; clr = '#dc2626'; }
+          else if (s.score < 4.0) { grp = '⭐ VIP'; obj = 'Nâng hạng lên nhóm Phụ đạo'; clr = '#7c3aed'; }
+          else { grp = '📚 Phụ đạo'; obj = 'Bứt phá đạt chuẩn ≥ 5.0'; clr = '#c2410c'; }
+          return `
+            <tr style="text-align:center">
+              <td>${idx + 1}</td>
+              <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
+              <td>${esc(s.cls)}</td>
+              <td style="color:#c0392b;font-weight:bold">${s.score}</td>
+              <td style="font-weight:bold;color:${clr}">${grp}</td>
+              <td>${obj}</td>
+            </tr>
+          `;
+        }).join('')}
       </table>`}
 
-      <p style="margin:12px 0 4px"><strong>B. Kế hoạch bồi dưỡng nhóm học sinh Giỏi (${gioiArr.length} học sinh):</strong></p>
-      <ul style="line-height:1.55;margin:4px 0 10px;padding-left:22px;font-size:10.5pt">
-        <li><strong>🏆 Đội tuyển HSG & Dự án STEM:</strong> Chọn lọc học sinh đạt từ 9.0 trở lên tham gia bồi dưỡng chuyên sâu.</li>
-        <li><strong>🌐 Tự học trên nền tảng Website:</strong> Cung cấp ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến.</li>
-        <li><strong>🤝 Phong trào Mentor trợ giảng:</strong> Huy động học sinh giỏi kèm cặp và hướng dẫn các bạn yếu trong nhóm học tập tại lớp.</li>
-      </ul>
-      <p style="font-weight:bold;margin-top:8px;color:#00904b;font-size:10pt">Bảng danh sách toàn bộ học sinh Giỏi (${gioiArr.length} học sinh):</p>
-      ${gioiArr.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
+      <!-- BẢNG DANH SÁCH HỌC SINH NHÓM TỰ HỌC TIÊU BIỂU (ĐIỂM GIỎI ≥ 8.0) -->
+      <p style="font-weight:bold;margin:12px 0 4px;color:#00904b;font-size:10pt">
+        Bảng danh sách học sinh nhóm Tự học tiêu biểu (Điểm Giỏi ≥ 8.0 - Tổng số: ${listGioi.length} học sinh):
+      </p>
+      ${listGioi.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
         <tr style="background:#dcfce7;font-weight:bold;text-align:center">
           <th style="width:6%">STT</th>
           <th style="width:28%">Họ và tên</th>
           <th style="width:12%">Lớp</th>
           <th style="width:12%">Điểm số</th>
-          <th style="width:22%">Mô hình bồi dưỡng</th>
-          <th style="width:20%">Nhiệm vụ trọng tâm</th>
+          <th style="width:22%">Phân nhóm giải pháp</th>
+          <th style="width:20%">Hình thức tự học</th>
         </tr>
-        ${gioiArr.map((s, idx) => `
+        ${listGioi.map((s, idx) => `
           <tr style="text-align:center">
             <td>${idx + 1}</td>
             <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
             <td>${esc(s.cls)}</td>
             <td style="color:#00904b;font-weight:bold">${s.score}</td>
-            <td>${s.score >= 9.5 ? '🏆 Đội tuyển HSG & STEM' : s.score >= 8.5 ? '🤝 Mentor trợ giảng' : '🌐 Tự học nâng cao'}</td>
-            <td>${s.score >= 9.5 ? 'Bồi dưỡng chuyên đề thi HSG' : s.score >= 8.5 ? 'Hỗ trợ nhóm bạn học tại lớp' : 'Luyện đề vận dụng cao online'}</td>
+            <td style="color:#00904b;font-weight:bold">🌱 Tự học</td>
+            <td>Tự học chuyên đề nâng cao, luyện đề online</td>
           </tr>
         `).join('')}
       </table>`}
@@ -2644,9 +2694,11 @@ function buildSubjectReportHTML(sb, forPrint) {
         ${sortedAll.map((s, idx) => {
           const t = tier(s.score, cfg);
           let sol = '';
-          if (t === 'yeu') sol = s.score < 3 ? 'Kèm 1-1' : s.score >= 4.5 ? 'Lớp VIP' : 'Phụ đạo tập trung';
-          else if (t === 'gioi') sol = s.score >= 9.5 ? 'Đội tuyển HSG' : 'Tự học website';
-          else sol = 'Rèn luyện';
+          if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
+          else if (s.score < 4.0) sol = '⭐ VIP';
+          else if (s.score < 5.0) sol = '📚 Phụ đạo';
+          else if (s.score < 7.0) sol = '🧭 Tự học có hướng dẫn';
+          else sol = '🌱 Tự học';
           return `
             <tr style="text-align:center">
               <td>${idx + 1}</td>
@@ -2664,7 +2716,9 @@ function buildSubjectReportHTML(sb, forPrint) {
 }
 
 function buildFullReportHTML(targetSubject, isAll, forPrint) {
-  const cfg = getCfg();
+  const curExObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
+  const examCleanName = (curExObj.name || '').replace(/·\s*NH\s*2026-2027/i, '').replace(/·\s*Năm học\s*2026-2027/i, '').trim() || 'Giữa kỳ 1';
+  const cfg = { ...getCfg(), exam: examCleanName };
   const dateStr = new Date().toLocaleDateString('vi-VN');
   const signerRole = currentUser ? currentUser.roleLabel : 'Trưởng bộ môn';
   const signerName = currentUser ? currentUser.name : '';
@@ -2678,7 +2732,7 @@ function buildFullReportHTML(targetSubject, isAll, forPrint) {
       <h2 style="color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:15px;font-size:14pt">
         TỔNG HỢP SO SÁNH CHẤT LƯỢNG 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN
       </h2>
-      <p style="font-size:11pt"><em>Kỳ kiểm tra: ${cfg.exam} · Trường THPT FPT · Tổ KHTN</em></p>
+      <p style="font-size:11pt"><em>Kỳ kiểm tra: ${examCleanName} · Năm học 2026 – 2027 · Trường THPT FPT Cần Thơ · Tổ KHTN</em></p>
       <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10pt;margin-bottom:24px">
         <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
           <th>STT</th>
@@ -2729,7 +2783,7 @@ function buildFullReportHTML(targetSubject, isAll, forPrint) {
       <table style="width:100%;border:none;margin-bottom:20px">
         <tr>
           <td style="width:45%;text-align:center;vertical-align:top">
-            <strong>TRƯỜNG THPT FPT</strong><br>
+            <strong>TRƯỜNG THPT FPT CẦN THƠ</strong><br>
             <strong>TỔ KHOA HỌC TỰ NHIÊN</strong><br>
             <div style="width:90px;height:1px;background:#000;margin:4px auto"></div>
           </td>
@@ -2744,9 +2798,9 @@ function buildFullReportHTML(targetSubject, isAll, forPrint) {
       <div style="text-align:center;margin:20px 0 26px">
         <h1 style="font-size:17pt;margin:0;color:#004f9e;text-transform:uppercase">BÁO CÁO PHÂN TÍCH CHUYÊN MÔN & KẾ HOẠCH PHÂN TẦNG SƯ PHẠM</h1>
         <h2 style="font-size:13pt;font-weight:bold;margin:6px 0;color:#334155">
-          ${isAll ? 'TỔNG HỢP 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN (KHTNReport)' : `BỘ MÔN: ${targetSubject.toUpperCase()} (KHTNReport)`}
+          ${isAll ? 'TỔNG HỢP 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN' : `BỘ MÔN: ${targetSubject.toUpperCase()}`}
         </h2>
-        <p style="margin:4px 0;font-size:11pt"><em>Kỳ kiểm tra: ${cfg.exam} · Năm học 2026 – 2027</em></p>
+        <p style="margin:4px 0;font-size:11pt"><em>Kỳ kiểm tra: ${examCleanName} · Năm học 2026 – 2027</em></p>
       </div>
 
       ${masterComparison}
@@ -2760,7 +2814,7 @@ function buildFullReportHTML(targetSubject, isAll, forPrint) {
             <strong>Thầy Thạch Thanh Tâm</strong>
           </td>
           <td style="width:50%;text-align:center;vertical-align:top">
-            <em>Hà Nội, ngày ${dateStr}</em><br>
+            <em>Cần Thơ, ngày ${dateStr}</em><br>
             <strong>${signerRole.toUpperCase()}</strong><br>
             <em>(Ký và ghi rõ họ tên)</em><br><br><br><br><br>
             <strong>${signerName}</strong>
@@ -2775,12 +2829,12 @@ window.buildFullReportHTML = buildFullReportHTML;
 // ===== WORD EXPORT IMPLEMENTATION =====
 window.exportWord = function(isAll) {
   const cfg = getCfg();
-  const fullContent = buildFullReportHTML(currentSubject, isAll, true);
+  const fullContent = buildFullReportHTML(currentSubject, isAll, false);
   const fullWordHTML = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
       <meta charset='utf-8'>
-      <title>KHTNReport - Báo cáo chuyên môn Tổ KHTN</title>
+      <title>Báo cáo chuyên môn - Trường THPT FPT Cần Thơ</title>
       <style>
         body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.45; }
         table { border-collapse: collapse; }
@@ -2796,11 +2850,11 @@ window.exportWord = function(isAll) {
   const cleanSb = sbSlug(currentSubject);
   const curEx = EXAMS.find(e => e.id === currentExam) || { short: currentExam };
   const dateSuffix = new Date().toISOString().slice(0,10);
-  const fileName = `KHTNReport_${isAll ? 'TongHop_5Mon' : cleanSb}_${currentExam}_${dateSuffix}.doc`;
+  const fileName = `BaoCao_${isAll ? 'TongHop_5Mon' : cleanSb}_${currentExam}_${dateSuffix}.doc`;
 
   downloadFile('\ufeff' + fullWordHTML, fileName, 'application/msword;charset=utf-8');
   saveLastReport(currentSubject, currentExam, isAll ? 'Tải Word 5 môn' : `Tải Word môn ${currentSubject}`);
-  toast(`Đã xuất file Word KHTNReport ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) đầy đủ 6 hạng mục!`);
+  toast(`Đã xuất file Word báo cáo ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) đầy đủ 6 hạng mục!`);
 };
 
 // ===== PDF & MODAL PREVIEW =====
@@ -2879,12 +2933,12 @@ window.exportExcel = function() {
     const cl = classes();
     const cleanSb = sbSlug(currentSubject);
     const dateSuffix = new Date().toISOString().slice(0,10);
-    const fileName = `KHTNReport_${cleanSb}_${currentExam}_${dateSuffix}.xlsx`;
+    const fileName = `BaoCao_${cleanSb}_${currentExam}_${dateSuffix}.xlsx`;
 
     // Sheet 1: Tổng quan
     const sheet1Data = [
-      ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH (KHTNReport)'],
-      ['Trường THPT FPT - Tổ Khoa Học Tự Nhiên'],
+      ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH'],
+      ['Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên'],
       ['Môn học:', currentSubject],
       ['Kỳ kiểm tra:', cfg.exam],
       ['Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
@@ -2965,61 +3019,49 @@ window.exportExcel = function() {
       const diff = Math.round((target - s.score)*100)/100;
       const isNear = diff > 0 && diff <= 0.5;
       let sol = '';
-      if (t === 'yeu') {
-        if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
-        else if (s.score >= 4.5) sol = '⭐ Lớp VIP nâng hạng';
-        else sol = '📚 Phụ đạo tập trung';
-      } else if (t === 'gioi') {
-        if (s.score >= 9.5) sol = '🏆 Đội tuyển HSG';
-        else if (s.score >= 8.5) sol = '🤝 Mentor trợ giảng';
-        else sol = '🌐 Tự học trên website';
-      } else {
-        sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
-      }
+      if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
+      else if (s.score < 4.0) sol = '⭐ VIP';
+      else if (s.score < 5.0) sol = '📚 Phụ đạo';
+      else if (s.score < 7.0) sol = '🧭 Tự học có hướng dẫn';
+      else sol = '🌱 Tự học';
       sheet3Data.push([idx + 1, rk[s.id] ? rk[s.id].all : '', s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
     });
 
-    // Sheet 5: DS Can thiệp Yếu & VIP
+    // Sheet 5: DS Can thiệp Yếu, VIP, Phụ đạo (< 5.0 điểm)
     const sheet4Data = [
-      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Phân loại nhóm can thiệp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
+      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Phân nhóm giải pháp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
     ];
     const yeuList = st.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
     yeuList.forEach((s, idx) => {
       let grp = '', span = '', act = '';
-      if (s.score >= 4.5) {
-        grp = '⭐ Lớp VIP Nâng hạng';
-        span = '4.5 - 4.9';
-        act = 'Luyện đề thực chiến cấp tốc, rèn kỹ năng tránh sai sót để đạt chuẩn 5.0';
-      } else if (s.score >= 3.0) {
-        grp = '📚 Phụ đạo tập trung';
-        span = '3.0 - 4.4';
-        act = 'Học phụ đạo 2 buổi/tuần chiều T3-T5, lấp lỗ hổng chuyên đề trọng tâm';
-      } else {
+      if (s.score < 3.0) {
         grp = '👨‍🏫 Kèm 1-1';
         span = '< 3.0';
-        act = 'Đôi bạn cùng tiến (HS Giỏi kèm) + GV kèm riêng 1 buổi/tuần';
+        act = 'Đôi bạn cùng tiến kết hợp GV kèm riêng 1 buổi/tuần bù đắp kiến thức rỗng';
+      } else if (s.score < 4.0) {
+        grp = '⭐ Lớp VIP';
+        span = '3.0 – < 4.0';
+        act = 'Lớp VIP bổ trợ kiến thức trọng yếu, luyện tập bài nhận biết - thông hiểu';
+      } else {
+        grp = '📚 Phụ đạo';
+        span = '4.0 – < 5.0';
+        act = 'Học phụ đạo 2 buổi/tuần chiều T3-T5, bứt phá vượt ngưỡng 5.0';
       }
       sheet4Data.push([idx + 1, s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
     });
 
-    // Sheet 6: DS Bồi dưỡng Giỏi
+    // Sheet 6: DS Nhóm Tự học (≥ 7.0 điểm)
     const sheet5Data = [
-      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Mô hình bồi dưỡng', 'Nội dung bồi dưỡng']
+      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Mô hình tự học', 'Nội dung đề xuất']
     ];
-    const gioiList = st.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
-    gioiList.forEach((s, idx) => {
-      let mod = '', content = '';
-      if (s.score >= 9.5) {
-        mod = '🏆 Đội tuyển HSG & STEM';
-        content = 'Bồi dưỡng chuyên đề nâng cao, dự thi HSG cấp trường và cụm trường';
-      } else if (s.score >= 8.5) {
-        mod = '🤝 Mentor trợ giảng';
-        content = 'Được phân công hướng dẫn và hỗ trợ bạn trong nhóm học tập tại lớp';
-      } else {
-        mod = '🌐 Tự học trên nền tảng';
-        content = 'Cấp tài khoản ngân hàng câu hỏi vận dụng cao và đề thi thử trực tuyến';
-      }
-      sheet5Data.push([idx + 1, s.name, s.cls, s.score, mod, content]);
+    const tuHocList = st.filter(s => s.score >= 7.0).sort((a,b) => b.score - a.score);
+    tuHocList.forEach((s, idx) => {
+      const isGioi = s.score >= 8.0;
+      const mod = '🌱 Tự học';
+      const content = isGioi
+        ? 'Tự học nâng cao, tiếp cận câu hỏi vận dụng cao và chuyên đề chuyên sâu'
+        : 'Tự học có định hướng, hoàn thiện bài tập củng cố nâng lên mức Giỏi';
+      sheet5Data.push([idx + 1, s.name, s.cls, s.score, isGioi ? 'Giỏi (≥8.0)' : 'Khá cao (7.0 - <8.0)', mod, content]);
     });
 
     if (typeof XLSX !== 'undefined') {
@@ -3041,12 +3083,12 @@ window.exportExcel = function() {
       XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách toàn khối');
 
       const ws4 = XLSX.utils.aoa_to_sheet(sheet4Data);
-      ws4['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
-      XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp Yếu & VIP');
+      ws4['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
+      XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp (<5.0)');
 
       const ws5 = XLSX.utils.aoa_to_sheet(sheet5Data);
-      ws5['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 48 }];
-      XLSX.utils.book_append_sheet(wb, ws5, 'DS Bồi dưỡng Giỏi');
+      ws5['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 48 }];
+      XLSX.utils.book_append_sheet(wb, ws5, 'DS Nhóm Tự học (≥7.0)');
 
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -3059,8 +3101,8 @@ window.exportExcel = function() {
         { name: 'Phổ điểm', data: sheetPhoDiemData },
         { name: 'So sánh lớp', data: sheet2Data },
         { name: 'Danh sách toàn khối', data: sheet3Data },
-        { name: 'DS Can thiệp Yếu & VIP', data: sheet4Data },
-        { name: 'DS Bồi dưỡng Giỏi', data: sheet5Data }
+        { name: 'DS Can thiệp (<5.0)', data: sheet4Data },
+        { name: 'DS Nhóm Tự học (≥7.0)', data: sheet5Data }
       ]);
       saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
       toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (Chế độ tương thích - 6 Sheet)`);
@@ -3076,14 +3118,14 @@ window.exportAllExcel = function() {
   try {
     const cfg = getCfg();
     const dateSuffix = new Date().toISOString().slice(0,10);
-    const fileName = `KHTNReport_TongHop_5Mon_${currentExam}_${dateSuffix}.xlsx`;
+    const fileName = `BaoCao_TongHop_5Mon_${currentExam}_${dateSuffix}.xlsx`;
     const subjects = currentUser ? currentUser.subjects : ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý'];
     const sheetsFallback = [];
 
     // Tạo Sheet Tổng Hợp Tổ KHTN so sánh cả 5 môn
     const masterData = [
       ['BÁO CÁO TỔNG HỢP SO SÁNH CHẤT LƯỢNG 5 BỘ MÔN TỔ KHOA HỌC TỰ NHIÊN'],
-      ['Trường THPT FPT - Kỳ thi:', cfg.exam],
+      ['Trường THPT FPT Cần Thơ - Kỳ thi:', cfg.exam],
       ['Tổ trưởng:', 'Thầy Thạch Thanh Tâm', 'Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
       ['Ngày xuất báo cáo:', new Date().toLocaleDateString('vi-VN')],
       [],
@@ -3136,7 +3178,7 @@ window.exportAllExcel = function() {
         const sStats = stats(sData.students, sData.cfg || cfg);
 
         const data = [
-          [`BÁO CÁO CHI TIẾT BỘ MÔN: ${sb.toUpperCase()} (TỔ KHTN - THPT FPT)`],
+          [`BÁO CÁO CHI TIẾT BỘ MÔN: ${sb.toUpperCase()} (TỔ KHTN - TRƯỜNG THPT FPT CẦN THƠ)`],
           ['Kỳ kiểm tra:', cfg.exam, 'Sĩ số:', sStats.n, 'Điểm TB:', +sStats.mean.toFixed(2), 'Tỉ lệ đạt:', pc(sStats.pass)],
           ['Giỏi:', sStats.c.gioi, 'Khá:', sStats.c.kha, 'Trung bình:', sStats.c.tb, 'Yếu:', sStats.c.yeu],
           [],
@@ -3151,9 +3193,11 @@ window.exportAllExcel = function() {
           const diff = Math.round((target - s.score)*100)/100;
           const isNear = diff > 0 && diff <= 0.5;
           let sol = '';
-          if (t === 'yeu') sol = s.score < 3 ? '👨‍🏫 Kèm 1-1' : s.score >= 4.5 ? '⭐ Lớp VIP nâng hạng' : '📚 Phụ đạo tập trung';
-          else if (t === 'gioi') sol = s.score >= 9.5 ? '🏆 Đội tuyển HSG & STEM' : s.score >= 8.5 ? '🤝 Mentor trợ giảng' : '🌐 Tự học website';
-          else sol = isNear ? 'Cận Khá - Bứt phá' : 'Tiếp tục rèn luyện';
+          if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
+          else if (s.score < 4.0) sol = '⭐ VIP';
+          else if (s.score < 5.0) sol = '📚 Phụ đạo';
+          else if (s.score < 7.0) sol = '🧭 Tự học có hướng dẫn';
+          else sol = '🌱 Tự học';
 
           data.push([
             idx + 1,
@@ -3183,14 +3227,20 @@ window.exportAllExcel = function() {
         if (!sData || !sData.students.length) return;
         const sStats = stats(sData.students, sData.cfg || cfg);
         const data = [
-          [`BÁO CÁO MÔN: ${sb.toUpperCase()}`],
+          [`BÁO CÁO MÔN: ${sb.toUpperCase()} - TRƯỜNG THPT FPT CẦN THƠ`],
           ['Tổng số HS', sStats.n, 'ĐTB', +sStats.mean.toFixed(2), 'Tỉ lệ đạt', pc(sStats.pass)],
           [],
           ['STT', 'Họ tên', 'Lớp', 'Điểm', 'Xếp loại', 'Giải pháp can thiệp']
         ];
         const sorted = [...sData.students].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
         sorted.forEach((s, idx) => {
-          data.push([idx + 1, s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg || cfg)), s.score < 5 ? 'Cần can thiệp' : 'Đạt chuẩn']);
+          let sol = '';
+          if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
+          else if (s.score < 4.0) sol = '⭐ VIP';
+          else if (s.score < 5.0) sol = '📚 Phụ đạo';
+          else if (s.score < 7.0) sol = '🧭 Tự học có hướng dẫn';
+          else sol = '🌱 Tự học';
+          data.push([idx + 1, s.name, s.cls, s.score, tLabel(tier(s.score, sData.cfg || cfg)), sol]);
         });
         sheetsFallback.push({ name: sb, data });
       });
@@ -3204,7 +3254,7 @@ window.exportAllExcel = function() {
   }
 };
 
-// ===== EXPORT SPECIAL GROUPS (VIP & PHỤ ĐẠO) =====
+// ===== EXPORT SPECIAL GROUPS (VIP, PHỤ ĐẠO & KÈM 1-1) =====
 window.exportSpecialGroupExcel = function(groupType) {
   try {
     const cfg = getCfg();
@@ -3213,70 +3263,98 @@ window.exportSpecialGroupExcel = function(groupType) {
     const dateSuffix = new Date().toISOString().slice(0,10);
 
     if (groupType === 'vip') {
-      const list = st.filter(s => s.score >= 4.5 && s.score < 5.0).sort((a,b) => b.score - a.score);
+      const list = st.filter(s => s.score >= 3.0 && s.score < 4.0).sort((a,b) => b.score - a.score);
       const data = [
-        [`DANH SÁCH HỌC SINH LỚP VIP BỨT PHÁ (CẬN CHUẨN ĐẠT)`],
-        [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
-        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 4.5 đến 4.9 (Thiếu ≤ 0.5 điểm để đạt chuẩn)`],
+        [`DANH SÁCH HỌC SINH LỚP VIP (ĐIỂM TỪ 3.0 ĐẾN DƯỚI 4.0)`],
+        [`Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 3.0 đến dưới 4.0`],
         [`Tổng số học sinh: ${list.length} em`],
         [],
-        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Thiếu (điểm)', 'Mục tiêu', 'Giải pháp can thiệp', 'Giáo viên phụ trách']
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Thiếu để đạt chuẩn (≥5.0)', 'Mục tiêu', 'Giải pháp can thiệp', 'Giáo viên phụ trách']
       ];
       list.forEach((s, i) => {
         data.push([
           i + 1, s.name, s.cls, s.score, +(5.0 - s.score).toFixed(2),
-          '≥ 5.5', 'Lớp VIP bứt phá cấp tốc, luyện đề chống mất điểm oan', ''
+          '≥ 5.0', 'Lớp VIP bứt phá kiến thức trọng yếu, luyện đề chống mất điểm oan', ''
         ]);
       });
 
-      const fileName = `KHTNReport_${cleanSb}_Lop_VIP_ButPha_${dateSuffix}.xlsx`;
+      const fileName = `BaoCao_${cleanSb}_Lop_VIP_${dateSuffix}.xlsx`;
 
       if (typeof XLSX !== 'undefined') {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(data);
-        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 42 }, { wch: 22 }];
-        XLSX.utils.book_append_sheet(wb, ws, 'Lop_VIP_ButPha');
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 12 }, { wch: 44 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Lop_VIP');
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       } else {
-        exportTableToExcelFile(fileName, [{ name: 'Lop_VIP_ButPha', data }]);
+        exportTableToExcelFile(fileName, [{ name: 'Lop_VIP', data }]);
       }
       toast(`Đã tải danh sách Lớp VIP (${list.length} học sinh)`);
     } else if (groupType === 'phudao') {
-      const list = st.filter(s => s.score < 4.5).sort((a,b) => a.score - b.score);
+      const list = st.filter(s => s.score >= 4.0 && s.score < 5.0).sort((a,b) => a.score - b.score);
       const data = [
-        [`DANH SÁCH HỌC SINH PHỤ ĐẠO TẬP TRUNG & KÈM 1-1`],
-        [`Trường THPT FPT - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
-        [`Kỳ thi: ${cfg.exam} · Phân bổ: Dưới 3.0 điểm kèm 1-1, từ 3.0 đến 4.4 phụ đạo 2 buổi/tuần`],
+        [`DANH SÁCH HỌC SINH LỚP PHỤ ĐẠO (ĐIỂM TỪ 4.0 ĐẾN DƯỚI 5.0)`],
+        [`Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 4.0 đến dưới 5.0 (Sát ngưỡng đạt)`],
         [`Tổng số học sinh: ${list.length} em`],
         [],
-        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Mô hình can thiệp', 'Lịch học đề xuất', 'Ghi chú']
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Cần bù', 'Lịch học đề xuất', 'Mục tiêu']
       ];
       list.forEach((s, i) => {
-        const isOneOnOne = s.score < 3.0;
         data.push([
-          i + 1, s.name, s.cls, s.score,
-          isOneOnOne ? '👨‍🏫 Kèm 1-1 (Đôi bạn + GV)' : '📚 Phụ đạo tập trung',
-          isOneOnOne ? '1 buổi kèm riêng/tuần' : 'Chiều Thứ 3 & Thứ 5 (16h30 - 17h45)',
-          isOneOnOne ? 'Mất gốc kiến thức, cần kèm sát' : 'Hổng kiến thức chuyên đề trọng tâm'
+          i + 1, s.name, s.cls, s.score, +(5.0 - s.score).toFixed(2),
+          'Chiều Thứ 3 & Thứ 5 (16h30 - 17h45)', 'Bứt phá vượt chuẩn ≥ 5.0'
         ]);
       });
 
-      const fileName = `KHTNReport_${cleanSb}_PhuDao_Kem1-1_${dateSuffix}.xlsx`;
+      const fileName = `BaoCao_${cleanSb}_PhuDao_${dateSuffix}.xlsx`;
 
       if (typeof XLSX !== 'undefined') {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(data);
-        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 32 }, { wch: 34 }];
-        XLSX.utils.book_append_sheet(wb, ws, 'PhuDao_Kem1-1');
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 34 }, { wch: 26 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'PhuDao');
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       } else {
-        exportTableToExcelFile(fileName, [{ name: 'PhuDao_Kem1-1', data }]);
+        exportTableToExcelFile(fileName, [{ name: 'PhuDao', data }]);
       }
-      toast(`Đã tải danh sách Phụ đạo & Kèm 1-1 (${list.length} học sinh)`);
+      toast(`Đã tải danh sách Phụ đạo (${list.length} học sinh)`);
+    } else if (groupType === 'kem11') {
+      const list = st.filter(s => s.score < 3.0).sort((a,b) => a.score - b.score);
+      const data = [
+        [`DANH SÁCH HỌC SINH KÈM 1-1 (ĐIỂM DƯỚI 3.0)`],
+        [`Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm dưới 3.0 (Cần hỗ trợ khẩn cấp)`],
+        [`Tổng số học sinh: ${list.length} em`],
+        [],
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Hình thức kèm', 'Ghi chú']
+      ];
+      list.forEach((s, i) => {
+        data.push([
+          i + 1, s.name, s.cls, s.score,
+          '👨‍🏫 Đôi bạn cùng tiến + GV kèm riêng 1 buổi/tuần', 'Mất gốc kiến thức, cần kèm sát'
+        ]);
+      });
+
+      const fileName = `BaoCao_${cleanSb}_Kem11_${dateSuffix}.xlsx`;
+
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 42 }, { wch: 32 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Kem11');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        exportTableToExcelFile(fileName, [{ name: 'Kem11', data }]);
+      }
+      toast(`Đã tải danh sách Kèm 1-1 (${list.length} học sinh)`);
     }
   } catch (err) {
     console.error('Export Special Group Error:', err);
