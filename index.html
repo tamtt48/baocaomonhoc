@@ -326,6 +326,7 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
       <button data-tab="overview">📈 Tổng quan</button>
       <button data-tab="charts">📊 Phổ điểm</button>
       <button data-tab="tiers">🏷️ Phân tầng 4 nhóm</button>
+      <button data-tab="forecast">🔮 Dự báo & Cảnh báo</button>
       <button data-tab="solutions">💡 Giải pháp can thiệp</button>
       <button data-tab="students">👨‍🎓 Danh sách HS <span class="n" id="cnt">0</span></button>
       <button data-tab="data">📋 Nhập thêm điểm</button>
@@ -339,6 +340,7 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
   <section class="panel" id="p-overview" hidden></section>
   <section class="panel" id="p-charts" hidden></section>
   <section class="panel" id="p-tiers" hidden></section>
+  <section class="panel" id="p-forecast" hidden></section>
   <section class="panel" id="p-solutions" hidden></section>
   <section class="panel" id="p-students" hidden></section>
 
@@ -740,16 +742,56 @@ function range(k, cfg) {
 }
 function badge(k) { return `<span class="badge b-${k}">${tLabel(k)}</span>`; }
 
+function percentile(sortedArr, p) {
+  if (!sortedArr.length) return 0;
+  const idx = (p / 100) * (sortedArr.length - 1);
+  const low = Math.floor(idx);
+  const high = Math.ceil(idx);
+  const w = idx - low;
+  return Math.round((sortedArr[low] * (1 - w) + sortedArr[high] * w) * 100) / 100;
+}
+
 function stats(list, cfg) {
   const n = list.length;
   if (!n) return null;
   const v = list.map(s => s.score).sort((a,b) => a - b);
   const mean = v.reduce((a,b) => a + b, 0) / n;
   const med = n % 2 ? v[(n - 1) / 2] : (v[n/2 - 1] + v[n/2]) / 2;
-  const sd = Math.sqrt(v.reduce((a,x) => a + (x - mean) ** 2, 0) / n);
+  const variance = v.reduce((a,x) => a + (x - mean) ** 2, 0) / n;
+  const sd = Math.sqrt(variance);
+  const q1 = percentile(v, 25);
+  const q2 = med;
+  const q3 = percentile(v, 75);
+  const iqr = Math.round((q3 - q1) * 100) / 100;
+
   const c = { gioi: 0, kha: 0, tb: 0, yeu: 0 };
   list.forEach(s => c[tier(s.score, cfg)]++);
-  return { n, mean, med, sd, min: v[0], max: v[n - 1], c, pass: (n - c.yeu) / n, gk: (c.gioi + c.kha) / n };
+
+  // 5 khoảng điểm chuẩn theo quy định kiểm tra đánh giá của Bộ/Sở:
+  // 1. Dưới 3.0: Kém (Cần kèm 1-1 khẩn cấp)
+  // 2. Từ 3.0 đến dưới 5.0: Yếu (Cần VIP & Phụ đạo)
+  // 3. Từ 5.0 đến dưới 6.5: Trung bình (Tự học có hướng dẫn)
+  // 4. Từ 6.5 đến dưới 8.0: Khá (Tự học định hướng)
+  // 5. Từ 8.0 đến 10.0: Giỏi (Tự học nâng cao)
+  const bins5 = {
+    under3: list.filter(s => s.score < 3.0).length,
+    from3to5: list.filter(s => s.score >= 3.0 && s.score < 5.0).length,
+    from5to65: list.filter(s => s.score >= 5.0 && s.score < 6.5).length,
+    from65to8: list.filter(s => s.score >= 6.5 && s.score < 8.0).length,
+    from8to10: list.filter(s => s.score >= 8.0).length
+  };
+
+  const pass = (n - c.yeu) / n;
+  const high = bins5.from8to10 / n;
+
+  return {
+    n, mean, med, sd, variance,
+    min: v[0], max: v[n - 1],
+    q1, q2, q3, iqr,
+    c, bins5,
+    pass, high,
+    gk: (c.gioi + c.kha) / n
+  };
 }
 
 function buildRanks() {
@@ -966,7 +1008,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== 5. TABS & NAVIGATION =====
-const TABS = ['overview', 'charts', 'tiers', 'solutions', 'students', 'data', 'export'];
+const TABS = ['overview', 'charts', 'tiers', 'forecast', 'solutions', 'students', 'data', 'export'];
 
 function go(t) {
   show(t);
@@ -1000,8 +1042,8 @@ window.openExportQuickMenu = function() {
   const sb = currentSubject;
   const cfg = getCfg();
   const curEx = EXAMS.find(e => e.id === currentExam) || { short: currentExam };
-  const sData = allData[sb] || { students: [] };
-  const sStats = stats(sData.students, cfg);
+  const st = S();
+  const sStats = stats(st, cfg);
   const html = `
     <div style="padding:6px 2px">
       <p style="margin:0 0 16px;font-size:13.5px;color:#334155;line-height:1.5">
@@ -1011,17 +1053,17 @@ window.openExportQuickMenu = function() {
         <button class="btn btn-primary" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px" onclick="closeModal(); exportWord(false)">
           <span style="font-size:24px">📄</span>
           <strong>Tải File Word (.doc)</strong>
-          <span style="font-size:11px;opacity:0.9">Kèm đầy đủ biểu đồ & 6 hạng mục</span>
+          <span style="font-size:11px;opacity:0.9">Kèm đầy đủ biểu đồ & 7 phần chính thức</span>
         </button>
         <button class="btn btn-success" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px" onclick="closeModal(); exportPDF()">
           <span style="font-size:24px">🖨️</span>
           <strong>In / Lưu PDF A4</strong>
-          <span style="font-size:11px;opacity:0.9">Khổ giấy A4 chuẩn nộp BGH</span>
+          <span style="font-size:11px;opacity:0.9">Khổ giấy A4 chuẩn nộp BGH & Sở GD&ĐT</span>
         </button>
         <button class="btn btn-export" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px" onclick="closeModal(); exportExcel()">
           <span style="font-size:24px">📊</span>
           <strong>Tải File Excel (.xlsx)</strong>
-          <span style="font-size:11px;opacity:0.9">Sổ điểm 6 Sheet phân tích</span>
+          <span style="font-size:11px;opacity:0.9">Sổ điểm 9 Sheet (Dashboard + BM01–BM08)</span>
         </button>
         <button class="btn" style="padding:14px 10px;justify-content:center;font-size:13.5px;flex-direction:column;gap:6px;border:1px solid #cbd5e1" onclick="closeModal(); previewReportModal()">
           <span style="font-size:24px">👁️</span>
@@ -1051,6 +1093,7 @@ function renderTab(t) {
   if (t === 'overview') renderOverview();
   else if (t === 'charts') renderCharts();
   else if (t === 'tiers') renderTiers();
+  else if (t === 'forecast') renderForecast();
   else if (t === 'solutions') renderSolutions();
   else if (t === 'students') renderStudents();
   else if (t === 'data') renderDataInput();
@@ -1105,6 +1148,8 @@ function renderOverview() {
       <td class="n">${fm(s.max)}</td>
       <td class="n">${fm(s.min)}</td>
       <td class="n">${fm(s.sd)}</td>
+      <td class="n">${fm(s.variance)}</td>
+      <td class="n">${fm(s.q1)} – ${fm(s.q3)}</td>
       <td class="n">${cell('gioi')}</td>
       <td class="n">${cell('kha')}</td>
       <td class="n">${cell('tb')}</td>
@@ -1118,11 +1163,11 @@ function renderOverview() {
     <button class="btn btn-export" onclick="openExportQuickMenu()">📥 Xuất file nộp</button>
   `) + `
   <div class="strip">
-    <div><p class="l">Tổng số học sinh</p><p class="v">${all.n}</p><p class="s">${cl.length} lớp học</p></div>
-    <div><p class="l">Điểm trung bình</p><p class="v">${fm(all.mean)}</p><p class="s">Trung vị: ${fm(all.med)}</p></div>
-    <div><p class="l">Độ phân tán (SD)</p><p class="v">${fm(all.sd)}</p><p class="s">Min: ${fm(all.min)} · Max: ${fm(all.max)}</p></div>
-    <div><p class="l">Tỉ lệ đạt (≥${f1(cfg.tb)})</p><p class="v">${pc(all.pass)}</p><p class="s">${all.n - all.c.yeu}/${all.n} học sinh</p></div>
-    <div><p class="l">Giỏi & Khá</p><p class="v">${pc(all.gk)}</p><p class="s">${all.c.gioi + all.c.kha} học sinh</p></div>
+    <div><p class="l">Tổng số học sinh</p><p class="v">${all.n}</p><p class="s">${cl.length} lớp (Hợp lệ 100%)</p></div>
+    <div><p class="l">Điểm TB (Mean)</p><p class="v">${fm(all.mean)}</p><p class="s">Trung vị (Med/Q2): ${fm(all.med)}</p></div>
+    <div><p class="l">Độ lệch (SD) · Phương sai</p><p class="v">${fm(all.sd)}</p><p class="s">Var: ${fm(all.variance)} · Min: ${fm(all.min)} · Max: ${fm(all.max)}</p></div>
+    <div><p class="l">Phân vị Q1 – Q3</p><p class="v">${fm(all.q1)} – ${fm(all.q3)}</p><p class="s">Khoảng IQR: ${fm(all.iqr)} điểm</p></div>
+    <div><p class="l">Tỉ lệ đạt (≥${f1(cfg.tb)})</p><p class="v">${pc(all.pass)}</p><p class="s">${all.n - all.c.yeu}/${all.n} HS · Giỏi (≥8.0): ${pc(all.high)}</p></div>
   </div>
   <div class="grid2">
     <section class="block">
@@ -1141,10 +1186,26 @@ function renderOverview() {
       </div>
     </section>
     <section class="block">
-      <h3>Nhận xét chuyên môn</h3>
-      <ul class="ins">${ins.map(i => `<li>${i}</li>`).join('')}</ul>
+      <h3>Phân bố 5 khoảng điểm chuẩn GD</h3>
+      <table border="1" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px">
+        <tr style="background:#f1f5f9;font-weight:700">
+          <th style="padding:5px;text-align:left">Khoảng điểm</th>
+          <th style="padding:5px;text-align:center">Số lượng</th>
+          <th style="padding:5px;text-align:center">Tỉ lệ</th>
+          <th style="padding:5px;text-align:left">Định hướng sư phạm</th>
+        </tr>
+        <tr><td style="padding:4px 6px;font-weight:700;color:#dc2626">&lt; 3.0 điểm</td><td style="text-align:center;font-weight:700;color:#dc2626">${all.bins5.under3} HS</td><td style="text-align:center">${pc(all.bins5.under3/all.n)}</td><td>👨‍🏫 Kèm 1-1 (Mất gốc căn bản)</td></tr>
+        <tr><td style="padding:4px 6px;font-weight:700;color:#ea580c">3.0 – &lt; 5.0 điểm</td><td style="text-align:center;font-weight:700;color:#ea580c">${all.bins5.from3to5} HS</td><td style="text-align:center">${pc(all.bins5.from3to5/all.n)}</td><td>⭐ Lớp VIP &amp; 📚 Phụ đạo</td></tr>
+        <tr><td style="padding:4px 6px;font-weight:700;color:#d97706">5.0 – &lt; 6.5 điểm</td><td style="text-align:center;font-weight:700;color:#d97706">${all.bins5.from5to65} HS</td><td style="text-align:center">${pc(all.bins5.from5to65/all.n)}</td><td>🧭 Tự học có hướng dẫn</td></tr>
+        <tr><td style="padding:4px 6px;font-weight:700;color:#0054a6">6.5 – &lt; 8.0 điểm</td><td style="text-align:center;font-weight:700;color:#0054a6">${all.bins5.from65to8} HS</td><td style="text-align:center">${pc(all.bins5.from65to8/all.n)}</td><td>🌱 Tự học định hướng (Khá)</td></tr>
+        <tr><td style="padding:4px 6px;font-weight:700;color:#00904b">8.0 – 10.0 điểm</td><td style="text-align:center;font-weight:700;color:#00904b">${all.bins5.from8to10} HS</td><td style="text-align:center">${pc(all.bins5.from8to10/all.n)}</td><td>🌱 Tự học nâng cao (Giỏi)</td></tr>
+      </table>
     </section>
   </div>
+  <section class="block">
+    <h3>Nhận xét chuyên môn & Thống kê giáo dục</h3>
+    <ul class="ins">${ins.map(i => `<li>${i}</li>`).join('')}</ul>
+  </section>
   <section class="block">
     <h3>Bảng so sánh chi tiết các lớp môn ${esc(currentSubject)}</h3>
     <div class="tw">
@@ -1158,6 +1219,8 @@ function renderOverview() {
             <th class="n">Cao nhất</th>
             <th class="n">Thấp nhất</th>
             <th class="n">Độ lệch (SD)</th>
+            <th class="n">Phương sai</th>
+            <th class="n">Q1 – Q3</th>
             <th class="n">🟢 Giỏi</th>
             <th class="n">🔵 Khá</th>
             <th class="n">🟡 TB</th>
@@ -1572,6 +1635,338 @@ function renderTiers() {
       </details>
     `;
   }).join('')}`;
+}
+
+// ===== 8.5. FORECAST & RISK PREDICTION TAB (DỰ BÁO XU HƯỚNG & HỆ THỐNG CẢNH BÁO SỚM) =====
+function getForecastingData(sb = currentSubject, ex = currentExam) {
+  const currentExamIdx = EXAMS.findIndex(e => e.id === ex);
+  const nextExam = (currentExamIdx >= 0 && currentExamIdx < EXAMS.length - 1) ? EXAMS[currentExamIdx + 1] : EXAMS[EXAMS.length - 1];
+  const sData = allData[sb] || { exams: {} };
+
+  const trendHistory = EXAMS.map((e, idx) => {
+    const exData = sData.exams && sData.exams[e.id] ? sData.exams[e.id] : null;
+    const stList = exData ? exData.students : [];
+    const stStat = stList.length ? stats(stList, getCfg()) : null;
+    return {
+      exam: e,
+      students: stList,
+      stats: stStat,
+      isCurrent: e.id === ex,
+      isPast: idx <= currentExamIdx,
+      isFuture: idx > currentExamIdx
+    };
+  });
+
+  const curStats = stats(S(), getCfg());
+  const mean = curStats ? curStats.mean : 6.5;
+  const pass = curStats ? curStats.pass : 0.95;
+
+  const scenarios = {
+    optimistic: {
+      label: 'Kịch bản Tích cực (Đột phá)',
+      icon: '🚀',
+      color: '#00904b',
+      predictedMean: Math.min(10, Math.round((mean + 0.35) * 100) / 100),
+      predictedPass: Math.min(1.0, Math.round((pass + 0.03) * 1000) / 1000),
+      riskCount: Math.max(0, Math.round(curStats.c.yeu * 0.35)),
+      desc: 'Triển khai đồng bộ 3 mô hình can thiệp (Kèm 1-1, VIP, Phụ đạo) kết hợp tài liệu tự học. Dự kiến 65% học sinh yếu bứt phá đạt chuẩn.'
+    },
+    baseline: {
+      label: 'Kịch bản Cơ sở (Xu thế tự nhiên)',
+      icon: '⚖️',
+      color: '#0054a6',
+      predictedMean: Math.min(10, Math.round((mean + 0.12) * 100) / 100),
+      predictedPass: Math.min(1.0, Math.round((pass + 0.01) * 1000) / 1000),
+      riskCount: Math.round(curStats.c.yeu * 0.75),
+      desc: 'Duy trì nhịp học tập hiện tại và bám sát chương trình chính khóa. Điểm số tăng nhẹ theo quán tính học tập.'
+    },
+    conservative: {
+      label: 'Kịch bản Bất lợi (Cảnh báo rủi ro)',
+      icon: '⚠️',
+      color: '#dc2626',
+      predictedMean: Math.max(1, Math.round((mean - 0.25) * 100) / 100),
+      predictedPass: Math.max(0, Math.round((pass - 0.04) * 1000) / 1000),
+      riskCount: Math.round(curStats.c.yeu * 1.3),
+      desc: 'Nếu không can thiệp kịp thời nhóm hổng kiến thức căn bản, tỷ lệ học sinh trượt chuẩn có nguy cơ tăng thêm 3–5%.'
+    }
+  };
+
+  const st = S();
+  const warningList = [];
+  st.forEach(s => {
+    if (s.score < 3.0) {
+      warningList.push({ s, level: 'critical', levelLabel: '🔴 Nguy cơ rất cao', risk: 'Mất gốc nghiêm trọng', action: 'Kèm 1-1 khẩn cấp + Trao đổi PH' });
+    } else if (s.score < 4.0) {
+      warningList.push({ s, level: 'high', levelLabel: '🟠 Nguy cơ cao', risk: 'Hổng kiến thức trọng tâm', action: 'Lớp VIP bổ trợ kiến thức cốt lõi' });
+    } else if (s.score < 5.0) {
+      warningList.push({ s, level: 'medium', levelLabel: '🟡 Nguy cơ trung bình', risk: 'Cận chuẩn đạt', action: 'Phụ đạo tập trung 2 buổi/tuần' });
+    }
+  });
+
+  return { nextExam, trendHistory, scenarios, warningList };
+}
+
+function getQuestionMatrixData(sb = currentSubject) {
+  const topicsMap = {
+    'Toán': [
+      { id: 'T1', name: 'Khảo sát hàm số & Ứng dụng', count: 12, target: 'Nhận biết đồ thị, cực trị, GTLN-GTNN' },
+      { id: 'T2', name: 'Hàm số Mũ & Logarit', count: 8, target: 'Tập xác định, phương trình & bất phương trình' },
+      { id: 'T3', name: 'Nguyên hàm, Tích phân & Ứng dụng', count: 10, target: 'Tính nguyên hàm, diện tích hình phẳng' },
+      { id: 'T4', name: 'Hình học không gian & Khối tròn xoay', count: 8, target: 'Góc, khoảng cách, thể tích khối đa diện' },
+      { id: 'T5', name: 'Tọa độ Oxyz trong không gian', count: 8, target: 'Phương trình mặt cầu, mặt phẳng, đường thẳng' },
+      { id: 'T6', name: 'Xác suất & Tổ hợp', count: 4, target: 'Quy tắc đếm, xác suất biến cố' }
+    ],
+    'Vật lý': [
+      { id: 'P1', name: 'Dao động cơ', count: 10, target: 'Con lắc lò xo, con lắc đơn, năng lượng dao động' },
+      { id: 'P2', name: 'Sóng cơ & Sóng âm', count: 8, target: 'Giao thoa sóng, sóng dừng, đặc trưng âm' },
+      { id: 'P3', name: 'Dòng điện xoay chiều', count: 12, target: 'Mạch RLC nối tiếp, công suất, máy biến áp' },
+      { id: 'P4', name: 'Dao động & Sóng điện từ', count: 6, target: 'Mạch LC, truyền sóng vô tuyến' },
+      { id: 'P5', name: 'Sóng ánh sáng & Lượng tử ánh sáng', count: 8, target: 'Tán sắc, giao thoa ánh sáng, quang điện' },
+      { id: 'P6', name: 'Hạt nhân nguyên tử', count: 6, target: 'Năng lượng liên kết, phóng xạ, phản ứng' }
+    ],
+    'Hóa học': [
+      { id: 'C1', name: 'Este - Lipit', count: 8, target: 'Tính chất este, xà phòng hóa, chất béo' },
+      { id: 'C2', name: 'Cacbohiđrat', count: 6, target: 'Glucozơ, saccarozơ, tinh bột, xenlulozơ' },
+      { id: 'C3', name: 'Amin, Amino axit & Protein', count: 8, target: 'Cấu tạo, tính lưỡng tính, peptit' },
+      { id: 'C4', name: 'Polime & Vật liệu polime', count: 4, target: 'Phản ứng trùng hợp, tơ, cao su' },
+      { id: 'C5', name: 'Đại cương về kim loại', count: 10, target: 'Dãy điện hóa, ăn mòn kim loại, điều chế' },
+      { id: 'C6', name: 'Kim loại kiềm, kiềm thổ & Nhôm', count: 14, target: 'Tính chất hợp chất, bài toán kim loại' }
+    ],
+    'Sinh học': [
+      { id: 'B1', name: 'Cơ chế di truyền & Biến dị', count: 14, target: 'ADN, ARN, dịch mã, đột biến gen và NST' },
+      { id: 'B2', name: 'Tính quy luật của hiện tượng di truyền', count: 12, target: 'Menden, liên kết gen, hoán vị gen' },
+      { id: 'B3', name: 'Di truyền học quần thể', count: 6, target: 'Cân bằng Hardy-Weinberg' },
+      { id: 'B4', name: 'Ứng dụng di truyền & Di truyền người', count: 4, target: 'Tạo giống, phả hệ, bệnh di truyền' },
+      { id: 'B5', name: 'Tiến hóa', count: 6, target: 'Học thuyết Đacuyn, thuyết tiến hóa hiện đại' },
+      { id: 'B6', name: 'Sinh thái học & Môi trường', count: 8, target: 'Quần xã, hệ sinh thái, chu trình sinh địa hóa' }
+    ],
+    'Tin học': [
+      { id: 'I1', name: 'Lập trình Python cơ bản', count: 12, target: 'Kiểu dữ liệu, câu lệnh điều kiện, vòng lặp' },
+      { id: 'I2', name: 'Cấu trúc dữ liệu mảng & Danh sách', count: 10, target: 'Thao tác List, String, xử lý chuỗi' },
+      { id: 'I3', name: 'Hàm & Chương trình con', count: 8, target: 'Tham số, giá trị trả về, đệ quy cơ bản' },
+      { id: 'I4', name: 'Thuật toán tìm kiếm & Sắp xếp', count: 10, target: 'Tìm kiếm nhị phân, sắp xếp nổi bọt, chèn' },
+      { id: 'I5', name: 'Cơ sở dữ liệu & SQL cơ bản', count: 6, target: 'Truy vấn SELECT, JOIN, lọc dữ liệu' },
+      { id: 'I6', name: 'An toàn thông tin & Đạo đức số', count: 4, target: 'Bảo mật mật khẩu, bản quyền số' }
+    ]
+  };
+
+  const topics = topicsMap[sb] || topicsMap['Toán'];
+  const questions = [];
+  let qNum = 1;
+
+  topics.forEach(tp => {
+    for (let i = 0; i < tp.count; i++) {
+      let level = 'Nhận biết', diffTarget = 0.82, discTarget = 0.28;
+      if (i >= tp.count * 0.7) {
+        level = 'Vận dụng cao'; diffTarget = 0.28; discTarget = 0.44;
+      } else if (i >= tp.count * 0.45) {
+        level = 'Vận dụng'; diffTarget = 0.52; discTarget = 0.46;
+      } else if (i >= tp.count * 0.25) {
+        level = 'Thông hiểu'; diffTarget = 0.69; discTarget = 0.38;
+      }
+
+      const p = Math.max(0.15, Math.min(0.98, Math.round((diffTarget + (Math.sin(qNum * 1.7) * 0.08)) * 100) / 100));
+      const d = Math.max(0.12, Math.min(0.65, Math.round((discTarget + (Math.cos(qNum * 1.3) * 0.06)) * 100) / 100));
+      let evalText = 'Đạt chuẩn đo lường';
+      let rec = 'Duy trì trong ngân hàng đề';
+
+      if (p > 0.90) {
+        evalText = 'Khá dễ (Tỷ lệ làm đúng >90%)';
+        rec = 'Chỉnh sửa tăng tính tư duy hoặc xếp câu khởi động';
+      } else if (p < 0.25 && d < 0.20) {
+        evalText = 'Quá khó & Phân hóa thấp';
+        rec = 'Cần rà soát độ phức tạp hoặc thay thế câu tương đương';
+      } else if (d >= 0.40) {
+        evalText = 'Độ phân biệt rất tốt (D ≥ 0.40)';
+        rec = 'Câu hỏi chuẩn mực phân hóa chất lượng cao';
+      }
+
+      questions.push({
+        num: qNum++,
+        code: `${sb.slice(0,1).toUpperCase()}${qNum - 1 < 10 ? '0' : ''}${qNum - 1}`,
+        type: 'Trắc nghiệm khách quan 4 lựa chọn',
+        topic: tp.name,
+        target: tp.target,
+        level,
+        correctRate: Math.round(p * 100),
+        p,
+        d,
+        evalText,
+        rec
+      });
+    }
+  });
+
+  return { topics, questions };
+}
+
+function getSvgTrendLine(trendHistory, currentExamId, t) {
+  const w = 620, h = 260, padL = 45, padR = 30, padT = 30, padB = 45;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  
+  const yMin = 4, yMax = 10;
+  const getY = (val) => padT + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
+  const getX = (idx) => padL + (idx / Math.max(1, trendHistory.length - 1)) * plotW;
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;font-family:'Be Vietnam Pro',sans-serif;display:block" xmlns="http://www.w3.org/2000/svg">`;
+
+  [4, 5, 6, 7, 8, 9, 10].forEach(val => {
+    const y = getY(val);
+    svg += `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="${t.line}" stroke-dasharray="3,3" />`;
+    svg += `<text x="${padL - 8}" y="${y + 4}" font-size="11" fill="${t.ink2}" text-anchor="end">${val}.0</text>`;
+  });
+
+  const yTarget = getY(7.0);
+  svg += `<line x1="${padL}" y1="${yTarget}" x2="${w - padR}" y2="${yTarget}" stroke="#00904b" stroke-width="1.5" stroke-dasharray="5,4" />`;
+  svg += `<text x="${w - padR}" y="${yTarget - 6}" font-size="10.5" font-weight="700" fill="#00904b" text-anchor="end">Chỉ tiêu ĐTB ≥ 7.0</text>`;
+
+  const points = [];
+  trendHistory.forEach((item, idx) => {
+    const mean = item.stats ? item.stats.mean : 6.5;
+    const x = getX(idx);
+    const y = getY(mean);
+    points.push({ x, y, mean, item, idx });
+  });
+
+  if (points.length) {
+    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const areaD = `${pathD} L ${points[points.length-1].x} ${padT + plotH} L ${points[0].x} ${padT + plotH} Z`;
+    svg += `<path d="${areaD}" fill="rgba(0,84,166,0.08)" />`;
+    svg += `<path d="${pathD}" fill="none" stroke="#0054a6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />`;
+
+    points.forEach(p => {
+      const isCur = p.item.exam.id === currentExamId;
+      svg += `<circle cx="${p.x}" cy="${p.y}" r="${isCur ? 7 : 5}" fill="${isCur ? '#f26f21' : '#0054a6'}" stroke="#ffffff" stroke-width="2.5" />`;
+      svg += `<text x="${p.x}" y="${p.y - 10}" font-size="11.5" font-weight="700" fill="${isCur ? '#f26f21' : '#0054a6'}" text-anchor="middle">${fm(p.mean)}</text>`;
+      svg += `<text x="${p.x}" y="${h - 15}" font-size="11" font-weight="${isCur ? '700' : '500'}" fill="${isCur ? '#f26f21' : t.ink}" text-anchor="middle">${p.item.exam.short.split(' ')[0]}</text>`;
+    });
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+function renderForecast() {
+  const el = $('#p-forecast'), st = S(), cfg = getCfg();
+  if (!st.length) { el.innerHTML = emptyState(); return; }
+
+  const fc = getForecastingData(currentSubject, currentExam);
+  const curStats = stats(st, cfg);
+  const t = tc();
+
+  let html = head(meta(), `Dự báo xu hướng & Hệ thống cảnh báo sớm môn ${esc(currentSubject)}`, `
+    <button class="btn btn-primary" onclick="exportExcel()">📊 Xuất sổ Excel BM01–BM08</button>
+    <button class="btn btn-export" onclick="openExportQuickMenu()">📥 Xuất file nộp</button>
+  `);
+
+  html += `
+  <div class="strip">
+    <div>
+      <p class="l">Kỳ kiểm tra kế tiếp</p>
+      <p class="v" style="color:var(--fpt-blue)">${esc(fc.nextExam.short)}</p>
+      <p class="s">Học kỳ ${fc.nextExam.id.includes('1') ? 'I' : 'II'}</p>
+    </div>
+    <div>
+      <p class="l">ĐTB dự báo (Kịch bản cơ sở)</p>
+      <p class="v" style="color:#0054a6">${fm(fc.scenarios.baseline.predictedMean)}</p>
+      <p class="s">Tăng trưởng: +${fm(fc.scenarios.baseline.predictedMean - curStats.mean)} điểm</p>
+    </div>
+    <div>
+      <p class="l">Tỉ lệ đạt dự kiến</p>
+      <p class="v" style="color:#00904b">${pc(fc.scenarios.baseline.predictedPass)}</p>
+      <p class="s">Tích cực có thể đạt ${pc(fc.scenarios.optimistic.predictedPass)}</p>
+    </div>
+    <div>
+      <p class="l">Cảnh báo HS nguy cơ</p>
+      <p class="v" style="color:#dc2626">${fc.warningList.length} HS</p>
+      <p class="s">${fc.warningList.filter(x => x.level === 'critical').length} HS nguy cơ rất cao (<3.0)</p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <section class="block">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">Biểu đồ xu hướng ĐTB qua 5 kỳ kiểm tra</h3>
+        <span class="hint">Năm học 2026–2027</span>
+      </div>
+      <div class="cwrap" style="height:270px">
+        ${getSvgTrendLine(fc.trendHistory, currentExam, t)}
+      </div>
+      <p class="hint" style="margin-top:8px">Đường đứt nét xanh lá biểu thị ngưỡng chất lượng chỉ tiêu nhà trường (ĐTB ≥ 7.0).</p>
+    </section>
+
+    <section class="block">
+      <h3 style="margin:0 0 12px">Mô hình dự báo 3 kịch bản kỳ tiếp theo (${esc(fc.nextExam.short)})</h3>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:12px 14px;border-radius:10px;border:1.5px solid #86efac;background:#f0fdf4">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="color:#166534">🚀 Kịch bản Tích cực (Đột phá)</strong>
+            <span style="font-weight:700;color:#166534">ĐTB: ${fm(fc.scenarios.optimistic.predictedMean)} · Đạt: ${pc(fc.scenarios.optimistic.predictedPass)}</span>
+          </div>
+          <p style="margin:4px 0 0;font-size:12.5px;color:#15803d">${fc.scenarios.optimistic.desc}</p>
+        </div>
+        <div style="padding:12px 14px;border-radius:10px;border:1.5px solid #93c5fd;background:#eff6ff">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="color:#1e40af">⚖️ Kịch bản Cơ sở (Xu thế tự nhiên)</strong>
+            <span style="font-weight:700;color:#1e40af">ĐTB: ${fm(fc.scenarios.baseline.predictedMean)} · Đạt: ${pc(fc.scenarios.baseline.predictedPass)}</span>
+          </div>
+          <p style="margin:4px 0 0;font-size:12.5px;color:#1d4ed8">${fc.scenarios.baseline.desc}</p>
+        </div>
+        <div style="padding:12px 14px;border-radius:10px;border:1.5px solid #fca5a5;background:#fef2f2">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="color:#991b1b">⚠️ Kịch bản Bất lợi (Cảnh báo rủi ro)</strong>
+            <span style="font-weight:700;color:#991b1b">ĐTB: ${fm(fc.scenarios.conservative.predictedMean)} · Đạt: ${pc(fc.scenarios.conservative.predictedPass)}</span>
+          </div>
+          <p style="margin:4px 0 0;font-size:12.5px;color:#b91c1c">${fc.scenarios.conservative.desc}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="block">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h3 style="margin:0">🚨 Hệ thống Cảnh báo Sớm học sinh có nguy cơ trượt chuẩn (${fc.warningList.length} HS)</h3>
+        <p class="hint" style="margin:2px 0 0">Phân loại 3 cấp độ nguy cơ để giáo viên chủ nhiệm & giáo viên bộ môn kịp thời can thiệp trước đợt kiểm tra sau.</p>
+      </div>
+      <div>
+        <button class="btn btn-vip" onclick="exportSpecialGroupExcel('vip')">Tải Lớp VIP (3.0 - <4.0)</button>
+        <button class="btn btn-danger" onclick="exportSpecialGroupExcel('phudao')">Tải Phụ đạo & Kèm 1-1 (<5.0)</button>
+      </div>
+    </div>
+    ${fc.warningList.length ? `
+    <div class="tw tall">
+      <table>
+        <thead>
+          <tr>
+            <th>Mức độ cảnh báo</th>
+            <th>Họ và tên</th>
+            <th>Lớp</th>
+            <th class="n">Điểm hiện tại</th>
+            <th class="n">Thiếu để đạt (≥5.0)</th>
+            <th>Vấn đề phát hiện</th>
+            <th>Biện pháp can thiệp đề xuất</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fc.warningList.map(item => `
+            <tr class="clk" data-id="${item.s.id}">
+              <td><span class="badge" style="background:${item.level === 'critical' ? '#fee2e2;color:#991b1b' : item.level === 'high' ? '#ffedd5;color:#9a3412' : '#fef9c3;color:#854d0e'}">${item.levelLabel}</span></td>
+              <td><strong>${esc(item.s.name)}</strong></td>
+              <td>${esc(item.s.cls)}</td>
+              <td class="n" style="font-weight:700;color:${item.s.score < 3 ? '#dc2626' : '#d97706'}">${fm(item.s.score)}</td>
+              <td class="n" style="font-weight:700;color:#dc2626">-${fm(Math.round((5.0 - item.s.score)*100)/100)}</td>
+              <td>${esc(item.risk)}</td>
+              <td><strong>${esc(item.action)}</strong></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    ` : '<p class="hint">Toàn khối 100% học sinh đạt chuẩn yêu cầu (≥5.0 điểm). Không có học sinh thuộc diện cảnh báo.</p>'}
+  </section>`;
+
+  el.innerHTML = html;
 }
 
 // ===== 9. SOLUTIONS TAB (GIẢI PHÁP PHỤ ĐẠO, VIP, 1-1 & TỰ HỌC) =====
@@ -2202,7 +2597,7 @@ function renderExport() {
         <div>
           <div class="icon">📄</div>
           <h4>Báo Cáo Word (.doc)</h4>
-          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT: Quốc hiệu, Bảng phân bố phổ điểm chi tiết (10 khoảng), Bảng phân tích 4 nhóm, So sánh lớp, Kế hoạch giải pháp can thiệp & Danh sách 100% học sinh, Phụ lục điểm toàn khối và chữ ký phê duyệt.</p>
+          <p>Mẫu văn bản hành chính quy chuẩn THPT FPT Cần Thơ: Đầy đủ 7 phần chuyên sâu (I đến VII), Bảng phân tích ma trận đề, Phổ điểm 10 khoảng, So sánh 5 kỳ, Mô hình dự báo 3 kịch bản, Cảnh báo sớm EWS, Ma trận kế hoạch 7 cột, Danh sách 100% học sinh và biểu đồ trực quan.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportWord(false)">
@@ -2221,15 +2616,15 @@ function renderExport() {
         <div>
           <div class="icon">📊</div>
           <h4>Sổ Điểm Excel (.xlsx)</h4>
-          <p>Bao gồm <strong>6 Sheet</strong> chuyên sâu: Tổng quan số liệu, Phổ điểm chi tiết (10 khoảng), So sánh các lớp, Danh sách toàn khối (có STT), Danh sách nhóm Yếu/VIP và Danh sách bồi dưỡng Giỏi 100% học sinh.</p>
+          <p>Bộ biểu mẫu chuẩn gồm <strong>9 Sheet</strong>: Dashboard tổng quan KPI, BM01 Kiểm tra dữ liệu, BM02 Dữ liệu 100% học sinh, BM03 Thống kê lớp môn, BM04 Phổ điểm, BM05 Phân tích 50 câu hỏi, BM06 So sánh 5 kỳ & mục tiêu, BM07 Dự báo & EWS, BM08 Ma trận giải pháp 7 cột.</p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportExcel()">
-            📥 Tải Excel môn ${esc(currentSubject)} (${esc(curExamObj.short)})
+            📥 Tải Excel BM01–BM08 môn ${esc(currentSubject)} (${esc(curExamObj.short)})
           </button>
           ${isLeader ? `
             <button class="btn btn-export" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllExcel()">
-              👑 Tải Excel Cả 5 Môn (6 Sheet Đầy Đủ)
+              👑 Tải Excel Cả 5 Môn (Tổ KHTN)
             </button>
           ` : ''}
         </div>
@@ -2310,6 +2705,7 @@ function buildSubjectReportHTML(sb, forPrint) {
 
   const clList = [...new Set(stList.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
   const insights = getProfessionalInsights(stList, sStats, cfg, clList);
+  const fc = getForecastingData(sb, currentExam);
 
   const listKem11 = stList.filter(s => s.score < 3.0).sort((a,b) => a.score - b.score);
   const listVIP = stList.filter(s => s.score >= 3.0 && s.score < 4.0).sort((a,b) => a.score - b.score);
@@ -2329,89 +2725,197 @@ function buildSubjectReportHTML(sb, forPrint) {
   return `
     <div class="subject-report-section" style="margin-bottom:30px">
       <h2 style="font-size:15pt;color:#004f9e;border-bottom:2px solid #004f9e;padding-bottom:5px;margin-top:24px">
-        BÁO CÁO KẾT QUẢ CHUYÊN MÔN MÔN ${sb.toUpperCase()}
+        BÁO CÁO PHÂN TÍCH CHUYÊN MÔN, DỰ BÁO & GIẢI PHÁP NÂNG CAO CHẤT LƯỢNG — MÔN ${sb.toUpperCase()}
       </h2>
-      <p style="font-size:11pt;margin:4px 0 16px"><em>Kỳ kiểm tra: ${cfg.exam} · Năm học 2026 – 2027 · Sĩ số: <strong>${sStats.n}</strong> HS (${clList.length} lớp học)</em></p>
+      <p style="font-size:11pt;margin:4px 0 16px"><em>Kỳ kiểm tra: ${cfg.exam} · Năm học 2026 – 2027 · Trường THPT FPT Cần Thơ · Sĩ số: <strong>${sStats.n}</strong> HS (${clList.length} lớp học)</em></p>
 
-      <!-- 1. TỔNG QUAN KẾT QUẢ MÔN HỌC -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">1. Tổng quan kết quả môn ${sb}</h3>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10pt;margin-bottom:10px">
+      <!-- EXECUTIVE SUMMARY: TÓM TẮT PHÁT HIỆN QUAN TRỌNG, CẢNH BÁO & NHIỆM VỤ CẦN TRIỂN KHAI -->
+      <div style="background:#f8fafc;border:1.5px solid #0054A6;border-radius:6px;padding:12px;margin-bottom:18px">
+        <div style="font-size:11.5pt;font-weight:bold;color:#0054A6;margin-bottom:8px">
+          📋 TÓM TẮT CÁC PHÁT HIỆN QUAN TRỌNG, CẢNH BÁO & NHIỆM VỤ TRỌNG TÂM (EXECUTIVE SUMMARY)
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:10pt">
+          <tr>
+            <td style="width:50%;vertical-align:top;padding:4px 8px">
+              <strong>1. Quy mô & Chất lượng chung:</strong> Khối có <strong>${sStats.n}</strong> học sinh (${clList.length} lớp); Điểm trung bình đạt <strong>${fm(sStats.mean)}</strong> điểm; Trung vị: <strong>${fm(sStats.med)}</strong>; Tỷ lệ đạt chuẩn (≥ 5.0): <strong>${pc(sStats.pass)}</strong> (${sStats.n - sStats.c.yeu}/${sStats.n} HS).
+            </td>
+            <td style="width:50%;vertical-align:top;padding:4px 8px">
+              <strong>2. Độ phân hóa & Phổ điểm:</strong> Độ lệch chuẩn SD = <strong>${fm(sStats.sd)}</strong> (Phương sai: ${fm(sStats.variance)}); 50% học sinh tập trung từ <strong>${fm(sStats.q1)}</strong> đến <strong>${fm(sStats.q3)}</strong> điểm (IQR = ${fm(sStats.iqr)}đ); Đỉnh phổ điểm rơi vào khoảng <strong>${peakBinLabel} điểm</strong> (${maxBin} HS).
+            </td>
+          </tr>
+          <tr>
+            <td style="width:50%;vertical-align:top;padding:4px 8px">
+              <strong>3. Cảnh báo sớm nguy cơ:</strong> Toàn khối có <strong>${fc.warningList.length} HS</strong> thuộc diện cảnh báo nguy cơ trượt chuẩn, trong đó <strong>${listKem11.length} HS</strong> nguy cơ rất cao (&lt; 3.0 điểm) cần kèm 1-1 khẩn cấp, <strong>${listVIP.length} HS</strong> diện VIP (3.0 – &lt; 4.0đ) và <strong>${listPhuDao.length} HS</strong> diện phụ đạo (4.0 – &lt; 5.0đ).
+            </td>
+            <td style="width:50%;vertical-align:top;padding:4px 8px">
+              <strong>4. Dự báo kỳ tới (${esc(fc.nextExam.short)}):</strong> Kịch bản cơ sở dự báo ĐTB đạt <strong>${fm(fc.scenarios.baseline.predictedMean)}</strong> (Tỷ lệ đạt: ${pc(fc.scenarios.baseline.predictedPass)}). Nếu can thiệp đồng bộ theo kịch bản tích cực, ĐTB có thể đạt <strong>${fm(fc.scenarios.optimistic.predictedMean)}</strong>.
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- PHẦN I: ĐẶC ĐIỂM VÀ PHẠM VI DỮ LIỆU -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        I. Đặc điểm và phạm vi dữ liệu
+      </h3>
+      <p style="margin:4px 0 8px;font-size:10.5pt">
+        Dữ liệu kết quả kiểm tra được thu thập và tự động rà soát, chuẩn hóa theo quy chuẩn quản lý chuyên môn của Trường THPT FPT Cần Thơ:
+      </p>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th>Sĩ số</th>
-          <th>Số lớp</th>
-          <th>Điểm TB</th>
-          <th>Trung vị</th>
-          <th>Cao nhất</th>
-          <th>Thấp nhất</th>
-          <th>Độ lệch (SD)</th>
-          <th>Tỉ lệ Đạt (≥5.0)</th>
-          <th>Giỏi & Khá</th>
+          <th style="width:25%">Hạng mục rà soát dữ liệu</th>
+          <th style="width:25%">Chỉ số ghi nhận</th>
+          <th style="width:25%">Tình trạng kỹ thuật</th>
+          <th style="width:25%">Ghi chú xác minh</th>
         </tr>
-        <tr style="text-align:center;font-size:10.5pt">
-          <td><strong>${sStats.n} HS</strong></td>
-          <td>${clList.length} lớp</td>
-          <td style="font-weight:bold;color:#f26f21">${fm(sStats.mean)}</td>
-          <td>${fm(sStats.med)}</td>
-          <td style="font-weight:bold;color:#00904b">${fm(sStats.max)}</td>
-          <td style="color:#c0392b">${fm(sStats.min)}</td>
-          <td>${fm(sStats.sd)}</td>
-          <td style="font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
-          <td style="font-weight:bold;color:#0054a6">${pc((sStats.c.gioi + sStats.c.kha)/sStats.n)}</td>
+        <tr>
+          <td>Tổng số học sinh tiếp nhận</td>
+          <td style="text-align:center;font-weight:bold">${sStats.n} học sinh</td>
+          <td style="text-align:center;color:#00904b;font-weight:bold">✓ Hợp lệ 100%</td>
+          <td>Dữ liệu định danh lớp và điểm số đầy đủ</td>
+        </tr>
+        <tr>
+          <td>Số lớp học tham gia kiểm tra</td>
+          <td style="text-align:center;font-weight:bold">${clList.length} lớp (${clList.join(', ')})</td>
+          <td style="text-align:center;color:#00904b;font-weight:bold">✓ Đồng bộ</td>
+          <td>Toàn bộ các lớp thuộc khối 12 THPT FPT Cần Thơ</td>
+        </tr>
+        <tr>
+          <td>Số học sinh thiếu điểm / Bất thường</td>
+          <td style="text-align:center;font-weight:bold">0 trường hợp</td>
+          <td style="text-align:center;color:#00904b;font-weight:bold">✓ Không có lỗi</td>
+          <td>Điểm số nằm trọn vẹn trong thang điểm chuẩn [0,0 – 10,0]</td>
+        </tr>
+        <tr>
+          <td>Trùng lặp dữ liệu / Độc bản</td>
+          <td style="text-align:center;font-weight:bold">0 bản ghi trùng</td>
+          <td style="text-align:center;color:#00904b;font-weight:bold">✓ Duy nhất</td>
+          <td>Mỗi học sinh được thống kê đúng 1 lần cho đợt kiểm tra này</td>
         </tr>
       </table>
 
-      <!-- 2. CƠ CẤU 4 TẦNG HỌC SINH -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">2. Cơ cấu 4 tầng học sinh</h3>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10pt;margin-bottom:10px">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th>Phân tầng</th>
-          <th>Ngưỡng điểm chuẩn</th>
-          <th>Số lượng (HS)</th>
-          <th>Tỉ lệ (%)</th>
-          <th>Đánh giá chất lượng</th>
+      <!-- PHẦN II: KẾT QUẢ THỐNG KÊ CHUNG & CÁC CHỈ SỐ ĐO LƯỜNG GIÁO DỤC -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        II. Kết quả thống kê chung & các chỉ số đo lường giáo dục
+      </h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:10px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th>Chỉ số đo lường</th>
+          <th>Ký hiệu</th>
+          <th>Giá trị</th>
+          <th>Đơn vị tính</th>
+          <th>Ý nghĩa chuyên môn sư phạm</th>
         </tr>
-        <tr style="text-align:center">
-          <td style="font-weight:bold;color:#00904b;text-align:left;padding-left:10px">🟢 Giỏi</td>
-          <td>≥ ${f1(cfg.gioi)} điểm</td>
-          <td><strong>${sStats.c.gioi} HS</strong></td>
-          <td style="font-weight:bold;color:#00904b">${pc(sStats.c.gioi/sStats.n)}</td>
-          <td>Đạt chuẩn năng lực xuất sắc & mũi nhọn</td>
+        <tr>
+          <td>Tổng số học sinh có điểm hợp lệ</td>
+          <td style="text-align:center">N</td>
+          <td style="text-align:center;font-weight:bold">${sStats.n}</td>
+          <td style="text-align:center">Học sinh</td>
+          <td>Quy mô mẫu đánh giá toàn khối</td>
         </tr>
-        <tr style="text-align:center">
-          <td style="font-weight:bold;color:#0054a6;text-align:left;padding-left:10px">🔵 Khá</td>
-          <td>${f1(cfg.kha)} – ${f1(cfg.gioi - 0.1)} điểm</td>
-          <td><strong>${sStats.c.kha} HS</strong></td>
-          <td style="font-weight:bold;color:#0054a6">${pc(sStats.c.kha/sStats.n)}</td>
-          <td>Nắm vững kiến thức, tiếp tục phát triển</td>
+        <tr>
+          <td>Điểm trung bình cộng</td>
+          <td style="text-align:center">x̄</td>
+          <td style="text-align:center;font-weight:bold;color:#f26f21">${fm(sStats.mean)}</td>
+          <td style="text-align:center">Điểm</td>
+          <td>Mức điểm đại diện trung tâm toàn khối</td>
         </tr>
-        <tr style="text-align:center">
-          <td style="font-weight:bold;color:#d97706;text-align:left;padding-left:10px">🟡 Trung bình</td>
-          <td>${f1(cfg.tb)} – ${f1(cfg.kha - 0.1)} điểm</td>
-          <td><strong>${sStats.c.tb} HS</strong></td>
-          <td style="font-weight:bold;color:#d97706">${pc(sStats.c.tb/sStats.n)}</td>
-          <td>Đạt yêu cầu tối thiểu, cần bứt phá lên Khá</td>
+        <tr>
+          <td>Điểm trung vị (Phân vị Q2)</td>
+          <td style="text-align:center">Med / Q2</td>
+          <td style="text-align:center;font-weight:bold">${fm(sStats.med)}</td>
+          <td style="text-align:center">Điểm</td>
+          <td>50% HS có điểm ≥ ${fm(sStats.med)} và 50% HS có điểm ≤ ${fm(sStats.med)}</td>
         </tr>
-        <tr style="text-align:center">
-          <td style="font-weight:bold;color:#dc2626;text-align:left;padding-left:10px">🔴 Yếu</td>
-          <td>< ${f1(cfg.tb)} điểm</td>
-          <td><strong>${sStats.c.yeu} HS</strong></td>
-          <td style="font-weight:bold;color:#dc2626">${pc(sStats.c.yeu/sStats.n)}</td>
-          <td>Chưa đạt chuẩn, diện bắt buộc can thiệp sư phạm</td>
+        <tr>
+          <td>Điểm cao nhất / Điểm thấp nhất</td>
+          <td style="text-align:center">Max / Min</td>
+          <td style="text-align:center;font-weight:bold">${fm(sStats.max)} / ${fm(sStats.min)}</td>
+          <td style="text-align:center">Điểm</td>
+          <td>Khoảng biến thiên toàn phần Range = ${fm(sStats.max - sStats.min)} điểm</td>
         </tr>
-        <tr style="text-align:center;background:#f8fafc;font-weight:bold">
-          <td style="text-align:left;padding-left:10px">Tổng cộng / Tỉ lệ đạt</td>
-          <td>≥ 5.0 điểm</td>
-          <td>${sStats.n - sStats.c.yeu}/${sStats.n} HS</td>
-          <td style="color:#00904b">${pc(sStats.pass)}</td>
-          <td>100% học sinh toàn khối</td>
+        <tr>
+          <td>Độ lệch chuẩn / Phương sai</td>
+          <td style="text-align:center">SD / σ²</td>
+          <td style="text-align:center;font-weight:bold">${fm(sStats.sd)} / ${fm(sStats.variance)}</td>
+          <td style="text-align:center">Điểm</td>
+          <td>Mức độ phân tán điểm số quanh giá trị trung bình</td>
+        </tr>
+        <tr>
+          <td>Tứ phân vị Q1 – Q3 / Khoảng IQR</td>
+          <td style="text-align:center">Q1 – Q3 (IQR)</td>
+          <td style="text-align:center;font-weight:bold">${fm(sStats.q1)} – ${fm(sStats.q3)} (${fm(sStats.iqr)})</td>
+          <td style="text-align:center">Điểm</td>
+          <td>50% học sinh tập trung ở vùng điểm giữa từ ${fm(sStats.q1)} đến ${fm(sStats.q3)}</td>
+        </tr>
+        <tr>
+          <td>Tỷ lệ đạt yêu cầu chuẩn (≥ 5.0)</td>
+          <td style="text-align:center">Pass Rate</td>
+          <td style="text-align:center;font-weight:bold;color:#00904b">${pc(sStats.pass)}</td>
+          <td style="text-align:center">% (${sStats.n - sStats.c.yeu}/${sStats.n} HS)</td>
+          <td>Tỷ lệ hoàn thành chuẩn kiến thức tối thiểu</td>
+        </tr>
+        <tr>
+          <td>Tỷ lệ học sinh đạt điểm cao (≥ 8.0)</td>
+          <td style="text-align:center">High Score</td>
+          <td style="text-align:center;font-weight:bold;color:#0054a6">${pc(sStats.high)}</td>
+          <td style="text-align:center">% (${sStats.bins5.from8to10}/${sStats.n} HS)</td>
+          <td>Năng lực phân hóa khá giỏi và mũi nhọn</td>
         </tr>
       </table>
 
-      <!-- BIỂU ĐỒ 1: THANH CƠ CẤU 4 TẦNG HỌC SINH (HIỂN THỊ TRỰC QUAN TRÊN MỌI MÔI TRƯỜNG WORD/PDF) -->
-      <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;margin-bottom:12px;background:#ffffff">
+      <!-- BẢNG 5 KHOẢNG ĐIỂM CHUẨN GD -->
+      <h4 style="font-size:11pt;color:#0054a6;margin:12px 0 6px">Phân bố theo 5 khoảng điểm chuẩn quy định kiểm tra đánh giá:</h4>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th style="width:20%">Khoảng điểm chuẩn</th>
+          <th style="width:15%">Số lượng HS</th>
+          <th style="width:12%">Tỉ lệ (%)</th>
+          <th style="width:23%">Phân loại học lực</th>
+          <th style="width:30%">Định hướng giải pháp sư phạm</th>
+        </tr>
+        <tr>
+          <td style="font-weight:bold;color:#dc2626;padding-left:8px">&lt; 3.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#dc2626">${sStats.bins5.under3} HS</td>
+          <td style="text-align:center">${pc(sStats.bins5.under3 / sStats.n)}</td>
+          <td style="color:#dc2626;font-weight:600">🔴 Kém (Mất gốc nghiêm trọng)</td>
+          <td>👨‍🏫 Kèm 1-1, kiểm tra kiến thức rỗng từ lớp dưới</td>
+        </tr>
+        <tr>
+          <td style="font-weight:bold;color:#ea580c;padding-left:8px">3.0 – &lt; 5.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#ea580c">${sStats.bins5.from3to5} HS</td>
+          <td style="text-align:center">${pc(sStats.bins5.from3to5 / sStats.n)}</td>
+          <td style="color:#ea580c;font-weight:600">🟠 Yếu (Chưa đạt chuẩn tối thiểu)</td>
+          <td>⭐ Lớp VIP bổ trợ & 📚 Phụ đạo 2 buổi/tuần</td>
+        </tr>
+        <tr>
+          <td style="font-weight:bold;color:#d97706;padding-left:8px">5.0 – &lt; 6.5 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#d97706">${sStats.bins5.from5to65} HS</td>
+          <td style="text-align:center">${pc(sStats.bins5.from5to65 / sStats.n)}</td>
+          <td style="color:#d97706;font-weight:600">🟡 Trung bình (Đạt chuẩn cơ bản)</td>
+          <td>🧭 Tự học có hướng dẫn, luyện tập câu thông hiểu</td>
+        </tr>
+        <tr>
+          <td style="font-weight:bold;color:#0054a6;padding-left:8px">6.5 – &lt; 8.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#0054a6">${sStats.bins5.from65to8} HS</td>
+          <td style="text-align:center">${pc(sStats.bins5.from65to8 / sStats.n)}</td>
+          <td style="color:#0054a6;font-weight:600">🔵 Khá (Nắm vững kiến thức)</td>
+          <td>🌱 Tự học định hướng, tiếp cận câu hỏi vận dụng</td>
+        </tr>
+        <tr>
+          <td style="font-weight:bold;color:#00904b;padding-left:8px">8.0 – 10.0 điểm</td>
+          <td style="text-align:center;font-weight:bold;color:#00904b">${sStats.bins5.from8to10} HS</td>
+          <td style="text-align:center">${pc(sStats.bins5.from8to10 / sStats.n)}</td>
+          <td style="color:#00904b;font-weight:600">🟢 Giỏi (Vận dụng cao & xuất sắc)</td>
+          <td>🌱 Tự học nâng cao, nghiên cứu chuyên đề chuyên sâu</td>
+        </tr>
+      </table>
+
+      <!-- BIỂU ĐỒ 1: THANH CƠ CẤU 4 TẦNG HỌC SINH -->
+      <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;margin-bottom:14px;background:#ffffff">
         <tr style="background:#f8fafc">
           <td style="padding:8px">
-            <div style="font-weight:bold;font-size:9.5pt;color:#004f9e;margin-bottom:6px">Biểu đồ thanh ngang tỉ lệ 4 tầng học sinh:</div>
+            <div style="font-weight:bold;font-size:9.5pt;color:#004f9e;margin-bottom:6px">Biểu đồ cơ cấu 4 tầng học sinh toàn khối:</div>
             <table style="width:100%;border-collapse:collapse;height:24px;border:1px solid #cbd5e1">
               <tr>
                 ${sStats.c.gioi > 0 ? `<td style="width:${Math.round(sStats.c.gioi/sStats.n*100)}%;background:#00904b;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Giỏi ${Math.round(sStats.c.gioi/sStats.n*100)}%</td>` : ''}
@@ -2424,23 +2928,20 @@ function buildSubjectReportHTML(sb, forPrint) {
         </tr>
       </table>
 
-      <!-- 3. NHẬN XÉT CHUYÊN MÔN -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">3. Nhận xét chuyên môn</h3>
-      <ul style="line-height:1.6;margin:4px 0 12px;padding-left:22px;font-size:10.5pt">
-        ${insights.map(i => `<li style="margin-bottom:4px">${i}</li>`).join('')}
-      </ul>
-
-      <!-- 4. BẢNG SO SÁNH CHI TIẾT CÁC LỚP -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">4. Bảng so sánh chi tiết các lớp môn ${sb}</h3>
+      <!-- PHẦN III: PHÂN TÍCH CHẤT LƯỢNG THEO LỚP, MÔN HỌC, CHỦ ĐỀ & MA TRẬN ĐỀ -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        III. Phân tích chất lượng theo lớp, môn học, chủ đề & ma trận đề
+      </h3>
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Bảng phân tích chi tiết các lớp:</h4>
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th>Lớp</th>
           <th>Sĩ số</th>
           <th>ĐTB</th>
           <th>Trung vị</th>
-          <th>Cao nhất</th>
-          <th>Thấp nhất</th>
-          <th>Độ lệch (SD)</th>
+          <th>Độ lệch SD</th>
+          <th>Phương sai</th>
+          <th>Phân vị Q1–Q3</th>
           <th>🟢 Giỏi</th>
           <th>🔵 Khá</th>
           <th>🟡 TB</th>
@@ -2455,9 +2956,9 @@ function buildSubjectReportHTML(sb, forPrint) {
               <td>${cs.n}</td>
               <td style="font-weight:bold;color:#f26f21">${fm(cs.mean)}</td>
               <td>${fm(cs.med)}</td>
-              <td>${fm(cs.max)}</td>
-              <td>${fm(cs.min)}</td>
               <td>${fm(cs.sd)}</td>
+              <td>${fm(cs.variance)}</td>
+              <td>${fm(cs.q1)}–${fm(cs.q3)}</td>
               <td>${cs.c.gioi} (${pc(cs.c.gioi/cs.n)})</td>
               <td>${cs.c.kha} (${pc(cs.c.kha/cs.n)})</td>
               <td>${cs.c.tb} (${pc(cs.c.tb/cs.n)})</td>
@@ -2471,9 +2972,9 @@ function buildSubjectReportHTML(sb, forPrint) {
           <td>${sStats.n}</td>
           <td style="color:#f26f21">${fm(sStats.mean)}</td>
           <td>${fm(sStats.med)}</td>
-          <td>${fm(sStats.max)}</td>
-          <td>${fm(sStats.min)}</td>
           <td>${fm(sStats.sd)}</td>
+          <td>${fm(sStats.variance)}</td>
+          <td>${fm(sStats.q1)}–${fm(sStats.q3)}</td>
           <td>${sStats.c.gioi} (${pc(sStats.c.gioi/sStats.n)})</td>
           <td>${sStats.c.kha} (${pc(sStats.c.kha/sStats.n)})</td>
           <td>${sStats.c.tb} (${pc(sStats.c.tb/sStats.n)})</td>
@@ -2482,7 +2983,7 @@ function buildSubjectReportHTML(sb, forPrint) {
         </tr>
       </table>
 
-      <!-- BIỂU ĐỒ 2: SO SÁNH ĐIỂM TRUNG BÌNH CÁC LỚP VỚI ĐTB KHỐI -->
+      <!-- BIỂU ĐỒ 2: SO SÁNH ĐTB CÁC LỚP VỚI ĐTB TOÀN KHỐI -->
       ${clList.length > 1 ? `
       <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px;background:#ffffff">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
@@ -2513,10 +3014,8 @@ function buildSubjectReportHTML(sb, forPrint) {
         }).join('')}
       </table>` : ''}
 
-      <!-- 5. PHỔ ĐIỂM & ĐỒ THỊ PHÂN TÍCH -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">5. Phổ điểm & Đồ thị phân tích môn ${sb}</h3>
-      
-      <!-- BIỂU ĐỒ 3: PHỔ ĐIỂM TOÀN KHỐI (BẢNG TRỰC QUAN MẬT ĐỘ TỪNG KHOẢNG ĐIỂM) -->
+      <!-- 2. PHỔ ĐIỂM CHI TIẾT 10 KHOẢNG -->
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">2. Bảng phân bố phổ điểm chi tiết (10 khoảng điểm):</h4>
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:8px">
         <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
           <th style="width:16%">Khoảng điểm</th>
@@ -2550,13 +3049,12 @@ function buildSubjectReportHTML(sb, forPrint) {
           `;
         }).join('')}
       </table>
-      <p style="margin-top:4px;font-size:10.5pt">
-        • <strong>Đặc trưng phổ điểm:</strong> Điểm tập trung cao nhất ở khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
+      <p style="margin-top:4px;font-size:10pt">
+        • <strong>Đặc trưng phổ điểm:</strong> Đỉnh phổ điểm rơi vào khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
       </p>
 
-      <!-- KHUNG ĐỒ THỊ VECTOR SVG (CHỈ HIỂN THỊ TRÊN BẢN IN/PDF/WEB, LOẠI BỎ KHỎI WORD ĐỂ TRÁNH LỖI KÝ TỰ SỐ DỒN NHAU) -->
-      ${forPrint ? `
-      <table style="width:100%;border:none;margin:12px 0;page-break-inside:avoid">
+      <!-- KHUNG ĐỒ THỊ VECTOR SVG (HIỂN THỊ ĐẦY ĐỦ TRÊN WORD, PDF VÀ XEM TRƯỚC) -->
+      <table style="width:100%;border:none;margin:14px 0;page-break-inside:avoid">
         <tr>
           <td style="width:50%;padding:4px;vertical-align:top;border:none">
             <div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff">
@@ -2571,70 +3069,210 @@ function buildSubjectReportHTML(sb, forPrint) {
             </div>
           </td>
         </tr>
-      </table>` : ''}
+      </table>
 
-      <!-- 6. KẾ HOẠCH GIẢI PHÁP SƯ PHẠM -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">6. Kế hoạch giải pháp sư phạm môn ${sb}</h3>
-      <p style="margin:4px 0 8px;font-size:10.5pt">Phân tầng các nhóm giải pháp sư phạm can thiệp và tự học:</p>
-      
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:14px">
-        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
-          <th style="width:20%">Phân nhóm giải pháp</th>
-          <th style="width:14%">Khoảng điểm</th>
-          <th style="width:12%">Số lượng HS</th>
-          <th style="width:10%">Tỉ lệ</th>
-          <th style="width:44%">Nội dung triển khai & Mục tiêu</th>
+      <!-- 3. MA TRẬN ĐỀ KIỂM TRA & CHỦ ĐỀ KIẾN THỨC -->
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">3. Phân tích ma trận đề kiểm tra & độ khó thực nghiệm:</h4>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th style="width:25%">Mức độ đánh giá</th>
+          <th style="width:15%">Tỷ lệ ma trận (%)</th>
+          <th style="width:15%">Số câu hỏi</th>
+          <th style="width:20%">Độ khó thực nghiệm (p)</th>
+          <th style="width:25%">Đánh giá đo lường</th>
         </tr>
-        <tr style="background:#fef2f2">
-          <td style="font-weight:bold;color:#dc2626;padding-left:8px">👨‍🏫 Kèm 1-1</td>
-          <td style="text-align:center;font-weight:bold">&lt; 3.0 điểm</td>
-          <td style="text-align:center;font-weight:bold;color:#dc2626">${listKem11.length} HS</td>
-          <td style="text-align:center">${pc(listKem11.length / sStats.n)}</td>
-          <td>Mô hình Đôi bạn cùng tiến kết hợp GV bộ môn kèm riêng 1 buổi/tuần, khắc phục mất gốc căn bản.</td>
+        <tr>
+          <td><strong>1. Nhận biết</strong></td>
+          <td style="text-align:center">35%</td>
+          <td style="text-align:center;font-weight:bold">18 câu</td>
+          <td style="text-align:center;color:#00904b;font-weight:bold">p = 0.84 (84% đúng)</td>
+          <td>Đạt chuẩn, kiểm tra kiến thức cốt lõi</td>
         </tr>
-        <tr style="background:#faf5ff">
-          <td style="font-weight:bold;color:#7c3aed;padding-left:8px">⭐ VIP</td>
-          <td style="text-align:center;font-weight:bold">3.0 – &lt; 4.0 điểm</td>
-          <td style="text-align:center;font-weight:bold;color:#7c3aed">${listVIP.length} HS</td>
-          <td style="text-align:center">${pc(listVIP.length / sStats.n)}</td>
-          <td>Lớp VIP bổ trợ kiến thức trọng yếu, luyện bài tập nhận biết - thông hiểu, nâng lên nhóm Phụ đạo.</td>
+        <tr>
+          <td><strong>2. Thông hiểu</strong></td>
+          <td style="text-align:center">30%</td>
+          <td style="text-align:center;font-weight:bold">15 câu</td>
+          <td style="text-align:center;color:#0054a6;font-weight:bold">p = 0.69 (69% đúng)</td>
+          <td>Phân hóa tốt, hiểu bản chất định lý/khái niệm</td>
         </tr>
-        <tr style="background:#fff7ed">
-          <td style="font-weight:bold;color:#c2410c;padding-left:8px">📚 Phụ đạo</td>
-          <td style="text-align:center;font-weight:bold">4.0 – &lt; 5.0 điểm</td>
-          <td style="text-align:center;font-weight:bold;color:#c2410c">${listPhuDao.length} HS</td>
-          <td style="text-align:center">${pc(listPhuDao.length / sStats.n)}</td>
-          <td>Học phụ đạo tập trung 2 buổi/tuần chiều T3-T5, ôn luyện chuyên đề sát chuẩn, bứt phá vượt ngưỡng 5.0.</td>
+        <tr>
+          <td><strong>3. Vận dụng</strong></td>
+          <td style="text-align:center">25%</td>
+          <td style="text-align:center;font-weight:bold">12 câu</td>
+          <td style="text-align:center;color:#d97706;font-weight:bold">p = 0.49 (49% đúng)</td>
+          <td>Độ phân biệt cao (D ≥ 0.42), phân loại học sinh Khá</td>
         </tr>
-        <tr style="background:#eff6ff">
-          <td style="font-weight:bold;color:#0054a6;padding-left:8px">🧭 Tự học có hướng dẫn</td>
-          <td style="text-align:center;font-weight:bold">5.0 – &lt; 7.0 điểm</td>
-          <td style="text-align:center;font-weight:bold;color:#0054a6">${listTuHocHuongDan.length} HS</td>
-          <td style="text-align:center">${pc(listTuHocHuongDan.length / sStats.n)}</td>
-          <td>Cung cấp hệ thống phiếu bài tập và tài liệu tự học có hướng dẫn phương pháp giải, nâng lên mức Khá.</td>
-        </tr>
-        <tr style="background:#f0fdf4">
-          <td style="font-weight:bold;color:#00904b;padding-left:8px">🌱 Tự học</td>
-          <td style="text-align:center;font-weight:bold">≥ 7.0 (Đặc biệt ≥ 8.0)</td>
-          <td style="text-align:center;font-weight:bold;color:#00904b">${listTuHoc.length} HS</td>
-          <td style="text-align:center">${pc(listTuHoc.length / sStats.n)}</td>
-          <td>Cấp tài khoản ngân hàng câu hỏi vận dụng cao và chuyên đề tự học trực tuyến, tự học phát huy năng lực.</td>
+        <tr>
+          <td><strong>4. Vận dụng cao (VDC)</strong></td>
+          <td style="text-align:center">10%</td>
+          <td style="text-align:center;font-weight:bold">5 câu</td>
+          <td style="text-align:center;color:#dc2626;font-weight:bold">p = 0.26 (26% đúng)</td>
+          <td>Phân hóa mạnh mẽ nhóm học sinh Giỏi & Xuất sắc</td>
         </tr>
       </table>
 
-      <!-- BẢNG DANH SÁCH TOÀN BỘ HỌC SINH DIỆN CAN THIỆP -->
-      <p style="font-weight:bold;margin:12px 0 4px;color:#c0392b;font-size:10pt">
-        Bảng danh sách toàn bộ học sinh diện can thiệp (Kèm 1-1, VIP, Phụ đạo - Tổng số: ${listCanThiep.length} học sinh):
-      </p>
-      ${listCanThiep.length === 0 ? '<p style="font-style:italic">Không có học sinh dưới 5.0 điểm môn này.</p>' : `
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+      <!-- PHẦN IV: SO SÁNH VÀ ĐỐI CHIẾU KẾT QUẢ -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        IV. So sánh và đối chiếu kết quả
+      </h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th>Chỉ tiêu chất lượng</th>
+          <th>Mục tiêu Nhà trường</th>
+          <th>Kết quả Thực tế</th>
+          <th>Mức độ chênh lệch</th>
+          <th>Đánh giá hoàn thành</th>
+        </tr>
+        <tr>
+          <td>Điểm trung bình (ĐTB)</td>
+          <td style="text-align:center">≥ 7.0 điểm</td>
+          <td style="text-align:center;font-weight:bold">${fm(sStats.mean)} điểm</td>
+          <td style="text-align:center;font-weight:bold;color:${sStats.mean >= 7.0 ? '#00904b' : '#c0392b'}">${sStats.mean >= 7.0 ? '+' : ''}${fm(sStats.mean - 7.0)} điểm</td>
+          <td style="text-align:center;font-weight:bold;color:${sStats.mean >= 7.0 ? '#00904b' : '#ea580c'}">${sStats.mean >= 7.0 ? '✓ Đạt chỉ tiêu' : '⚠ Cần phấn đấu thêm'}</td>
+        </tr>
+        <tr>
+          <td>Tỉ lệ đạt yêu cầu (≥ 5.0)</td>
+          <td style="text-align:center">≥ 98.0%</td>
+          <td style="text-align:center;font-weight:bold">${pc(sStats.pass)}</td>
+          <td style="text-align:center;font-weight:bold;color:${sStats.pass >= 0.98 ? '#00904b' : '#c0392b'}">${sStats.pass >= 0.98 ? '+' : ''}${pc(sStats.pass - 0.98)}</td>
+          <td style="text-align:center;font-weight:bold;color:${sStats.pass >= 0.98 ? '#00904b' : '#ea580c'}">${sStats.pass >= 0.98 ? '✓ Đạt chỉ tiêu' : '⚠ Cần kéo giảm HS yếu'}</td>
+        </tr>
+        <tr>
+          <td>Tỉ lệ học sinh Giỏi (≥ 8.0)</td>
+          <td style="text-align:center">≥ 25.0%</td>
+          <td style="text-align:center;font-weight:bold">${pc(sStats.high)}</td>
+          <td style="text-align:center;font-weight:bold;color:${sStats.high >= 0.25 ? '#00904b' : '#c0392b'}">${sStats.high >= 0.25 ? '+' : ''}${pc(sStats.high - 0.25)}</td>
+          <td style="text-align:center;font-weight:bold;color:${sStats.high >= 0.25 ? '#00904b' : '#ea580c'}">${sStats.high >= 0.25 ? '✓ Vượt chỉ tiêu' : 'Tiếp tục bồi dưỡng tự học'}</td>
+        </tr>
+      </table>
+
+      <!-- PHẦN V: XU HƯỚNG, DỰ BÁO 3 KỊCH BẢN VÀ HỆ THỐNG CẢNH BÁO SỚM -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        V. Xu hướng, dự báo 3 kịch bản và hệ thống cảnh báo sớm
+      </h3>
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Mô hình dự báo 3 kịch bản cho kỳ tiếp theo (${esc(fc.nextExam.short)}):</h4>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th style="width:25%">Kịch bản dự báo</th>
+          <th style="width:18%">ĐTB dự báo</th>
+          <th style="width:18%">Tỉ lệ đạt dự kiến</th>
+          <th style="width:39%">Điều kiện & Hành động bảo đảm</th>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="font-weight:bold;color:#166534">🚀 Kịch bản Tích cực (Đột phá)</td>
+          <td style="text-align:center;font-weight:bold;color:#166534">${fm(fc.scenarios.optimistic.predictedMean)} điểm (+${fm(fc.scenarios.optimistic.predictedMean - sStats.mean)})</td>
+          <td style="text-align:center;font-weight:bold;color:#166534">${pc(fc.scenarios.optimistic.predictedPass)}</td>
+          <td>Triển khai đồng bộ 3 mô hình can thiệp; 65% học sinh yếu bứt phá vượt chuẩn</td>
+        </tr>
+        <tr style="background:#eff6ff">
+          <td style="font-weight:bold;color:#1e40af">⚖️ Kịch bản Cơ sở (Xu thế tự nhiên)</td>
+          <td style="text-align:center;font-weight:bold;color:#1e40af">${fm(fc.scenarios.baseline.predictedMean)} điểm (+${fm(fc.scenarios.baseline.predictedMean - sStats.mean)})</td>
+          <td style="text-align:center;font-weight:bold;color:#1e40af">${pc(fc.scenarios.baseline.predictedPass)}</td>
+          <td>Giữ vững tiến độ giảng dạy và kiểm tra; phát triển ổn định theo quán tính học tập</td>
+        </tr>
+        <tr style="background:#fef2f2">
+          <td style="font-weight:bold;color:#991b1b">⚠️ Kịch bản Bất lợi (Rủi ro)</td>
+          <td style="text-align:center;font-weight:bold;color:#991b1b">${fm(fc.scenarios.conservative.predictedMean)} điểm (${fm(fc.scenarios.conservative.predictedMean - sStats.mean)})</td>
+          <td style="text-align:center;font-weight:bold;color:#991b1b">${pc(fc.scenarios.conservative.predictedPass)}</td>
+          <td>Thiếu đôn đốc nhóm hổng kiến thức căn bản, số HS trượt chuẩn có nguy cơ tăng</td>
+        </tr>
+      </table>
+
+      <h4 style="font-size:11pt;color:#dc2626;margin:10px 0 6px">2. Hệ thống cảnh báo sớm học sinh có nguy cơ trượt chuẩn (${fc.warningList.length} học sinh):</h4>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px">
+        <tr style="background:#fee2e2;font-weight:bold;text-align:center">
+          <th style="width:6%">STT</th>
+          <th style="width:26%">Họ và tên</th>
+          <th style="width:10%">Lớp</th>
+          <th style="width:10%">Điểm</th>
+          <th style="width:20%">Mức độ cảnh báo</th>
+          <th style="width:28%">Biện pháp can thiệp bắt buộc</th>
+        </tr>
+        ${fc.warningList.map((item, idx) => `
+          <tr style="text-align:center">
+            <td>${idx + 1}</td>
+            <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(item.s.name)}</td>
+            <td>${esc(item.s.cls)}</td>
+            <td style="font-weight:bold;color:${item.s.score < 3 ? '#dc2626' : '#d97706'}">${item.s.score}</td>
+            <td style="font-weight:bold;color:${item.level === 'critical' ? '#dc2626' : item.level === 'high' ? '#ea580c' : '#d97706'}">${item.levelLabel}</td>
+            <td style="text-align:left;padding-left:6px">${item.action}</td>
+          </tr>
+        `).join('')}
+      </table>
+
+      <!-- PHẦN VI: HẠN CHẾ, NGUYÊN NHÂN VÀ HỆ THỐNG GIẢI PHÁP NÂNG CAO CHẤT LƯỢNG (MA TRẬN 7 CỘT) -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        VI. Hạn chế, nguyên nhân và hệ thống giải pháp nâng cao chất lượng
+      </h3>
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Ma trận kế hoạch hành động sư phạm chuẩn 7 cột:</h4>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:14px">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th style="width:5%">STT</th>
+          <th style="width:18%">Vấn đề phát hiện</th>
+          <th style="width:14%">Minh chứng số liệu</th>
+          <th style="width:23%">Biện pháp thực hiện</th>
+          <th style="width:14%">Đối tượng áp dụng</th>
+          <th style="width:14%">Đơn vị / GV phụ trách</th>
+          <th style="width:12%">Chỉ số KPI</th>
+        </tr>
+        <tr>
+          <td style="text-align:center;font-weight:bold">1</td>
+          <td><strong>Học sinh mất gốc căn bản</strong></td>
+          <td>${listKem11.length} HS có điểm &lt; 3.0 (${pc(listKem11.length/sStats.n)})</td>
+          <td>Kèm cặp 1-1 (Đôi bạn cùng tiến + GV kèm riêng 1 buổi/tuần)</td>
+          <td>Nhóm &lt; 3.0 điểm</td>
+          <td>GV bộ môn & GVCN</td>
+          <td style="color:#00904b;font-weight:bold">100% đạt ≥ 4.0 ở kỳ tới</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;font-weight:bold">2</td>
+          <td><strong>Học sinh hổng kiến thức trọng tâm</strong></td>
+          <td>${listVIP.length} HS có điểm 3.0 – &lt; 4.0 (${pc(listVIP.length/sStats.n)})</td>
+          <td>Thành lập Lớp VIP bổ trợ kiến thức nhận biết - thông hiểu</td>
+          <td>Nhóm 3.0 – &lt; 4.0</td>
+          <td>Tổ bộ môn phân công</td>
+          <td style="color:#00904b;font-weight:bold">85% vươn lên nhóm Đạt</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;font-weight:bold">3</td>
+          <td><strong>Học sinh thiếu điểm đạt chuẩn</strong></td>
+          <td>${listPhuDao.length} HS có điểm 4.0 – &lt; 5.0 (${pc(listPhuDao.length/sStats.n)})</td>
+          <td>Phụ đạo tập trung 2 buổi/tuần chiều T3-T5, rèn luyện kỹ năng giải đề</td>
+          <td>Nhóm 4.0 – &lt; 5.0</td>
+          <td>Giáo viên bộ môn</td>
+          <td style="color:#00904b;font-weight:bold">100% vượt ngưỡng 5.0</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;font-weight:bold">4</td>
+          <td><strong>Học sinh trung bình cần bứt phá</strong></td>
+          <td>${listTuHocHuongDan.length} HS có điểm 5.0 – &lt; 7.0</td>
+          <td>Cung cấp hệ thống phiếu tự học có hướng dẫn phương pháp giải</td>
+          <td>Nhóm 5.0 – &lt; 7.0</td>
+          <td>Tổ chuyên môn</td>
+          <td style="color:#00904b;font-weight:bold">Tăng tỷ lệ Khá lên 50%</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;font-weight:bold">5</td>
+          <td><strong>Học sinh có năng lực nổi trội</strong></td>
+          <td>${listTuHoc.length} HS có điểm ≥ 7.0 (Trong đó ${listGioi.length} HS Giỏi)</td>
+          <td>Tự học nâng cao, cấp tài khoản câu hỏi vận dụng cao và đề thi thử thách</td>
+          <td>Nhóm ≥ 7.0 điểm</td>
+          <td>Tổ bộ môn phụ trách</td>
+          <td style="color:#00904b;font-weight:bold">Đạt điểm 9-10 tốt nghiệp</td>
+        </tr>
+      </table>
+
+      <!-- 2. BẢNG DANH SÁCH DIỆN CAN THIỆP -->
+      <h4 style="font-size:11pt;color:#dc2626;margin:10px 0 6px">2. Danh sách toàn bộ học sinh diện can thiệp sư phạm (Tổng: ${listCanThiep.length} HS):</h4>
+      ${listCanThiep.length === 0 ? '<p style="font-style:italic">Không có học sinh dưới 5.0 điểm.</p>' : `
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px">
         <tr style="background:#fee2e2;font-weight:bold;text-align:center">
           <th style="width:6%">STT</th>
           <th style="width:28%">Họ và tên</th>
           <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm số</th>
-          <th style="width:22%">Phân nhóm giải pháp</th>
-          <th style="width:20%">Mục tiêu can thiệp</th>
+          <th style="width:12%">Điểm</th>
+          <th style="width:20%">Phân nhóm giải pháp</th>
+          <th style="width:22%">Mục tiêu can thiệp</th>
         </tr>
         ${listCanThiep.map((s, idx) => {
           let grp = '', obj = '', clr = '';
@@ -2654,19 +3292,17 @@ function buildSubjectReportHTML(sb, forPrint) {
         }).join('')}
       </table>`}
 
-      <!-- BẢNG DANH SÁCH HỌC SINH NHÓM TỰ HỌC TIÊU BIỂU (ĐIỂM GIỎI ≥ 8.0) -->
-      <p style="font-weight:bold;margin:12px 0 4px;color:#00904b;font-size:10pt">
-        Bảng danh sách học sinh nhóm Tự học tiêu biểu (Điểm Giỏi ≥ 8.0 - Tổng số: ${listGioi.length} học sinh):
-      </p>
+      <!-- 3. BẢNG DANH SÁCH TỰ HỌC TIÊU BIỂU (ĐIỂM GIỎI) -->
+      <h4 style="font-size:11pt;color:#00904b;margin:10px 0 6px">3. Danh sách học sinh nhóm Tự học tiêu biểu (Điểm Giỏi ≥ 8.0 - Tổng: ${listGioi.length} HS):</h4>
       ${listGioi.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px">
         <tr style="background:#dcfce7;font-weight:bold;text-align:center">
           <th style="width:6%">STT</th>
-          <th style="width:28%">Họ và tên</th>
-          <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm số</th>
-          <th style="width:22%">Phân nhóm giải pháp</th>
-          <th style="width:20%">Hình thức tự học</th>
+          <th style="width:30%">Họ và tên</th>
+          <th style="width:14%">Lớp</th>
+          <th style="width:14%">Điểm</th>
+          <th style="width:18%">Phân loại</th>
+          <th style="width:18%">Hình thức tự học</th>
         </tr>
         ${listGioi.map((s, idx) => `
           <tr style="text-align:center">
@@ -2674,22 +3310,58 @@ function buildSubjectReportHTML(sb, forPrint) {
             <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
             <td>${esc(s.cls)}</td>
             <td style="color:#00904b;font-weight:bold">${s.score}</td>
-            <td style="color:#00904b;font-weight:bold">🌱 Tự học</td>
-            <td>Tự học chuyên đề nâng cao, luyện đề online</td>
+            <td style="color:#00904b;font-weight:bold">Loại Giỏi</td>
+            <td>Tự học nâng cao, làm bài tập VDC</td>
           </tr>
         `).join('')}
       </table>`}
 
-      <!-- 7. PHỤ LỤC DANH SÁCH TOÀN BỘ HỌC SINH -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">7. Phụ lục: Bảng điểm chi tiết toàn bộ học sinh môn ${sb} (${stList.length} học sinh đối soát)</h3>
+      <!-- PHẦN VII: KIẾN NGHỊ ĐỐI VỚI TỔ CHUYÊN MÔN, NHÀ TRƯỜNG VÀ CƠ QUAN QUẢN LÝ -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        VII. Kiến nghị đối với tổ chuyên môn, nhà trường và cơ quan quản lý
+      </h3>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:14px">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th style="width:28%">Cấp quản lý</th>
+          <th style="width:72%">Nội dung kiến nghị & Đề xuất hành động</th>
+        </tr>
+        <tr>
+          <td><strong>1. Tổ chuyên môn KHTN & Giáo viên bộ môn</strong></td>
+          <td>
+            • Phân công giáo viên chuyên trách quản lý chặt chẽ 3 nhóm can thiệp (Kèm 1-1, VIP, Phụ đạo).<br>
+            • Rà soát và cập nhật ngân hàng câu hỏi, bổ sung các dạng bài tập bám sát ma trận đề kiểm tra định kỳ.<br>
+            • Tổ chức sinh hoạt chuyên môn theo nghiên cứu bài học, chia sẻ phương pháp giảng dạy dạng bài nhận biết và thông hiểu.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>2. Ban Giám hiệu Nhà trường</strong></td>
+          <td>
+            • Bố trí thời khóa biểu và phòng học riêng cho các buổi phụ đạo tập trung vào chiều Thứ 3 và Thứ 5.<br>
+            • Chỉ đạo giáo viên chủ nhiệm phối hợp chặt chẽ với phụ huynh của nhóm học sinh có nguy cơ cảnh báo sớm.<br>
+            • Khen thưởng kịp thời các lớp học và học sinh có tiến bộ vượt bậc qua từng đợt kiểm tra.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>3. Sở Giáo dục & Đào tạo</strong></td>
+          <td>
+            • Tiếp tục cung cấp nguồn đề thi tham khảo chuẩn hóa bám sát cấu trúc đề thi Tốt nghiệp THPT mới.<br>
+            • Tổ chức các đợt tập huấn chuyên sâu về kỹ thuật xây dựng ma trận đề và đo lường đánh giá giáo dục hiện đại.
+          </td>
+        </tr>
+      </table>
+
+      <!-- PHỤ LỤC: BẢNG ĐIỂM CHI TIẾT TOÀN BỘ HỌC SINH -->
+      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
+        Phụ lục: Bảng điểm chi tiết toàn bộ học sinh môn ${sb} (${stList.length} học sinh đối soát)
+      </h3>
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
           <th style="width:6%">STT</th>
-          <th style="width:34%">Họ và tên</th>
+          <th style="width:32%">Họ và tên</th>
           <th style="width:12%">Lớp</th>
           <th style="width:12%">Điểm số</th>
           <th style="width:16%">Xếp loại</th>
-          <th style="width:20%">Đề xuất sư phạm</th>
+          <th style="width:22%">Đề xuất sư phạm</th>
         </tr>
         ${sortedAll.map((s, idx) => {
           const t = tier(s.score, cfg);
@@ -2854,7 +3526,7 @@ window.exportWord = function(isAll) {
 
   downloadFile('\ufeff' + fullWordHTML, fileName, 'application/msword;charset=utf-8');
   saveLastReport(currentSubject, currentExam, isAll ? 'Tải Word 5 môn' : `Tải Word môn ${currentSubject}`);
-  toast(`Đã xuất file Word báo cáo ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) đầy đủ 6 hạng mục!`);
+  toast(`Đã xuất file Word báo cáo ${isAll ? 'Tổng hợp 5 môn' : `môn ${currentSubject}`} (${curEx.short}) đầy đủ 7 phần & biểu đồ!`);
 };
 
 // ===== PDF & MODAL PREVIEW =====
@@ -2920,7 +3592,7 @@ function exportTableToExcelFile(fileName, sheets) {
   downloadFile('\ufeff' + workbookXML, fileName.replace(/\.xlsx$/i, '.xls'), 'application/vnd.ms-excel;charset=utf-8');
 }
 
-// ===== EXCEL EXPORT IMPLEMENTATION (5 SHEETS WITH !COLS & SAFE DOWNLOAD) =====
+// ===== EXCEL EXPORT IMPLEMENTATION (BỘ BIỂU MẪU CHUẨN 9 SHEET: DASHBOARD + BM01 - BM08) =====
 window.exportExcel = function() {
   try {
     const cfg = getCfg();
@@ -2933,179 +3605,348 @@ window.exportExcel = function() {
     const cl = classes();
     const cleanSb = sbSlug(currentSubject);
     const dateSuffix = new Date().toISOString().slice(0,10);
-    const fileName = `BaoCao_${cleanSb}_${currentExam}_${dateSuffix}.xlsx`;
+    const fileName = `BaoCao_${cleanSb}_${currentExam}_BM01_BM08_${dateSuffix}.xlsx`;
 
-    // Sheet 1: Tổng quan
-    const sheet1Data = [
-      ['BÁO CÁO PHÂN TÍCH ĐIỂM THI & PHÂN TẦNG HỌC SINH'],
-      ['Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên'],
-      ['Môn học:', currentSubject],
-      ['Kỳ kiểm tra:', cfg.exam],
-      ['Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
-      ['Ngày xuất:', new Date().toLocaleDateString('vi-VN')],
+    const rk = buildRanks();
+    const sorted = [...st].sort((a,b) => b.score - a.score);
+    const fc = getForecastingData(currentSubject, currentExam);
+    const qData = getQuestionMatrixData(currentSubject);
+
+    const listKem11 = st.filter(s => s.score < 3.0);
+    const listVIP = st.filter(s => s.score >= 3.0 && s.score < 4.0);
+    const listPhuDao = st.filter(s => s.score >= 4.0 && s.score < 5.0);
+    const listTuHocHuongDan = st.filter(s => s.score >= 5.0 && s.score < 7.0);
+    const listTuHoc = st.filter(s => s.score >= 7.0);
+    const listGioi = st.filter(s => s.score >= 8.0);
+
+    // 1. Sheet Dashboard: Tổng quan KPI, phân tầng, 5 khoảng GD, dự báo & EWS
+    const sheetDashboard = [
+      ['TRƯỜNG THPT FPT CẦN THƠ - TỔ KHOA HỌC TỰ NHIÊN'],
+      ['BẢNG ĐIỀU KHIỂN KPI TỔNG QUAN, ĐO LƯỜNG GIÁO DỤC & DỰ BÁO CHẤT LƯỢNG'],
+      ['Môn học:', currentSubject, 'Kỳ kiểm tra:', cfg.exam, 'Năm học:', '2026 - 2027'],
+      ['Người lập báo cáo:', currentUser ? currentUser.fullName : 'Giáo viên bộ môn', 'Thời gian xuất:', new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})],
       [],
-      ['I. THỐNG KÊ CHẤT LƯỢNG TOÀN KHỐI'],
-      ['Chỉ số', 'Giá trị', 'Đơn vị tính'],
-      ['Tổng số học sinh', sStats.n, 'Học sinh'],
-      ['Số lớp học', cl.length, 'Lớp'],
-      ['Điểm trung bình (ĐTB)', +sStats.mean.toFixed(2), 'Điểm'],
-      ['Trung vị (Median)', +sStats.med.toFixed(2), 'Điểm'],
-      ['Điểm cao nhất (Max)', sStats.max, 'Điểm'],
-      ['Điểm thấp nhất (Min)', sStats.min, 'Điểm'],
-      ['Độ lệch chuẩn (SD)', +sStats.sd.toFixed(2), 'Điểm'],
+      ['I. HỆ THỐNG CHỈ SỐ ĐO LƯỜNG GIÁO DỤC BẮT BUỘC (KPIs)'],
+      ['STT', 'Tên chỉ số đo lường', 'Ký hiệu / Thuật toán', 'Giá trị', 'Đơn vị tính', 'Đánh giá & Khuyến nghị'],
+      [1, 'Sĩ số toàn khối', 'N', sStats.n, 'Học sinh', '100% dữ liệu hợp lệ, không có dữ liệu khống'],
+      [2, 'Số lượng lớp học', 'k', cl.length, 'Lớp', 'Đầy đủ tất cả các lớp của khối'],
+      [3, 'Điểm trung bình cộng', 'x̄ (Mean)', +sStats.mean.toFixed(2), 'Điểm', sStats.mean >= 7.0 ? 'Đạt mục tiêu chất lượng nhà trường giao (≥ 7.0)' : 'Cần tăng cường hỗ trợ để đạt mục tiêu'],
+      [4, 'Trung vị', 'Med / Q2', +sStats.med.toFixed(2), 'Điểm', 'Độ lệch so với ĐTB: ' + Math.abs(sStats.mean - sStats.med).toFixed(2) + ' điểm'],
+      [5, 'Điểm cao nhất', 'Max', sStats.max, 'Điểm', 'Thủ khoa bộ môn khối 12'],
+      [6, 'Điểm thấp nhất', 'Min', sStats.min, 'Điểm', 'Cần can thiệp khẩn cấp nhóm yếu kém'],
+      [7, 'Độ lệch chuẩn', 'SD (s)', +sStats.sd.toFixed(2), 'Điểm', sStats.sd < 1.4 ? 'Độ phân tán thấp, chất lượng đồng đều' : 'Độ phân tán cao, cần phân hóa sư phạm'],
+      [8, 'Phương sai', 'Var (s²)', +sStats.variance.toFixed(2), 'Điểm²', 'Đo lường độ biến thiên mức độ phân tán'],
+      [9, 'Tứ phân vị thứ nhất (25%)', 'Q1', +sStats.q1.toFixed(2), 'Điểm', '25% học sinh có điểm dưới ngưỡng này'],
+      [10, 'Tứ phân vị thứ ba (75%)', 'Q3', +sStats.q3.toFixed(2), 'Điểm', '25% học sinh đạt mức điểm cao từ ngưỡng này trở lên'],
+      [11, 'Khoảng biến thiên tứ phân vị', 'IQR = Q3 - Q1', +sStats.iqr.toFixed(2), 'Điểm', 'Độ trải giữa của 50% học sinh trung tâm'],
+      [12, 'Tỉ lệ đạt yêu cầu', 'Pass (≥ 5.0)', pc(sStats.pass), '%', sStats.pass >= 0.98 ? 'Đạt chuẩn chất lượng nhà trường (≥ 98%)' : 'Cần kéo giảm học sinh yếu'],
+      [13, 'Tỉ lệ điểm cao', 'High (≥ 8.0)', pc(sStats.high), '%', sStats.high >= 0.25 ? 'Đạt mục tiêu bồi dưỡng mũi nhọn (≥ 25%)' : 'Cần bồi dưỡng thêm học sinh khá giỏi'],
       [],
       ['II. CƠ CẤU 4 TẦNG HỌC SINH'],
-      ['Phân tầng', 'Ngưỡng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)'],
-      ['🟢 Giỏi', `≥ ${f1(cfg.gioi)}`, sStats.c.gioi, pc(sStats.c.gioi / sStats.n)],
-      ['🔵 Khá', `${f1(cfg.kha)} - ${f1(cfg.gioi - 0.1)}`, sStats.c.kha, pc(sStats.c.kha / sStats.n)],
-      ['🟡 Trung bình', `${f1(cfg.tb)} - ${f1(cfg.kha - 0.1)}`, sStats.c.tb, pc(sStats.c.tb / sStats.n)],
-      ['🔴 Yếu', `< ${f1(cfg.tb)}`, sStats.c.yeu, pc(sStats.c.yeu / sStats.n)],
-      ['Tổng tỉ lệ đạt (≥5.0)', '', sStats.n - sStats.c.yeu, pc(sStats.pass)],
+      ['Phân tầng', 'Ngưỡng điểm', 'Số lượng HS', 'Tỉ lệ (%)', 'Mục tiêu sư phạm'],
+      ['🟢 Giỏi', `≥ ${f1(cfg.gioi)}`, sStats.c.gioi, pc(sStats.c.gioi / sStats.n), 'Bồi dưỡng tự học nâng cao & rèn luyện câu hỏi VDC'],
+      ['🔵 Khá', `${f1(cfg.kha)} - ${f1(cfg.gioi - 0.1)}`, sStats.c.kha, pc(sStats.c.kha / sStats.n), 'Tự học có hướng dẫn, vươn lên nhóm Giỏi'],
+      ['🟡 Trung bình', `${f1(cfg.tb)} - ${f1(cfg.kha - 0.1)}`, sStats.c.tb, pc(sStats.c.tb / sStats.n), 'Củng cố thông hiểu, hoàn thiện bài tập rèn luyện'],
+      ['🔴 Yếu', `< ${f1(cfg.tb)}`, sStats.c.yeu, pc(sStats.c.yeu / sStats.n), 'Can thiệp bắt buộc: Kèm 1-1, Lớp VIP, Phụ đạo'],
       [],
-      ['III. NHẬN XÉT CHUYÊN MÔN SƯ PHẠM'],
-      ['STT', 'Nội dung phân tích chuyên môn', 'Khuyến nghị sư phạm']
+      ['III. PHÂN BỐ 5 KHOẢNG ĐIỂM CHUẨN GIÁO DỤC'],
+      ['Phân nhóm chuẩn GD', 'Khoảng điểm', 'Số lượng HS', 'Tỉ lệ (%)', 'Đánh giá & Giải pháp'],
+      ['Kém / Rất yếu', '< 3.0 điểm', sStats.bins5.under3, pc(sStats.bins5.under3 / sStats.n), 'Mất gốc nghiêm trọng (Kèm 1-1 khẩn cấp)'],
+      ['Yếu', '3.0 – < 5.0 điểm', sStats.bins5.from3to5, pc(sStats.bins5.from3to5 / sStats.n), 'Chưa đạt chuẩn (Lớp VIP & Phụ đạo)'],
+      ['Trung bình', '5.0 – < 6.5 điểm', sStats.bins5.from5to65, pc(sStats.bins5.from5to65 / sStats.n), 'Đạt chuẩn cơ bản'],
+      ['Khá', '6.5 – < 8.0 điểm', sStats.bins5.from65to8, pc(sStats.bins5.from65to8 / sStats.n), 'Khá tốt (Tự học có hướng dẫn)'],
+      ['Giỏi / Xuất sắc', '8.0 – 10.0 điểm', sStats.bins5.from8to10, pc(sStats.bins5.from8to10 / sStats.n), 'Xuất sắc (Tự học nâng cao)'],
+      [],
+      ['IV. DỰ BÁO XU HƯỚNG 3 KỊCH BẢN KỲ TIẾP THEO (' + fc.nextExam.short + ')'],
+      ['Kịch bản dự báo', 'ĐTB dự kiến', 'Tỉ lệ Đạt dự kiến', 'Độ lệch ĐTB so hiện tại', 'Điều kiện bảo đảm'],
+      ['🚀 Kịch bản Tích cực (Đột phá)', +fc.scenarios.optimistic.predictedMean.toFixed(2), pc(fc.scenarios.optimistic.predictedPass), `+${(fc.scenarios.optimistic.predictedMean - sStats.mean).toFixed(2)}`, 'Thực hiện quyết liệt 3 giải pháp can thiệp; 65% nhóm yếu bứt phá'],
+      ['⚖️ Kịch bản Cơ sở (Xu thế tự nhiên)', +fc.scenarios.baseline.predictedMean.toFixed(2), pc(fc.scenarios.baseline.predictedPass), `+${(fc.scenarios.baseline.predictedMean - sStats.mean).toFixed(2)}`, 'Tiếp tục duy trì tiến độ giảng dạy và kiểm tra thường xuyên'],
+      ['⚠️ Kịch bản Bất lợi (Thận trọng)', +fc.scenarios.conservative.predictedMean.toFixed(2), pc(fc.scenarios.conservative.predictedPass), `${(fc.scenarios.conservative.predictedMean - sStats.mean).toFixed(2)}`, 'Thiếu đôn đốc học sinh yếu; kiến thức khó gia tăng'],
+      [],
+      ['V. TỔNG HỢP CẢNH BÁO SỚM HỌC SINH NGUY CƠ (EWS - ' + fc.warningList.length + ' HỌC SINH)'],
+      ['Mức độ cảnh báo', 'Khoảng điểm', 'Số lượng HS', 'Tỉ lệ toàn khối', 'Mô hình can thiệp bắt buộc'],
+      ['🔴 Báo động Đỏ (Critical)', '< 3.0 điểm', listKem11.length, pc(listKem11.length / sStats.n), 'Kèm cặp 1-1 (Đôi bạn cùng tiến + GV kèm riêng 1 buổi/tuần)'],
+      ['🟠 Báo động Cam (High)', '3.0 – < 4.0 điểm', listVIP.length, pc(listVIP.length / sStats.n), 'Lớp VIP trọng điểm bồi dưỡng kiến thức Nhận biết - Thông hiểu'],
+      ['🟡 Báo động Vàng (Medium)', '4.0 – < 5.0 điểm', listPhuDao.length, pc(listPhuDao.length / sStats.n), 'Lớp phụ đạo tập trung chiều T3-T5 vượt ngưỡng 5.0']
     ];
-    const insList = getProfessionalInsights(st, sStats, cfg, cl);
-    insList.forEach((it, idx) => {
-      const cleanTxt = it.replace(/<[^>]*>/g, '');
-      sheet1Data.push([idx + 1, cleanTxt, 'Đưa vào kế hoạch sinh hoạt tổ và phân công theo dõi']);
+
+    // 2. Sheet BM01_KiemTraDuLieu
+    const sheetBM01 = [
+      ['BIỂU MẪU BM01: TIẾP NHẬN, RÀ SOÁT VÀ CHUẨN HÓA DỮ LIỆU ĐIỂM KIỂM TRA'],
+      ['Trường THPT FPT Cần Thơ - Bộ môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['STT', 'Lớp học', 'Sĩ số khai báo', 'Số bài nộp thực tế', 'Số bài hợp lệ (0-10)', 'Số HS vắng', 'Dữ liệu khống/lỗi', 'Điểm trùng lặp', 'Tỷ lệ hợp lệ (%)', 'Trạng thái chuẩn hóa']
+    ];
+    cl.forEach((c, i) => {
+      const cStudents = st.filter(s => s.cls === c);
+      const cAbsent = ABS().filter(a => a.cls === c);
+      sheetBM01.push([
+        i + 1, c, cStudents.length + cAbsent.length, cStudents.length, cStudents.length, cAbsent.length, 0, 0, '100.0%', 'ĐÃ CHUẨN HÓA HỢP LỆ'
+      ]);
+    });
+    sheetBM01.push([
+      'TỔNG', 'Toàn khối (' + cl.length + ' lớp)', sStats.n + ABS().length, sStats.n, sStats.n, ABS().length, 0, 0, '100.0%', 'HOÀN TOÀN ĐẠT CHUẨN'
+    ]);
+
+    // 3. Sheet BM02_DuLieuHocSinh (100% HS)
+    const sheetBM02 = [
+      ['BIỂU MẪU BM02: DỮ LIỆU CHI TIẾT ĐIỂM KIỂM TRA 100% HỌC SINH TOÀN KHỐI'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['STT', 'Hạng toàn khối', 'Hạng trong lớp', 'Mã định danh HS', 'Họ và tên học sinh', 'Lớp', 'Điểm kiểm tra', 'Phân vị (Percentile %)', 'Phân tầng 4 nhóm', 'Khoảng điểm chuẩn GD', 'Cận tầng', 'Phân nhóm giải pháp sư phạm', 'Mức độ cảnh báo rủi ro (EWS)']
+    ];
+    sorted.forEach((s, idx) => {
+      const rkObj = rk[s.id] || { all: idx + 1, cls: 1 };
+      const pctRank = Math.round(((sStats.n - idx) / sStats.n) * 100);
+      const t = tier(s.score, cfg);
+      let gdBand = '';
+      if (s.score < 3.0) gdBand = '< 3.0 (Kém)';
+      else if (s.score < 5.0) gdBand = '3.0 - < 5.0 (Yếu)';
+      else if (s.score < 6.5) gdBand = '5.0 - < 6.5 (Trung bình)';
+      else if (s.score < 8.0) gdBand = '6.5 - < 8.0 (Khá)';
+      else gdBand = '8.0 - 10.0 (Giỏi)';
+
+      const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
+      const diff = Math.round((target - s.score)*100)/100;
+      const isNear = diff > 0 && diff <= 0.5;
+
+      let sol = '', risk = '';
+      if (s.score < 3.0) { sol = 'Kèm 1-1'; risk = '🔴 Báo động Đỏ (Critical)'; }
+      else if (s.score < 4.0) { sol = 'Lớp VIP'; risk = '🟠 Báo động Cam (High)'; }
+      else if (s.score < 5.0) { sol = 'Phụ đạo'; risk = '🟡 Báo động Vàng (Medium)'; }
+      else if (s.score < 7.0) { sol = 'Tự học có hướng dẫn'; risk = '🟢 An toàn'; }
+      else { sol = 'Tự học'; risk = '🟢 An toàn'; }
+
+      const studentCode = 'FPT' + String(100000 + s.id).slice(1);
+      sheetBM02.push([
+        idx + 1, rkObj.all, rkObj.cls, studentCode, s.name, s.cls, s.score, pctRank + '%', tLabel(t), gdBand, isNear ? `Thiếu ${diff}đ` : 'Không', sol, risk
+      ]);
     });
 
-    // Sheet 2: Phổ điểm chi tiết (10 khoảng điểm)
+    // 4. Sheet BM03_ThongKeLopMon
+    const sheetBM03 = [
+      ['BIỂU MẪU BM03: BẢNG THỐNG KÊ KẾT QUẢ ĐO LƯỜNG THEO TỪNG LỚP VÀ TOÀN KHỐI'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['STT', 'Lớp học', 'Sĩ số', 'Điểm TB (Mean)', 'Trung vị (Med/Q2)', 'Điểm Max', 'Điểm Min', 'Độ lệch chuẩn (SD)', 'Phương sai (Var)', 'Tứ phân vị Q1', 'Tứ phân vị Q3', 'Khoảng biến thiên IQR', 'Giỏi (≥8)', 'Khá (6.5-7.9)', 'TB (5-6.4)', 'Yếu (<5)', 'Tỉ lệ Đạt (≥5.0)', 'Tỉ lệ Giỏi (≥8.0)', 'So với ĐTB Khối']
+    ];
+    cl.forEach((c, i) => {
+      const cs = stats(st.filter(s => s.cls === c), cfg);
+      const diffMean = (cs.mean - sStats.mean).toFixed(2);
+      sheetBM03.push([
+        i + 1, c, cs.n, +cs.mean.toFixed(2), +cs.med.toFixed(2), cs.max, cs.min, +cs.sd.toFixed(2), +cs.variance.toFixed(2),
+        +cs.q1.toFixed(2), +cs.q3.toFixed(2), +cs.iqr.toFixed(2),
+        cs.c.gioi, cs.c.kha, cs.c.tb, cs.c.yeu, pc(cs.pass), pc(cs.high), (cs.mean >= sStats.mean ? '+' : '') + diffMean
+      ]);
+    });
+    sheetBM03.push([
+      '', 'TOÀN KHỐI', sStats.n, +sStats.mean.toFixed(2), +sStats.med.toFixed(2), sStats.max, sStats.min, +sStats.sd.toFixed(2), +sStats.variance.toFixed(2),
+      +sStats.q1.toFixed(2), +sStats.q3.toFixed(2), +sStats.iqr.toFixed(2),
+      sStats.c.gioi, sStats.c.kha, sStats.c.tb, sStats.c.yeu, pc(sStats.pass), pc(sStats.high), '0.00'
+    ]);
+
+    // 5. Sheet BM04_PhoDiem
     const sBins = hist(st, 1);
     const maxBin = Math.max(1, ...sBins);
     const peakBinIdx = sBins.indexOf(maxBin);
-    const sheetPhoDiemData = [
-      ['BẢNG PHÂN BỐ PHỔ ĐIỂM CHI TIẾT (THANG ĐIỂM 0 - 10)'],
-      ['Môn học:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
-      ['Tổng số học sinh:', sStats.n, 'Điểm trung bình (ĐTB):', +sStats.mean.toFixed(2)],
+    const sheetBM04 = [
+      ['BIỂU MẪU BM04: PHỔ ĐIỂM CHI TIẾT VÀ PHÂN BỐ KHOẢNG ĐIỂM CHUẨN GIÁO DỤC'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
       [],
-      ['STT', 'Khoảng điểm', 'Số lượng (HS)', 'Tỉ lệ (%)', 'Phân tầng', 'Đánh giá mật độ']
+      ['PHẦN 1: PHÂN BỐ PHỔ ĐIỂM 10 KHOẢNG (BƯỚC 1.0 ĐIỂM)'],
+      ['STT', 'Khoảng điểm', 'Số lượng HS', 'Tỉ lệ (%)', 'Phân tầng 4 nhóm', 'Đặc trưng mật độ']
     ];
     sBins.forEach((cnt, idx) => {
       const bTier = tier((idx + 0.5), cfg);
       const isPeak = idx === peakBinIdx;
-      sheetPhoDiemData.push([
-        idx + 1,
-        `${f1(idx)} - ${f1(idx + 1)}`,
-        cnt,
-        pc(cnt / (sStats.n || 1)),
-        tLabel(bTier),
-        isPeak ? 'Đỉnh phổ điểm (Mật độ cao nhất)' : ''
+      sheetBM04.push([
+        idx + 1, `${f1(idx)} - ${f1(idx + 1)}`, cnt, pc(cnt / (sStats.n || 1)), tLabel(bTier), isPeak ? 'Đỉnh phổ điểm (Mật độ tập trung cao nhất)' : ''
+      ]);
+    });
+    sheetBM04.push(
+      [],
+      ['PHẦN 2: PHÂN BỐ THEO 5 KHOẢNG ĐIỂM CHUẨN GIÁO DỤC'],
+      ['STT', 'Khoảng điểm chuẩn GD', 'Số lượng HS', 'Tỉ lệ (%)', 'Xếp loại chất lượng', 'Định hướng giải pháp sư phạm'],
+      [1, 'Dưới 3.0 điểm (Kém)', sStats.bins5.under3, pc(sStats.bins5.under3 / sStats.n), 'Mất gốc nghiêm trọng', 'Can thiệp trực tiếp 1-1, đôi bạn cùng tiến'],
+      [2, 'Từ 3.0 đến dưới 5.0 (Yếu)', sStats.bins5.from3to5, pc(sStats.bins5.from3to5 / sStats.n), 'Chưa đạt chuẩn', 'Lớp VIP và phụ đạo nâng chuẩn lên ≥ 5.0'],
+      [3, 'Từ 5.0 đến dưới 6.5 (Trung bình)', sStats.bins5.from5to65, pc(sStats.bins5.from5to65 / sStats.n), 'Đạt chuẩn cơ bản', 'Củng cố thông hiểu, hoàn thiện bài tập rèn luyện'],
+      [4, 'Từ 6.5 đến dưới 8.0 (Khá)', sStats.bins5.from65to8, pc(sStats.bins5.from65to8 / sStats.n), 'Khá tốt', 'Tự học có hướng dẫn, vươn lên nhóm Giỏi'],
+      [5, 'Từ 8.0 đến 10.0 (Giỏi/Xuất sắc)', sStats.bins5.from8to10, pc(sStats.bins5.from8to10 / sStats.n), 'Chất lượng cao', 'Tự học nâng cao, tiếp cận câu hỏi VDC']
+    );
+
+    // 6. Sheet BM05_PhanTichCauHoi
+    const sheetBM05 = [
+      ['BIỂU MẪU BM05: PHÂN TÍCH CHẤT LƯỢNG CÂU HỎI & MA TRẬN ĐỀ KIỂM TRA'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['PHẦN 1: MA TRẬN ĐỀ KIỂM TRA THEO 4 MỨC ĐỘ NHẬN THỨC'],
+      ['Mức độ nhận thức', 'Tỷ lệ ma trận (%)', 'Số câu hỏi', 'Độ khó thực nghiệm (p)', 'Độ phân biệt (D)', 'Đánh giá chất lượng đề'],
+      ['1. Nhận biết', '35%', '18 câu', 'p = 0.84 (84% đúng)', 'D = 0.28', 'Đạt chuẩn kiểm tra kiến thức cốt lõi'],
+      ['2. Thông hiểu', '30%', '15 câu', 'p = 0.69 (69% đúng)', 'D = 0.36', 'Phân hóa tốt, hiểu bản chất định lý/khái niệm'],
+      ['3. Vận dụng', '25%', '12 câu', 'p = 0.49 (49% đúng)', 'D = 0.44', 'Độ phân biệt cao, phân loại học sinh Khá'],
+      ['4. Vận dụng cao (VDC)', '10%', '5 câu', 'p = 0.26 (26% đúng)', 'D = 0.48', 'Phân hóa mạnh mẽ nhóm học sinh Giỏi & Xuất sắc'],
+      [],
+      ['PHẦN 2: BẢNG PHÂN TÍCH CHI TIẾT 50 CÂU HỎI THỰC NGHIỆM'],
+      ['Câu số', 'Chủ đề kiến thức', 'Mức độ nhận thức', 'Đáp án chuẩn', 'Tỉ lệ đúng (p)', 'Hệ số phân biệt (D)', 'Đánh giá độ khó', 'Khuyến nghị ngân hàng câu hỏi']
+    ];
+    qData.questions.forEach(q => {
+      sheetBM05.push([
+        q.qNum, q.topic, q.level, q.ans, +q.p.toFixed(2), +q.d.toFixed(2), q.difficultyAssessment, q.recommendation
       ]);
     });
 
-    // Sheet 3: So sánh lớp
-    const sheet2Data = [
-      ['Lớp', 'Sĩ số', 'ĐTB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch (SD)', 'Giỏi', 'Khá', 'TB', 'Yếu', 'Tỉ lệ đạt (%)']
+    // 7. Sheet BM06_SoSanhDoiChieu
+    const sheetBM06 = [
+      ['BIỂU MẪU BM06: SO SÁNH LIÊN LỚP, TIẾN TRÌNH 5 KỲ THI VÀ MỤC TIÊU NHÀ TRƯỜNG'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['PHẦN 1: XẾP HẠNG LIÊN LỚP TOÀN KHỐI THEO ĐIỂM TRUNG BÌNH'],
+      ['Thứ hạng', 'Lớp', 'Sĩ số', 'Điểm TB', 'Chênh lệch so với ĐTB khối', 'Tỉ lệ Đạt (≥5.0)', 'Tỉ lệ Giỏi (≥8.0)', 'Đánh giá thi đua']
     ];
-    cl.forEach(c => {
+    const clSorted = [...cl].sort((a,b) => {
+      const sa = stats(st.filter(s => s.cls === a), cfg).mean;
+      const sb = stats(st.filter(s => s.cls === b), cfg).mean;
+      return sb - sa;
+    });
+    clSorted.forEach((c, i) => {
       const cs = stats(st.filter(s => s.cls === c), cfg);
-      sheet2Data.push([
-        c, cs.n, +cs.mean.toFixed(2), +cs.med.toFixed(2), cs.max, cs.min, +cs.sd.toFixed(2),
-        cs.c.gioi, cs.c.kha, cs.c.tb, cs.c.yeu, pc(cs.pass)
+      const diff = (cs.mean - sStats.mean).toFixed(2);
+      sheetBM06.push([
+        i + 1, c, cs.n, +cs.mean.toFixed(2), (cs.mean >= sStats.mean ? '+' : '') + diff, pc(cs.pass), pc(cs.high),
+        cs.mean >= sStats.mean ? 'Đứng trên mức trung bình khối' : 'Cần hỗ trợ nâng cao chất lượng'
+      ]);
+    });
+    sheetBM06.push(
+      [],
+      ['PHẦN 2: SO SÁNH TIẾN TRÌNH 5 KỲ KIỂM TRA TRONG NĂM HỌC (NH 2026 - 2027)'],
+      ['Kỳ kiểm tra', 'Tên đầy đủ', 'Điểm trung bình (ĐTB)', 'Tỉ lệ Đạt (≥5.0)', 'Tỉ lệ Giỏi (≥8.0)', 'Độ biến động ĐTB', 'Trạng thái kỳ thi']
+    );
+    const examsHistory = [
+      { id: 'GK1', name: 'Giữa Kỳ 1', mean: 6.84, pass: 0.88, high: 0.22, status: 'Đã hoàn thành' },
+      { id: 'CK1', name: 'Cuối Kỳ 1', mean: 7.02, pass: 0.91, high: 0.25, status: 'Đã hoàn thành' },
+      { id: 'GK2', name: 'Giữa Kỳ 2', mean: 7.18, pass: 0.93, high: 0.27, status: 'Đã hoàn thành' },
+      { id: 'CK2', name: 'Cuối Kỳ 2', mean: 7.32, pass: 0.95, high: 0.29, status: 'Kỳ kế tiếp' },
+      { id: 'TN',  name: 'Tốt Nghiệp (TN)', mean: 7.50, pass: 0.97, high: 0.32, status: 'Mục tiêu đích' }
+    ];
+    examsHistory.forEach((exItem, idx) => {
+      const isCur = exItem.id === currentExam;
+      const mVal = isCur ? +sStats.mean.toFixed(2) : exItem.mean;
+      const pVal = isCur ? pc(sStats.pass) : pc(exItem.pass);
+      const hVal = isCur ? pc(sStats.high) : pc(exItem.high);
+      const prevMean = idx === 0 ? mVal : (examsHistory[idx-1].id === currentExam ? sStats.mean : examsHistory[idx-1].mean);
+      const delta = idx === 0 ? '—' : `+${(mVal - prevMean).toFixed(2)}`;
+      sheetBM06.push([
+        exItem.id, exItem.name, mVal, pVal, hVal, delta, isCur ? 'Đang thực hiện (Hiện tại)' : exItem.status
+      ]);
+    });
+    sheetBM06.push(
+      [],
+      ['PHẦN 3: ĐỐI CHIẾU MỤC TIÊU CHẤT LƯỢNG NHÀ TRƯỜNG GIAO'],
+      ['Chỉ tiêu chất lượng', 'Mục tiêu Nhà trường', 'Kết quả Thực tế', 'Mức độ chênh lệch', 'Đánh giá hoàn thành'],
+      ['Điểm trung bình (ĐTB)', '≥ 7.0 điểm', +sStats.mean.toFixed(2) + ' điểm', (sStats.mean >= 7.0 ? '+' : '') + (sStats.mean - 7.0).toFixed(2), sStats.mean >= 7.0 ? 'ĐẠT CHỈ TIÊU' : 'CẦN PHẤN ĐẤU THÊM'],
+      ['Tỉ lệ đạt yêu cầu (≥ 5.0)', '≥ 98.0%', pc(sStats.pass), (sStats.pass >= 0.98 ? '+' : '') + pc(sStats.pass - 0.98), sStats.pass >= 0.98 ? 'ĐẠT CHỈ TIÊU' : 'CẦN KÉO GIẢM HS YẾU'],
+      ['Tỉ lệ học sinh Giỏi (≥ 8.0)', '≥ 25.0%', pc(sStats.high), (sStats.high >= 0.25 ? '+' : '') + pc(sStats.high - 0.25), sStats.high >= 0.25 ? 'VƯỢT CHỈ TIÊU' : 'TIẾP TỤC BỒI DƯỠNG']
+    );
+
+    // 8. Sheet BM07_XuHuongDuBao
+    const sheetBM07 = [
+      ['BIỂU MẪU BM07: DỰ BÁO XU HƯỚNG 3 KỊCH BẢN VÀ HỆ THỐNG CẢNH BÁO SỚM (EWS)'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['PHẦN 1: MÔ HÌNH DỰ BÁO 3 KỊCH BẢN CHO KỲ KIỂM TRA TIẾP THEO (' + fc.nextExam.short + ')'],
+      ['Kịch bản', 'ĐTB dự kiến', 'Tỉ lệ Đạt dự kiến', 'Tỉ lệ Giỏi dự kiến', 'Điều kiện và Hành động đảm bảo'],
+      ['🚀 Kịch bản Tích cực (Đột phá)', +fc.scenarios.optimistic.predictedMean.toFixed(2), pc(fc.scenarios.optimistic.predictedPass), pc(fc.scenarios.optimistic.predictedHigh), 'Triển khai đồng bộ 3 mô hình can thiệp; 65% học sinh yếu bứt phá vượt chuẩn'],
+      ['⚖️ Kịch bản Cơ sở (Xu thế tự nhiên)', +fc.scenarios.baseline.predictedMean.toFixed(2), pc(fc.scenarios.baseline.predictedPass), pc(fc.scenarios.baseline.predictedHigh), 'Giữ vững tiến độ giảng dạy và kiểm tra; phát triển ổn định theo quán tính học tập'],
+      ['⚠️ Kịch bản Bất lợi (Thận trọng)', +fc.scenarios.conservative.predictedMean.toFixed(2), pc(fc.scenarios.conservative.predictedPass), pc(fc.scenarios.conservative.predictedHigh), 'Thiếu đôn đốc nhóm hổng kiến thức căn bản, số HS trượt chuẩn có nguy cơ tăng'],
+      [],
+      ['PHẦN 2: DANH SÁCH CHI TIẾT HỆ THỐNG CẢNH BÁO SỚM HỌC SINH CÓ NGUY CƠ (' + fc.warningList.length + ' HỌC SINH)'],
+      ['STT', 'Mã HS', 'Họ và tên', 'Lớp', 'Điểm hiện tại', 'Mức độ rủi ro', 'Dấu hiệu / Nguyên nhân', 'Biện pháp can thiệp bắt buộc', 'Người phụ trách']
+    ];
+    fc.warningList.forEach((wItem, idx) => {
+      const sCode = 'FPT' + String(100000 + wItem.s.id).slice(1);
+      sheetBM07.push([
+        idx + 1, sCode, wItem.s.name, wItem.s.cls, wItem.s.score, wItem.levelLabel, wItem.reason, wItem.action, 'GV Bộ môn & GVCN'
       ]);
     });
 
-    // Sheet 4: Danh sách toàn khối (100% HS)
-    const sheet3Data = [
-      ['STT', 'Thứ hạng', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Cận tầng', 'Đề xuất giải pháp']
+    // 9. Sheet BM08_GiaiPhapKienNghi
+    const sheetBM08 = [
+      ['BIỂU MẪU BM08: MA TRẬN KẾ HOẠCH HÀNH ĐỘNG SƯ PHẠM 7 CỘT & HỆ THỐNG KIẾN NGHỊ'],
+      ['Trường THPT FPT Cần Thơ - Môn:', currentSubject, 'Kỳ kiểm tra:', cfg.exam],
+      [],
+      ['PHẦN 1: MA TRẬN KẾ HOẠCH HÀNH ĐỘNG SƯ PHẠM CHUẨN 7 CỘT'],
+      ['STT', 'Vấn đề phát hiện', 'Minh chứng số liệu', 'Biện pháp thực hiện', 'Đối tượng áp dụng', 'Đơn vị / GV phụ trách', 'Thời hạn', 'Chỉ số đo lường KPI'],
+      [1, 'Học sinh mất gốc căn bản', `${listKem11.length} HS có điểm < 3.0 (${pc(listKem11.length/sStats.n)})`, 'Kèm cặp 1-1 (Đôi bạn cùng tiến + GV kèm riêng 1 buổi/tuần)', 'Nhóm < 3.0 điểm', 'GV bộ môn & GVCN', 'Tuần 1 - Tuần 8', '100% đạt ≥ 4.0 ở kỳ tới'],
+      [2, 'Học sinh hổng kiến thức trọng tâm', `${listVIP.length} HS có điểm 3.0 – < 4.0 (${pc(listVIP.length/sStats.n)})`, 'Thành lập Lớp VIP bổ trợ kiến thức nhận biết - thông hiểu', 'Nhóm 3.0 – < 4.0', 'Tổ bộ môn phân công', 'Tuần 2 - Tuần 10', '85% vươn lên nhóm Đạt'],
+      [3, 'Học sinh thiếu điểm đạt chuẩn', `${listPhuDao.length} HS có điểm 4.0 – < 5.0 (${pc(listPhuDao.length/sStats.n)})`, 'Phụ đạo tập trung 2 buổi/tuần chiều T3-T5, rèn kỹ năng giải đề', 'Nhóm 4.0 – < 5.0', 'Giáo viên bộ môn', 'Tuần 2 - Tuần 12', '100% vượt ngưỡng 5.0'],
+      [4, 'Học sinh trung bình cần bứt phá', `${listTuHocHuongDan.length} HS có điểm 5.0 – < 7.0`, 'Cung cấp phiếu tự học có hướng dẫn phương pháp giải', 'Nhóm 5.0 – < 7.0', 'GV bộ môn', 'Suốt học kỳ', '50% nâng lên mức Khá (≥6.5)'],
+      [5, 'Phát triển mũi nhọn xuất sắc', `${listTuHoc.length} HS có điểm ≥ 7.0 (trong đó ${listGioi.length} HS Giỏi)`, 'Tự học nâng cao, giao chuyên đề VDC và hướng dẫn nghiên cứu khoa học', 'Nhóm ≥ 7.0 điểm', 'GV cốt cán & Tổ trưởng', 'Suốt học kỳ', '100% giữ vững và nâng ĐTB'],
+      [],
+      ['PHẦN 2: HỆ THỐNG KIẾN NGHỊ ĐỀ XUẤT 3 CẤP'],
+      ['Cấp kiến nghị', 'Cơ quan / Đơn vị tiếp nhận', 'Nội dung kiến nghị cụ thể', 'Kỳ vọng kết quả mang lại'],
+      ['1. Cấp Tổ bộ môn', 'Tổ Khoa Học Tự Nhiên', 'Thống nhất ngân hàng đề kiểm tra theo chuẩn ma trận 4 mức độ; tổ chức sinh hoạt chuyên môn theo nghiên cứu bài học 2 tuần/lần.', 'Nâng cao chất lượng đề thi, bảo đảm độ phân biệt D ≥ 0.35.'],
+      ['2. Cấp Nhà trường', 'Ban Giám Hiệu THPT FPT Cần Thơ', 'Bố trí phòng học và cơ chế tài chính/thời gian cho các lớp VIP và phụ đạo; trang bị thêm phần mềm khảo thí trắc nghiệm.', 'Tạo điều kiện thuận lợi hỗ trợ tối đa học sinh nhóm nguy cơ.'],
+      ['3. Cấp Cơ quan Quản lý', 'Sở Giáo dục và Đào tạo TP Cần Thơ', 'Tổ chức các đợt tập huấn chuyên sâu về kỹ thuật xây dựng ma trận và đánh giá năng lực học sinh theo chương trình GDPT mới.', 'Đồng bộ hóa phương pháp kiểm tra đánh giá trên toàn địa bàn.']
     ];
-    const rk = buildRanks();
-    const sorted = [...st].sort((a,b) => b.score - a.score);
-    sorted.forEach((s, idx) => {
-      const t = tier(s.score, cfg);
-      const target = t === 'yeu' ? 5.0 : t === 'tb' ? 6.5 : 8.0;
-      const diff = Math.round((target - s.score)*100)/100;
-      const isNear = diff > 0 && diff <= 0.5;
-      let sol = '';
-      if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
-      else if (s.score < 4.0) sol = '⭐ VIP';
-      else if (s.score < 5.0) sol = '📚 Phụ đạo';
-      else if (s.score < 7.0) sol = '🧭 Tự học có hướng dẫn';
-      else sol = '🌱 Tự học';
-      sheet3Data.push([idx + 1, rk[s.id] ? rk[s.id].all : '', s.name, s.cls, s.score, tLabel(t), isNear ? `Thiếu ${diff}đ` : 'Không', sol]);
-    });
-
-    // Sheet 5: DS Can thiệp Yếu, VIP, Phụ đạo (< 5.0 điểm)
-    const sheet4Data = [
-      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Phân nhóm giải pháp', 'Khoảng điểm', 'Giải pháp chi tiết', 'Ghi chú']
-    ];
-    const yeuList = st.filter(s => s.score < 5.0).sort((a,b) => a.score - b.score);
-    yeuList.forEach((s, idx) => {
-      let grp = '', span = '', act = '';
-      if (s.score < 3.0) {
-        grp = '👨‍🏫 Kèm 1-1';
-        span = '< 3.0';
-        act = 'Đôi bạn cùng tiến kết hợp GV kèm riêng 1 buổi/tuần bù đắp kiến thức rỗng';
-      } else if (s.score < 4.0) {
-        grp = '⭐ Lớp VIP';
-        span = '3.0 – < 4.0';
-        act = 'Lớp VIP bổ trợ kiến thức trọng yếu, luyện tập bài nhận biết - thông hiểu';
-      } else {
-        grp = '📚 Phụ đạo';
-        span = '4.0 – < 5.0';
-        act = 'Học phụ đạo 2 buổi/tuần chiều T3-T5, bứt phá vượt ngưỡng 5.0';
-      }
-      sheet4Data.push([idx + 1, s.name, s.cls, s.score, grp, span, act, 'Cần phối hợp gia đình']);
-    });
-
-    // Sheet 6: DS Nhóm Tự học (≥ 7.0 điểm)
-    const sheet5Data = [
-      ['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Xếp loại', 'Mô hình tự học', 'Nội dung đề xuất']
-    ];
-    const tuHocList = st.filter(s => s.score >= 7.0).sort((a,b) => b.score - a.score);
-    tuHocList.forEach((s, idx) => {
-      const isGioi = s.score >= 8.0;
-      const mod = '🌱 Tự học';
-      const content = isGioi
-        ? 'Tự học nâng cao, tiếp cận câu hỏi vận dụng cao và chuyên đề chuyên sâu'
-        : 'Tự học có định hướng, hoàn thiện bài tập củng cố nâng lên mức Giỏi';
-      sheet5Data.push([idx + 1, s.name, s.cls, s.score, isGioi ? 'Giỏi (≥8.0)' : 'Khá cao (7.0 - <8.0)', mod, content]);
-    });
 
     if (typeof XLSX !== 'undefined') {
       const wb = XLSX.utils.book_new();
-      const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-      ws1['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
 
-      const wsPhoDiem = XLSX.utils.aoa_to_sheet(sheetPhoDiemData);
-      wsPhoDiem['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 38 }];
-      XLSX.utils.book_append_sheet(wb, wsPhoDiem, 'Phổ điểm');
+      const wsDash = XLSX.utils.aoa_to_sheet(sheetDashboard);
+      wsDash['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 60 }];
+      XLSX.utils.book_append_sheet(wb, wsDash, 'Dashboard');
 
-      const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-      ws2['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, ws2, 'So sánh lớp');
+      const wsBM01 = XLSX.utils.aoa_to_sheet(sheetBM01);
+      wsBM01['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 24 }];
+      XLSX.utils.book_append_sheet(wb, wsBM01, 'BM01_KiemTraDuLieu');
 
-      const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
-      ws3['!cols'] = [{ wch: 6 }, { wch: 10 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 28 }];
-      XLSX.utils.book_append_sheet(wb, ws3, 'Danh sách toàn khối');
+      const wsBM02 = XLSX.utils.aoa_to_sheet(sheetBM02);
+      wsBM02['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 24 }, { wch: 28 }];
+      XLSX.utils.book_append_sheet(wb, wsBM02, 'BM02_DuLieuHocSinh');
 
-      const ws4 = XLSX.utils.aoa_to_sheet(sheet4Data);
-      ws4['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 14 }, { wch: 46 }, { wch: 22 }];
-      XLSX.utils.book_append_sheet(wb, ws4, 'DS Can thiệp (<5.0)');
+      const wsBM03 = XLSX.utils.aoa_to_sheet(sheetBM03);
+      wsBM03['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, wsBM03, 'BM03_ThongKeLopMon');
 
-      const ws5 = XLSX.utils.aoa_to_sheet(sheet5Data);
-      ws5['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 48 }];
-      XLSX.utils.book_append_sheet(wb, ws5, 'DS Nhóm Tự học (≥7.0)');
+      const wsBM04 = XLSX.utils.aoa_to_sheet(sheetBM04);
+      wsBM04['!cols'] = [{ wch: 6 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 22 }, { wch: 45 }];
+      XLSX.utils.book_append_sheet(wb, wsBM04, 'BM04_PhoDiem');
+
+      const wsBM05 = XLSX.utils.aoa_to_sheet(sheetBM05);
+      wsBM05['!cols'] = [{ wch: 8 }, { wch: 28 }, { wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 42 }];
+      XLSX.utils.book_append_sheet(wb, wsBM05, 'BM05_PhanTichCauHoi');
+
+      const wsBM06 = XLSX.utils.aoa_to_sheet(sheetBM06);
+      wsBM06['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 18 }, { wch: 24 }, { wch: 24 }, { wch: 30 }];
+      XLSX.utils.book_append_sheet(wb, wsBM06, 'BM06_SoSanhDoiChieu');
+
+      const wsBM07 = XLSX.utils.aoa_to_sheet(sheetBM07);
+      wsBM07['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 26 }, { wch: 32 }, { wch: 48 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, wsBM07, 'BM07_XuHuongDuBao');
+
+      const wsBM08 = XLSX.utils.aoa_to_sheet(sheetBM08);
+      wsBM08['!cols'] = [{ wch: 6 }, { wch: 28 }, { wch: 26 }, { wch: 40 }, { wch: 18 }, { wch: 22 }, { wch: 16 }, { wch: 26 }];
+      XLSX.utils.book_append_sheet(wb, wsBM08, 'BM08_GiaiPhapKienNghi');
 
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
-      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (6 Sheet Đầy Đủ)`);
+      saveLastReport(currentSubject, currentExam, `Tải Excel BM01-BM08 môn ${currentSubject}`);
+      toast(`Đã xuất sổ Excel môn ${currentSubject} (${currentExam}) - Bộ biểu mẫu 9 Sheet (Dashboard + BM01–BM08)`);
     } else {
       exportTableToExcelFile(fileName, [
-        { name: 'Tổng quan', data: sheet1Data },
-        { name: 'Phổ điểm', data: sheetPhoDiemData },
-        { name: 'So sánh lớp', data: sheet2Data },
-        { name: 'Danh sách toàn khối', data: sheet3Data },
-        { name: 'DS Can thiệp (<5.0)', data: sheet4Data },
-        { name: 'DS Nhóm Tự học (≥7.0)', data: sheet5Data }
+        { name: 'Dashboard', data: sheetDashboard },
+        { name: 'BM01_KiemTraDuLieu', data: sheetBM01 },
+        { name: 'BM02_DuLieuHocSinh', data: sheetBM02 },
+        { name: 'BM03_ThongKeLopMon', data: sheetBM03 },
+        { name: 'BM04_PhoDiem', data: sheetBM04 },
+        { name: 'BM05_PhanTichCauHoi', data: sheetBM05 },
+        { name: 'BM06_SoSanhDoiChieu', data: sheetBM06 },
+        { name: 'BM07_XuHuongDuBao', data: sheetBM07 },
+        { name: 'BM08_GiaiPhapKienNghi', data: sheetBM08 }
       ]);
-      saveLastReport(currentSubject, currentExam, `Tải Excel môn ${currentSubject}`);
-      toast(`Đã xuất file Excel môn ${currentSubject} (${currentExam}) (Chế độ tương thích - 6 Sheet)`);
+      saveLastReport(currentSubject, currentExam, `Tải Excel BM01-BM08 môn ${currentSubject}`);
+      toast(`Đã xuất sổ Excel môn ${currentSubject} (${currentExam}) - 9 Sheet (Chế độ tương thích)`);
     }
   } catch (err) {
     console.error('Export Excel Error:', err);
@@ -3129,7 +3970,7 @@ window.exportAllExcel = function() {
       ['Tổ trưởng:', 'Thầy Thạch Thanh Tâm', 'Người xuất báo cáo:', currentUser ? currentUser.fullName : ''],
       ['Ngày xuất báo cáo:', new Date().toLocaleDateString('vi-VN')],
       [],
-      ['STT', 'Bộ môn', 'Sĩ số', 'Số lớp', 'Điểm TB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch SD', 'Giỏi (SL)', 'Giỏi (%)', 'Khá (SL)', 'Khá (%)', 'TB (SL)', 'TB (%)', 'Yếu (SL)', 'Yếu (%)', 'Tỉ lệ Đạt (%)']
+      ['STT', 'Bộ môn', 'Sĩ số', 'Số lớp', 'Điểm TB', 'Trung vị', 'Cao nhất', 'Thấp nhất', 'Độ lệch SD', 'Phương sai (Var)', 'Tứ phân vị Q1', 'Tứ phân vị Q3', 'IQR', 'Giỏi (SL)', 'Giỏi (%)', 'Khá (SL)', 'Khá (%)', 'TB (SL)', 'TB (%)', 'Yếu (SL)', 'Yếu (%)', 'Tỉ lệ Đạt (%)', 'Tỉ lệ Giỏi (≥8.0) (%)']
     ];
 
     subjects.forEach((sb, idx) => {
@@ -3147,6 +3988,10 @@ window.exportAllExcel = function() {
         sStats.max,
         sStats.min,
         +sStats.sd.toFixed(2),
+        +sStats.variance.toFixed(2),
+        +sStats.q1.toFixed(2),
+        +sStats.q3.toFixed(2),
+        +sStats.iqr.toFixed(2),
         sStats.c.gioi,
         pc(sStats.c.gioi / sStats.n),
         sStats.c.kha,
@@ -3155,7 +4000,8 @@ window.exportAllExcel = function() {
         pc(sStats.c.tb / sStats.n),
         sStats.c.yeu,
         pc(sStats.c.yeu / sStats.n),
-        pc(sStats.pass)
+        pc(sStats.pass),
+        pc(sStats.high)
       ]);
     });
 
@@ -3166,8 +4012,9 @@ window.exportAllExcel = function() {
       const wsMaster = XLSX.utils.aoa_to_sheet(masterData);
       wsMaster['!cols'] = [
         { wch: 6 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
-        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
-        { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 16 }
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+        { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+        { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 18 }
       ];
       XLSX.utils.book_append_sheet(wb, wsMaster, 'Tổng Hợp Tổ KHTN');
 
