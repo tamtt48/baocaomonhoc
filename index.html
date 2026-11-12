@@ -2499,8 +2499,11 @@ function renderExport() {
   const isLeader = currentUser && currentUser.role === 'admin';
   const sStats = stats(st, cfg);
   const cl = classes();
-  const nearYeuCount = st.filter(s => s.score >= 4.5 && s.score < 5.0).length;
-  const veryWeakCount = st.filter(s => s.score < 3.0).length;
+  const listKem11Count = st.filter(s => s.score < 3.0).length;
+  const listVIPCount = st.filter(s => s.score >= 3.0 && s.score < 4.0).length;
+  const listPhuDaoCount = st.filter(s => s.score >= 4.0 && s.score < 5.0).length;
+  const listTuHocHuongDanCount = st.filter(s => s.score >= 5.0 && s.score < 7.0).length;
+  const listTuHocCount = st.filter(s => s.score >= 7.0).length;
   const lastRep = getLastReport(currentSubject, currentExam);
   const curExamObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
 
@@ -2651,15 +2654,24 @@ function renderExport() {
       <div class="export-card">
         <div>
           <div class="icon">🎯</div>
-          <h4>Xuất Danh Sách Can Thiệp</h4>
-          <p>Tải nhanh danh sách phân nhóm học sinh theo kế hoạch sư phạm để giao trực tiếp cho Giáo viên bộ môn hoặc GVCN quản lý.</p>
+          <h4>Xuất Danh Sách Phân Nhóm Sư Phạm</h4>
+          <p>Tải nhanh danh sách phân nhóm học sinh theo 5 mô hình sư phạm chuẩn THPT FPT Cần Thơ để giao trực tiếp cho Giáo viên bộ môn & GVCN.</p>
         </div>
-        <div style="width:100%;display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-vip" style="width:100%;justify-content:center;font-size:12px" onclick="exportSpecialGroupExcel('vip')">
-            ⭐ DS Lớp VIP Nâng Hạng (${nearYeuCount} HS)
+        <div style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn btn-danger" style="justify-content:center;font-size:11.5px;padding:8px 4px" onclick="exportSpecialGroupExcel('kem11')">
+            👨‍🏫 Kèm 1-1 (&lt;3.0đ: ${listKem11Count} HS)
           </button>
-          <button class="btn btn-danger" style="width:100%;justify-content:center;font-size:12px" onclick="exportSpecialGroupExcel('phudao')">
-            📚 DS Phụ Đạo & Kèm 1-1 (${sStats.c.yeu} HS)
+          <button class="btn btn-vip" style="justify-content:center;font-size:11.5px;padding:8px 4px" onclick="exportSpecialGroupExcel('vip')">
+            ⭐ Lớp VIP (3–&lt;4đ: ${listVIPCount} HS)
+          </button>
+          <button class="btn" style="justify-content:center;font-size:11.5px;padding:8px 4px;background:#fef3c7;color:#92400e;border:1px solid #fde68a" onclick="exportSpecialGroupExcel('phudao')">
+            📚 Phụ đạo (4–&lt;5đ: ${listPhuDaoCount} HS)
+          </button>
+          <button class="btn btn-primary" style="justify-content:center;font-size:11.5px;padding:8px 4px" onclick="exportSpecialGroupExcel('tuhoc_huongdan')">
+            🧭 Tự học có hướng dẫn (${listTuHocHuongDanCount} HS)
+          </button>
+          <button class="btn btn-success" style="grid-column:1 / -1;justify-content:center;font-size:11.5px;padding:8px 4px" onclick="exportSpecialGroupExcel('tuhoc')">
+            🌱 Tự học nâng cao (≥7.0đ: ${listTuHocCount} HS)
           </button>
         </div>
       </div>
@@ -4202,6 +4214,72 @@ window.exportSpecialGroupExcel = function(groupType) {
         exportTableToExcelFile(fileName, [{ name: 'Kem11', data }]);
       }
       toast(`Đã tải danh sách Kèm 1-1 (${list.length} học sinh)`);
+    } else if (groupType === 'tuhoc_huongdan') {
+      const list = st.filter(s => s.score >= 5.0 && s.score < 7.0).sort((a,b) => b.score - a.score);
+      const data = [
+        [`DANH SÁCH HỌC SINH TỰ HỌC CÓ HƯỚNG DẪN (ĐIỂM TỪ 5.0 ĐẾN DƯỚI 7.0)`],
+        [`Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 5.0 đến dưới 7.0 (Nhóm Trung bình - Khá)`],
+        [`Tổng số học sinh: ${list.length} em`],
+        [],
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Mục tiêu', 'Định hướng tự học', 'Tài liệu khuyến nghị']
+      ];
+      list.forEach((s, i) => {
+        data.push([
+          i + 1, s.name, s.cls, s.score, '≥ 7.0',
+          'Tự học theo chủ đề kiến thức trọng tâm, rèn luyện kỹ năng giải bài thông hiểu - vận dụng',
+          'Bộ phiếu tự học chuyên đề & ngân hàng câu hỏi phân loại'
+        ]);
+      });
+
+      const fileName = `BaoCao_${cleanSb}_TuHoc_CoHuongDan_${dateSuffix}.xlsx`;
+
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 48 }, { wch: 38 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'TuHoc_CoHuongDan');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        exportTableToExcelFile(fileName, [{ name: 'TuHoc_CoHuongDan', data }]);
+      }
+      toast(`Đã tải danh sách Tự học có hướng dẫn (${list.length} học sinh)`);
+    } else if (groupType === 'tuhoc') {
+      const list = st.filter(s => s.score >= 7.0).sort((a,b) => b.score - a.score);
+      const data = [
+        [`DANH SÁCH HỌC SINH TỰ HỌC NÂNG CAO (ĐIỂM TỪ 7.0 TRỞ LÊN)`],
+        [`Trường THPT FPT Cần Thơ - Tổ Khoa Học Tự Nhiên - Môn: ${currentSubject}`],
+        [`Kỳ thi: ${cfg.exam} · Tiêu chí: Điểm từ 7.0 trở lên (Đặc biệt học sinh Giỏi ≥8.0)`],
+        [`Tổng số học sinh: ${list.length} em`],
+        [],
+        ['STT', 'Họ và tên', 'Lớp', 'Điểm số', 'Phân loại', 'Mô hình tự học', 'Định hướng phát triển']
+      ];
+      list.forEach((s, i) => {
+        const isGioi = s.score >= 8.0;
+        data.push([
+          i + 1, s.name, s.cls, s.score,
+          isGioi ? 'Giỏi (≥8.0)' : 'Khá cao (7.0 - <8.0)',
+          'Tự học nâng cao trên nền tảng số',
+          isGioi ? 'Tiếp cận câu hỏi VDC, đề thi thử thách & nghiên cứu khoa học STEM' : 'Rèn luyện hoàn thiện kiến thức nâng lên mức Giỏi'
+        ]);
+      });
+
+      const fileName = `BaoCao_${cleanSb}_TuHoc_NangCao_${dateSuffix}.xlsx`;
+
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 28 }, { wch: 48 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'TuHoc_NangCao');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadFile(blob, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        exportTableToExcelFile(fileName, [{ name: 'TuHoc_NangCao', data }]);
+      }
+      toast(`Đã tải danh sách Tự học nâng cao (${list.length} học sinh)`);
     }
   } catch (err) {
     console.error('Export Special Group Error:', err);
