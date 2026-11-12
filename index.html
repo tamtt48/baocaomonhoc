@@ -2726,7 +2726,6 @@ function buildSubjectReportHTML(sb, forPrint) {
   const listTuHocHuongDan = stList.filter(s => s.score >= 5.0 && s.score < 7.0).sort((a,b) => a.score - b.score);
   const listTuHoc = stList.filter(s => s.score >= 7.0).sort((a,b) => b.score - a.score);
   const listGioi = stList.filter(s => s.score >= 8.0).sort((a,b) => b.score - a.score);
-  const sortedAll = [...stList].sort((a,b) => a.cls.localeCompare(b.cls, 'vi', { numeric: true }) || b.score - a.score);
 
   const sBins = hist(stList, 1);
   const maxBin = Math.max(1, ...sBins);
@@ -3360,40 +3359,6 @@ function buildSubjectReportHTML(sb, forPrint) {
             • Tổ chức các đợt tập huấn chuyên sâu về kỹ thuật xây dựng ma trận đề và đo lường đánh giá giáo dục hiện đại.
           </td>
         </tr>
-      </table>
-
-      <!-- PHỤ LỤC: BẢNG ĐIỂM CHI TIẾT TOÀN BỘ HỌC SINH -->
-      <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
-        Phụ lục: Bảng điểm chi tiết toàn bộ học sinh môn ${sb} (${stList.length} học sinh đối soát)
-      </h3>
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th style="width:6%">STT</th>
-          <th style="width:32%">Họ và tên</th>
-          <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm số</th>
-          <th style="width:16%">Xếp loại</th>
-          <th style="width:22%">Đề xuất sư phạm</th>
-        </tr>
-        ${sortedAll.map((s, idx) => {
-          const t = tier(s.score, cfg);
-          let sol = '';
-          if (s.score < 3.0) sol = '👨‍🏫 Kèm 1-1';
-          else if (s.score < 4.0) sol = '⭐ VIP';
-          else if (s.score < 5.0) sol = '📚 Phụ đạo';
-          else if (s.score < 7.0) sol = '🧭 Tự học có hướng dẫn';
-          else sol = '🌱 Tự học';
-          return `
-            <tr style="text-align:center">
-              <td>${idx + 1}</td>
-              <td style="text-align:left;padding-left:6px">${esc(s.name)}</td>
-              <td>${esc(s.cls)}</td>
-              <td style="font-weight:bold;${s.score < 5 ? 'color:#c0392b' : s.score >= 8 ? 'color:#00904b' : ''}">${s.score}</td>
-              <td>${tLabel(t)}</td>
-              <td>${sol}</td>
-            </tr>
-          `;
-        }).join('')}
       </table>
     </div>
   `;
