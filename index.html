@@ -610,16 +610,81 @@ function initDefaultDataset() {
   });
 }
 
-// Run initial dataset generator
-initDefaultDataset();
+// ===== PERSISTENCE: LƯU TRỮ VÀ KHÔI PHỤC TOÀN BỘ DỮ LIỆU TẤT CẢ CÁC KỲ =====
+function persistAllData() {
+  try {
+    if (allData[currentSubject] && allData[currentSubject].exams && allData[currentSubject].exams[currentExam]) {
+      allData[currentSubject].exams[currentExam].cfg = getCfg();
+      const cfgExamEl = $('#cfgExam');
+      if (cfgExamEl && cfgExamEl.value.trim()) {
+        allData[currentSubject].exams[currentExam].exam = cfgExamEl.value.trim();
+      }
+    }
+    localStorage.setItem('khtn_all_data_v2', JSON.stringify(allData));
+    localStorage.setItem('khtn_current_subject', currentSubject);
+    localStorage.setItem('khtn_current_exam', currentExam);
+    localStorage.setItem('khtn_current_tab', cur || 'overview');
+    localStorage.setItem('khtn_next_id', String(nextId));
+  } catch(e) {
+    console.warn('Lỗi khi lưu allData vào localStorage:', e);
+  }
+}
+window.persistAllData = persistAllData;
+
+function loadPersistedData() {
+  try {
+    const raw = localStorage.getItem('khtn_all_data_v2');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+        allData = parsed;
+        const savedSubj = localStorage.getItem('khtn_current_subject');
+        if (savedSubj && allData[savedSubj]) {
+          currentSubject = savedSubj;
+        }
+        const savedExam = localStorage.getItem('khtn_current_exam');
+        if (savedExam && EXAMS.some(e => e.id === savedExam)) {
+          currentExam = savedExam;
+        }
+        const savedId = localStorage.getItem('khtn_next_id');
+        if (savedId && !isNaN(+savedId)) {
+          nextId = Math.max(nextId, +savedId);
+        }
+        return true;
+      }
+    }
+  } catch(e) {
+    console.warn('Lỗi khi đọc allData từ localStorage:', e);
+  }
+  return false;
+}
+
+// Khôi phục dữ liệu đã lưu từ lần trước, nếu chưa có thì khởi tạo mặc định
+if (!loadPersistedData()) {
+  initDefaultDataset();
+  persistAllData();
+}
+
+function syncCfgInputsFromData() {
+  const d = getCurrentData();
+  const curExObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
+  const eEl = $('#cfgExam'), gEl = $('#cfgGioi'), kEl = $('#cfgKha'), tEl = $('#cfgTb');
+  if (eEl) eEl.value = d.exam || curExObj.name;
+  if (gEl && d.cfg && typeof d.cfg.gioi === 'number') gEl.value = d.cfg.gioi;
+  if (kEl && d.cfg && typeof d.cfg.kha === 'number') kEl.value = d.cfg.kha;
+  if (tEl && d.cfg && typeof d.cfg.tb === 'number') tEl.value = d.cfg.tb;
+}
 
 function getCfg() {
   const gEl = $('#cfgGioi'), kEl = $('#cfgKha'), tEl = $('#cfgTb'), eEl = $('#cfgExam');
-  const g = (gEl && gEl.value) ? +gEl.value : 8.0;
-  const k = (kEl && kEl.value) ? +kEl.value : 6.5;
-  const t = (tEl && tEl.value) ? +tEl.value : 5.0;
+  const d = (allData[currentSubject] && allData[currentSubject].exams && allData[currentSubject].exams[currentExam]) ? allData[currentSubject].exams[currentExam] : null;
+  const defCfg = (d && d.cfg) ? d.cfg : { gioi: 8.0, kha: 6.5, tb: 5.0 };
+
+  const g = (gEl && gEl.value) ? +gEl.value : defCfg.gioi;
+  const k = (kEl && kEl.value) ? +kEl.value : defCfg.kha;
+  const t = (tEl && tEl.value) ? +tEl.value : defCfg.tb;
   const curExObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
-  const examName = (eEl && typeof eEl.value === 'string' && eEl.value.trim()) ? eEl.value.trim() : curExObj.name;
+  const examName = (eEl && typeof eEl.value === 'string' && eEl.value.trim()) ? eEl.value.trim() : (d && d.exam ? d.exam : curExObj.name);
   return {
     subject: currentSubject,
     exam: examName,
@@ -654,6 +719,23 @@ function getCurrentData() {
   allData[currentSubject].exam = d.exam;
   return d;
 }
+
+window.resetAllDataToDefault = function() {
+  if (confirm('Bạn có chắc chắn muốn đặt lại dữ liệu mẫu cho tất cả các kỳ không? Các dữ liệu đã chỉnh sửa sẽ được thiết lập lại.')) {
+    try {
+      localStorage.removeItem('khtn_all_data_v2');
+      localStorage.removeItem('khtn_last_reports');
+    } catch(e) {}
+    initDefaultDataset();
+    persistAllData();
+    syncCfgInputsFromData();
+    renderSubjectToolbar();
+    renderExamToolbar();
+    refresh();
+    updateLastReportUI();
+    toast('Đã đặt lại dữ liệu mẫu ban đầu cho tất cả các kỳ.');
+  }
+};
 
 // ===== 3. PERSISTENCE: LƯU LẠI THÔNG TIN LẦN BÁO CÁO CUỐI CÙNG =====
 function saveLastReport(sb = currentSubject, ex = currentExam, source = 'Xuất file nộp') {
@@ -691,8 +773,10 @@ function saveLastReport(sb = currentSubject, ex = currentExam, source = 'Xuất 
     store[`${sb}__${ex}`] = record;
     localStorage.setItem('khtn_last_reports', JSON.stringify(store));
 
+    persistAllData();
     updateLastReportUI();
-    toast(`✅ Đã lưu thông tin lần báo cáo cuối cùng môn ${sb} (${examObj.short})`);
+    renderExamToolbar();
+    toast(`✅ Đã lưu kết quả báo cáo môn ${sb} (${examObj.short})`);
   } catch(e) {
     console.error('Lỗi khi lưu lần báo cáo cuối cùng:', e);
   }
@@ -936,15 +1020,36 @@ function showApp() {
   rb.textContent = currentUser.roleLabel;
   rb.className = 'user-badge' + (currentUser.role === 'admin' ? ' admin' : '');
 
-  // Set default subject based on permissions
-  if (!currentUser.subjects.includes(currentSubject)) {
+  // 1. Khôi phục môn học đã làm việc ở lần trước
+  const savedSubj = localStorage.getItem('khtn_current_subject');
+  if (savedSubj && currentUser.subjects.includes(savedSubj) && allData[savedSubj]) {
+    currentSubject = savedSubj;
+  } else if (!currentUser.subjects.includes(currentSubject)) {
     currentSubject = currentUser.subjects[0];
   }
+
+  // 2. Khôi phục kỳ kiểm tra đã làm việc ở lần trước
+  const savedExam = localStorage.getItem('khtn_current_exam');
+  if (savedExam && EXAMS.some(e => e.id === savedExam)) {
+    currentExam = savedExam;
+  }
+
+  getCurrentData();
+  syncCfgInputsFromData();
 
   renderSubjectToolbar();
   renderExamToolbar();
   refresh();
-  show(location.hash.slice(1) || 'overview');
+
+  // 3. Khôi phục tab / màn hình kết quả đã xem lần trước
+  const savedTab = localStorage.getItem('khtn_current_tab');
+  const targetTab = location.hash.slice(1) || savedTab || 'overview';
+  show(targetTab);
+
+  const lastRep = getLastReport(currentSubject, currentExam);
+  if (lastRep) {
+    toast(`Đã khôi phục kết quả báo cáo môn ${currentSubject} (${lastRep.examShort})`);
+  }
 }
 
 function renderSubjectToolbar() {
@@ -963,11 +1068,15 @@ function renderExamToolbar() {
   const container = $('#examPills');
   if (!container) return;
 
-  container.innerHTML = EXAMS.map(ex => `
-    <button class="exam-pill ${ex.id === currentExam ? 'active' : ''}" onclick="switchExam('${ex.id}')">
-      ${ex.icon} ${ex.short}
-    </button>
-  `).join('');
+  container.innerHTML = EXAMS.map(ex => {
+    const hasRep = !!getLastReport(currentSubject, ex.id);
+    return `
+      <button class="exam-pill ${ex.id === currentExam ? 'active' : ''}" onclick="switchExam('${ex.id}')">
+        ${ex.icon} ${ex.short}
+        ${hasRep ? '<span title="Đã lưu kết quả báo cáo kỳ này" style="display:inline-block;width:7px;height:7px;background:#10b981;border-radius:50%;margin-left:4px"></span>' : ''}
+      </button>
+    `;
+  }).join('');
 
   updateLastReportUI();
 }
@@ -975,8 +1084,12 @@ function renderExamToolbar() {
 window.switchSubject = function(sb) {
   if (!currentUser.subjects.includes(sb)) return;
   currentSubject = sb;
+  localStorage.setItem('khtn_current_subject', sb);
+  getCurrentData();
+  syncCfgInputsFromData();
   renderSubjectToolbar();
   renderExamToolbar();
+  persistAllData();
   refresh();
   toast(`Đã chuyển sang môn: ${sb}`);
 };
@@ -985,11 +1098,11 @@ window.switchExam = function(exId) {
   const exObj = EXAMS.find(e => e.id === exId);
   if (!exObj) return;
   currentExam = exId;
-  const cfgInput = $('#cfgExam');
-  if (cfgInput) cfgInput.value = exObj.name;
-
+  localStorage.setItem('khtn_current_exam', exId);
   getCurrentData();
+  syncCfgInputsFromData();
   renderExamToolbar();
+  persistAllData();
   refresh();
   toast(`Đã chọn kỳ thi: ${exObj.short}`);
 };
@@ -1024,6 +1137,9 @@ window.go = go;
 function show(t) {
   if (!TABS.includes(t)) t = 'overview';
   cur = t;
+  try {
+    localStorage.setItem('khtn_current_tab', t);
+  } catch(e) {}
   TABS.forEach(x => {
     const el = $('#p-' + x);
     if (el) el.hidden = x !== t;
@@ -2315,6 +2431,7 @@ function renderLoadedClasses() {
     return;
   }
   const cl = classes(), abs = ABS();
+  const curExamObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
   el.innerHTML = `
     <div class="chips">
       ${cl.map(c => `
@@ -2324,9 +2441,10 @@ function renderLoadedClasses() {
         </span>
       `).join('')}
     </div>
-    <p class="hint" style="margin-top:12px">Tổng cộng: <strong>${st.length}</strong> học sinh trong <strong>${cl.length}</strong> lớp học môn ${esc(currentSubject)}.${abs.length ? ` (${abs.length} HS vắng).` : ''}</p>
-    <div style="margin-top:12px">
-      <button class="btn btn-danger" id="clearAll">🗑️ Xóa toàn bộ dữ liệu môn ${esc(currentSubject)}</button>
+    <p class="hint" style="margin-top:12px">Tổng cộng: <strong>${st.length}</strong> học sinh trong <strong>${cl.length}</strong> lớp học môn ${esc(currentSubject)} (${esc(curExamObj.short)}).${abs.length ? ` (${abs.length} HS vắng).` : ''}</p>
+    <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-danger" id="clearAll">🗑️ Xóa toàn bộ dữ liệu môn ${esc(currentSubject)} (${esc(curExamObj.short)})</button>
+      <button class="btn" id="resetDemoBtn" style="border:1px solid #cbd5e1;background:#fff" onclick="resetAllDataToDefault()">🔄 Đặt lại dữ liệu mẫu (Tất cả các kỳ)</button>
     </div>
   `;
 
@@ -2335,8 +2453,9 @@ function renderLoadedClasses() {
       const d = getCurrentData();
       d.students = [];
       d.absent = [];
+      persistAllData();
       refresh();
-      toast('Đã xóa dữ liệu môn ' + currentSubject);
+      toast('Đã xóa dữ liệu môn ' + currentSubject + ' (' + curExamObj.short + ')');
     } else {
       this.dataset.arm = '1';
       this.textContent = '⚠️ Bấm lần nữa để xác nhận xóa toàn bộ';
@@ -2349,6 +2468,7 @@ function renderLoadedClasses() {
       const d = getCurrentData();
       d.students = d.students.filter(s => s.cls !== clsName);
       d.absent = d.absent.filter(a => a.cls !== clsName);
+      persistAllData();
       refresh();
       toast(`Đã xóa lớp ${clsName}`);
     });
@@ -2451,6 +2571,7 @@ function addItems(items, skipped, absent) {
   data.absent = data.absent.filter(a => !cl.has(a.cls));
   absent.forEach(a => data.absent.push(a));
   items.forEach(i => data.students.push({ id: nextId++, name: i.name, score: i.score, cls: i.cls }));
+  persistAllData();
   refresh();
   toast(`Đã cập nhật ${items.length} học sinh môn ${currentSubject}!`);
   return true;
@@ -2484,6 +2605,12 @@ $('#pasteAdd').addEventListener('click', () => {
     const g = +$('#cfgGioi').value, k = +$('#cfgKha').value, t = +$('#cfgTb').value;
     if (g > k && k > t && t > 0 && g <= 10) {
       $('#cfgMsg').textContent = '';
+      const d = getCurrentData();
+      d.cfg = getCfg();
+      if ($('#cfgExam') && $('#cfgExam').value.trim()) {
+        d.exam = $('#cfgExam').value.trim();
+      }
+      persistAllData();
     } else {
       $('#cfgMsg').textContent = '⚠️ Ngưỡng phải giảm dần: Giỏi > Khá > TB (0–10).';
     }
@@ -2584,6 +2711,78 @@ function renderExport() {
                       <span class="badge ${r ? 'b-gioi' : 'b-tb'}" style="font-size:11px">
                         ${r ? 'Đã nộp' : 'Chưa nộp'}
                       </span>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BẢNG TỔNG HỢP & LƯU TRỮ KẾT QUẢ TẤT CẢ CÁC KỲ CỦA BỘ MÔN -->
+      <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <h4 style="margin:0;font-size:13.5px;color:#1e293b;display:flex;align-items:center;gap:6px">
+            📚 Bảng tổng hợp & lưu trữ kết quả tất cả các kỳ · Môn <strong>${esc(currentSubject)}</strong>
+          </h4>
+          <span style="font-size:12px;color:var(--ink-2)">Tự động lưu và giữ nguyên kết quả mỗi lần mở website</span>
+        </div>
+        <div class="tw">
+          <table style="font-size:12.5px">
+            <thead>
+              <tr style="background:var(--surface-2)">
+                <th>Kỳ kiểm tra</th>
+                <th>Tên đầy đủ kỳ kiểm tra</th>
+                <th>Sĩ số</th>
+                <th>ĐTB</th>
+                <th>Tỉ lệ Đạt</th>
+                <th>Giỏi / Khá / TB / Yếu</th>
+                <th>Lần nộp / Xuất gần nhất</th>
+                <th>Trạng thái lưu trữ</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${EXAMS.map(ex => {
+                const isCur = ex.id === currentExam;
+                const r = getLastReport(currentSubject, ex.id);
+                const exData = (allData[currentSubject] && allData[currentSubject].exams && allData[currentSubject].exams[ex.id]) ? allData[currentSubject].exams[ex.id] : null;
+                const stList = exData ? exData.students : [];
+                const exCfg = (exData && exData.cfg) ? exData.cfg : cfg;
+                const exStat = stList.length ? stats(stList, exCfg) : null;
+                return `
+                  <tr style="${isCur ? 'background:#eff6ff;font-weight:600' : ''}">
+                    <td>
+                      <strong>${ex.icon} ${ex.short}</strong>
+                      ${isCur ? ' <span class="badge b-kha" style="font-size:10.5px">Đang mở</span>' : ''}
+                    </td>
+                    <td>${esc(ex.name)}</td>
+                    <td>${exStat ? exStat.n : 0} HS</td>
+                    <td style="color:var(--fpt-blue);font-weight:700">${exStat ? fm(exStat.mean) : '—'}</td>
+                    <td style="color:var(--gioi);font-weight:700">${exStat ? pc(exStat.pass) : '—'}</td>
+                    <td style="font-size:11.5px">
+                      ${exStat ? `
+                        <span style="color:var(--gioi);font-weight:600">${exStat.c.gioi} G</span> · 
+                        <span style="color:var(--kha);font-weight:600">${exStat.c.kha} K</span> · 
+                        <span style="color:var(--tb);font-weight:600">${exStat.c.tb} TB</span> · 
+                        <span style="color:var(--yeu);font-weight:600">${exStat.c.yeu} Y</span>
+                      ` : '—'}
+                    </td>
+                    <td>${r ? `<span title="${esc(r.reporterFullName || r.reporterName)} (${esc(r.source)})">${esc(r.dateStr)}</span>` : '<span style="color:#94a3b8">Chưa nộp</span>'}</td>
+                    <td>
+                      <span class="badge ${r ? 'b-gioi' : exStat ? 'b-tb' : 'b-yeu'}" style="font-size:11px">
+                        ${r ? '🟢 Đã lưu kết quả' : exStat ? '🟡 Dữ liệu sẵn sàng' : '⚪ Chưa có dữ liệu'}
+                      </span>
+                    </td>
+                    <td>
+                      ${isCur ? `
+                        <span style="color:var(--fpt-blue);font-size:11.5px;font-weight:bold">✓ Kỳ hiện tại</span>
+                      ` : `
+                        <button class="btn btn-sm" style="padding:3px 8px;font-size:11px" onclick="switchExam('${ex.id}')">
+                          Chuyển sang kỳ này →
+                        </button>
+                      `}
                     </td>
                   </tr>
                 `;
