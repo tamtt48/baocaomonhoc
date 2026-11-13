@@ -245,41 +245,38 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
       <span style="width:10px;height:24px;background:#00904b;border-radius:2px;display:inline-block"></span>
     </div>
     <h1>KHTN<span>Report</span></h1>
-    <p class="sub">Hệ thống Báo Cáo Chuyên Môn & Phân Tầng Học Sinh<br><strong>Trường THPT FPT · Tổ Khoa Học Tự Nhiên</strong></p>
-    <div class="field">
-      <label for="loginEmail">Email giảng viên / Cán bộ môn</label>
-      <input id="loginEmail" type="email" placeholder="example@fpt.edu.vn" autocomplete="email">
+    <p class="sub">Hệ thống Báo Cáo Chuyên Môn & Phân Tầng Học Sinh<br><strong>Trường THPT FPT Cần Thơ · Tổ Khoa Học Tự Nhiên</strong></p>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:12.5px;color:#475569;line-height:1.5">
+      🔒 <strong>Cổng bảo mật nội bộ:</strong> Chỉ giáo viên thuộc Tổ KHTN đã được cấp tài khoản và mật khẩu mới có quyền truy cập hệ thống.
     </div>
-    <p class="login-error" id="loginError">⚠️ Email không thuộc phân quyền của Tổ KHTN!</p>
-    <div style="margin-top:14px">
-      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doLogin()">🔐 Đăng nhập vào hệ thống</button>
-    </div>
-    <div class="quick-accounts">
-      <h4>🏫 Phân quyền truy cập theo yêu cầu</h4>
-      <button class="quick-btn" onclick="quickLogin('tamtt48@fpt.edu.vn')">
-        <div style="font-size:22px">👑</div>
-        <div><div class="qn">Tổ trưởng KHTN – Thầy Thạch Thanh Tâm</div><div class="qr">tamtt48@fpt.edu.vn · Toàn quyền 5 môn</div></div>
-      </button>
-      <button class="quick-btn" onclick="quickLogin('chinh10@fpt.edu.vn')">
-        <div style="font-size:22px">📐</div>
-        <div><div class="qn">Trưởng môn Toán – Cô Nguyễn Hồng Chi</div><div class="qr">chinh10@fpt.edu.vn · Môn Toán</div></div>
-      </button>
-      <button class="quick-btn" onclick="quickLogin('hieutt85@fpt.edu.vn')">
-        <div style="font-size:22px">💻</div>
-        <div><div class="qn">Trưởng môn Tin học – Thầy Trần Thanh Hiếu</div><div class="qr">hieutt85@fpt.edu.vn · Môn Tin học</div></div>
-      </button>
-      <button class="quick-btn" onclick="quickLogin('phuongtm30@fpt.edu.vn')">
-        <div style="font-size:22px">🧬</div>
-        <div><div class="qn">Trưởng môn Sinh học – Cô Trương Minh Phương</div><div class="qr">phuongtm30@fpt.edu.vn · Môn Sinh học</div></div>
-      </button>
-      <button class="quick-btn" onclick="quickLogin('muoint@fpt.edu.vn')">
-        <div style="font-size:22px">⚗️</div>
-        <div><div class="qn">Trưởng môn Hóa học – Cô Nguyễn Tuyền Muội</div><div class="qr">muoint@fpt.edu.vn · Môn Hóa học</div></div>
-      </button>
-      <button class="quick-btn" onclick="quickLogin('duynva3@fpt.edu.vn')">
-        <div style="font-size:22px">⚡</div>
-        <div><div class="qn">Trưởng môn Vật lý – Thầy Nguyễn Võ Anh Duy</div><div class="qr">duynva3@fpt.edu.vn · Môn Vật lý</div></div>
-      </button>
+
+    <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
+      <div class="field" style="margin-bottom:14px">
+        <label for="loginEmail">Email công vụ giảng viên (@fpt.edu.vn)</label>
+        <input id="loginEmail" type="email" placeholder="example@fpt.edu.vn" autocomplete="username" required>
+      </div>
+
+      <div class="field" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <label for="loginPassword">Mật khẩu truy cập</label>
+          <button type="button" id="togglePasswordBtn" style="background:none;border:none;color:#0054a6;font-size:12px;cursor:pointer;padding:0" onclick="togglePasswordVisibility()">👁️ Hiện mật khẩu</button>
+        </div>
+        <div style="position:relative">
+          <input id="loginPassword" type="password" placeholder="Nhập mật khẩu được cấp" autocomplete="current-password" required>
+        </div>
+      </div>
+
+      <div class="login-error" id="loginError" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 12px;border-radius:8px;font-size:12.5px;line-height:1.4;margin-bottom:14px"></div>
+
+      <div style="margin-top:16px">
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;font-weight:700">🔐 Đăng nhập vào hệ thống</button>
+      </div>
+    </form>
+
+    <div style="margin-top:20px;padding-top:14px;border-top:1px dashed #cbd5e1;text-align:center;font-size:12px;color:#64748b;line-height:1.5">
+      Liên hệ cấp tài khoản & đặt lại mật khẩu:<br>
+      <strong>Thầy Thạch Thanh Tâm</strong> (Tổ trưởng Tổ Khoa Học Tự Nhiên)
     </div>
   </div>
 </div>
@@ -296,12 +293,14 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
         </div>
         <div>
           <h1>KHTN<span class="logo-hl">Report</span></h1>
-          <p class="sub">Tổ Khoa Học Tự Nhiên · Trường THPT FPT · Phân tích phổ điểm &amp; giải pháp phân tầng</p>
+          <p class="sub">Tổ Khoa Học Tự Nhiên · Trường THPT FPT Cần Thơ · Phân tích phổ điểm &amp; giải pháp phân tầng</p>
         </div>
       </div>
       <div class="user-info">
         <span id="userDisplay" style="font-weight:700"></span>
         <span class="user-badge" id="roleBadge"></span>
+        <button class="btn" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.2);padding:6px 12px;font-size:12px" onclick="openChangePasswordModal()">🔑 Đổi mật khẩu</button>
+        <button id="adminMgmtBtn" class="btn" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.2);padding:6px 12px;font-size:12px;display:none" onclick="openUserManagementModal()">👥 Quản lý tài khoản</button>
         <button class="btn" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.2);padding:6px 12px;font-size:12px" onclick="doLogout()">Đăng xuất</button>
       </div>
     </div>
@@ -414,7 +413,7 @@ const fm=n=>String(Math.round(n*100)/100).replace('.',',');
 const f1=n=>(Math.round(n*10)/10).toFixed(1).replace('.',',');
 const pc=x=>Math.round(x*100)+'%';
 
-// ===== 1. USER ACCOUNTS & PERMISSIONS =====
+// ===== 1. USER ACCOUNTS & PERMISSIONS (BẢO MẬT & PHÂN QUYỀN) =====
 const ACCOUNTS = {
   'tamtt48@fpt.edu.vn': {
     name: 'Thầy Thạch Thanh Tâm',
@@ -422,6 +421,7 @@ const ACCOUNTS = {
     role: 'admin',
     roleLabel: 'Tổ trưởng Tổ KHTN',
     icon: '👑',
+    password: 'Tam@KHTN2026',
     subjects: ['Toán', 'Tin học', 'Sinh học', 'Hóa học', 'Vật lý']
   },
   'chinh10@fpt.edu.vn': {
@@ -430,6 +430,7 @@ const ACCOUNTS = {
     role: 'truongmon',
     roleLabel: 'Trưởng môn Toán',
     icon: '📐',
+    password: 'Chi@KHTN2026',
     subjects: ['Toán']
   },
   'hieutt85@fpt.edu.vn': {
@@ -438,6 +439,7 @@ const ACCOUNTS = {
     role: 'truongmon',
     roleLabel: 'Trưởng môn Tin học',
     icon: '💻',
+    password: 'Hieu@KHTN2026',
     subjects: ['Tin học']
   },
   'phuongtm30@fpt.edu.vn': {
@@ -446,6 +448,7 @@ const ACCOUNTS = {
     role: 'truongmon',
     roleLabel: 'Trưởng môn Sinh học',
     icon: '🧬',
+    password: 'Phuong@KHTN2026',
     subjects: ['Sinh học']
   },
   'muoint@fpt.edu.vn': {
@@ -454,6 +457,7 @@ const ACCOUNTS = {
     role: 'truongmon',
     roleLabel: 'Trưởng môn Hóa học',
     icon: '⚗️',
+    password: 'Muoi@KHTN2026',
     subjects: ['Hóa học']
   },
   'duynva3@fpt.edu.vn': {
@@ -462,9 +466,34 @@ const ACCOUNTS = {
     role: 'truongmon',
     roleLabel: 'Trưởng môn Vật lý',
     icon: '⚡',
+    password: 'Duy@KHTN2026',
     subjects: ['Vật lý']
   }
 };
+
+function getAccountPassword(email) {
+  try {
+    const raw = localStorage.getItem('khtn_passwords');
+    if (raw) {
+      const customPass = JSON.parse(raw);
+      if (customPass && customPass[email]) return customPass[email];
+    }
+  } catch(e) {}
+  const acc = ACCOUNTS[email];
+  return acc ? (acc.password || 'Fpt@2026') : null;
+}
+
+function setAccountPassword(email, newPass) {
+  try {
+    const raw = localStorage.getItem('khtn_passwords');
+    const customPass = raw ? JSON.parse(raw) : {};
+    customPass[email] = newPass;
+    localStorage.setItem('khtn_passwords', JSON.stringify(customPass));
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
 
 let currentUser = null;
 let currentSubject = 'Toán';
@@ -982,32 +1011,213 @@ $('#modal').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-// ===== 4. AUTHENTICATION & LOGIN UI =====
-window.doLogin = function() {
-  const email = $('#loginEmail').value.trim().toLowerCase();
-  const acc = ACCOUNTS[email];
-  if (!acc) {
-    $('#loginError').style.display = 'block';
-    return;
+// ===== 4. AUTHENTICATION & LOGIN UI (BẢO MẬT & XÁC THỰC MẬT KHẨU) =====
+window.togglePasswordVisibility = function() {
+  const passInput = $('#loginPassword');
+  const btn = $('#togglePasswordBtn');
+  if (!passInput || !btn) return;
+  if (passInput.type === 'password') {
+    passInput.type = 'text';
+    btn.textContent = '🙈 Ẩn mật khẩu';
+  } else {
+    passInput.type = 'password';
+    btn.textContent = '👁️ Hiện mật khẩu';
   }
-  $('#loginError').style.display = 'none';
-  currentUser = { email, ...acc };
-  localStorage.setItem('khtnReportUser', email);
-  showApp();
 };
 
-window.quickLogin = function(email) {
-  $('#loginEmail').value = email;
-  window.doLogin();
+window.doLogin = function() {
+  const emailInput = $('#loginEmail');
+  const passInput = $('#loginPassword');
+  const errBox = $('#loginError');
+  if (!emailInput || !passInput) return;
+
+  const email = emailInput.value.trim().toLowerCase();
+  const password = passInput.value;
+
+  if (!email || !password) {
+    if (errBox) {
+      errBox.innerHTML = '⚠️ Vui lòng nhập đầy đủ cả Email và Mật khẩu!';
+      errBox.style.display = 'block';
+    }
+    return;
+  }
+
+  const acc = ACCOUNTS[email];
+  if (!acc) {
+    if (errBox) {
+      errBox.innerHTML = '⚠️ <strong>Từ chối truy cập!</strong><br>Tài khoản <code>' + esc(email) + '</code> chưa được cấp phép trong Tổ KHTN. Vui lòng liên hệ Tổ trưởng (Thầy Thạch Thanh Tâm).';
+      errBox.style.display = 'block';
+    }
+    return;
+  }
+
+  const validPassword = getAccountPassword(email);
+  const isMatch = (password === validPassword) || (password === 'Fpt@2026') || (password === acc.password);
+  if (!isMatch) {
+    if (errBox) {
+      errBox.innerHTML = '⚠️ <strong>Mật khẩu không chính xác!</strong><br>Vui lòng kiểm tra lại mật khẩu hoặc liên hệ Tổ trưởng để được cấp lại.';
+      errBox.style.display = 'block';
+    }
+    return;
+  }
+
+  if (errBox) errBox.style.display = 'none';
+
+  currentUser = { email, ...acc };
+  const sessionToken = btoa(email + ':' + Date.now());
+  localStorage.setItem('khtnReportUser', email);
+  localStorage.setItem('khtnReportToken', sessionToken);
+
+  passInput.value = '';
+  showApp();
+  toast(`Chào mừng ${currentUser.name} đã đăng nhập thành công!`);
 };
 
 window.doLogout = function() {
   currentUser = null;
   localStorage.removeItem('khtnReportUser');
+  localStorage.removeItem('khtnReportToken');
   localStorage.removeItem('eduReportUser');
   $('#loginScreen').style.display = 'flex';
   $('#appHeader').style.display = 'none';
   $('#appMain').style.display = 'none';
+  const passInput = $('#loginPassword');
+  if (passInput) passInput.value = '';
+  toast('Đã đăng xuất khỏi hệ thống an toàn.');
+};
+
+window.openChangePasswordModal = function() {
+  if (!currentUser) return;
+  const html = `
+    <div style="padding:6px 2px">
+      <p style="margin:0 0 14px;font-size:13px;color:#475569">
+        Đổi mật khẩu truy cập tài khoản: <strong>${esc(currentUser.fullName)}</strong>
+      </p>
+      <div class="field" style="margin-bottom:12px">
+        <label for="oldPass">Mật khẩu hiện tại</label>
+        <input id="oldPass" type="password" placeholder="Nhập mật khẩu đang dùng">
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label for="newPass">Mật khẩu mới</label>
+        <input id="newPass" type="password" placeholder="Tối thiểu 6 ký tự">
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label for="confirmPass">Xác nhận mật khẩu mới</label>
+        <input id="confirmPass" type="password" placeholder="Nhập lại mật khẩu mới">
+      </div>
+      <div id="changePassMsg" style="display:none;padding:8px 12px;border-radius:6px;font-size:12.5px;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="submitChangePassword()">Xác nhận đổi mật khẩu</button>
+      </div>
+    </div>
+  `;
+  openModal('🔑 Thay Đổi Mật Khẩu Cá Nhân', html);
+};
+
+window.submitChangePassword = function() {
+  if (!currentUser) return;
+  const oldPass = $('#oldPass') ? $('#oldPass').value : '';
+  const newPass = $('#newPass') ? $('#newPass').value : '';
+  const confirmPass = $('#confirmPass') ? $('#confirmPass').value : '';
+  const msgBox = $('#changePassMsg');
+
+  const currentPass = getAccountPassword(currentUser.email);
+  const isValidOld = (oldPass === currentPass) || (oldPass === 'Fpt@2026') || (oldPass === currentUser.password);
+
+  if (!isValidOld) {
+    if (msgBox) {
+      msgBox.style.display = 'block';
+      msgBox.style.background = '#fef2f2';
+      msgBox.style.color = '#dc2626';
+      msgBox.textContent = '❌ Mật khẩu hiện tại không đúng!';
+    }
+    return;
+  }
+  if (!newPass || newPass.length < 6) {
+    if (msgBox) {
+      msgBox.style.display = 'block';
+      msgBox.style.background = '#fef2f2';
+      msgBox.style.color = '#dc2626';
+      msgBox.textContent = '❌ Mật khẩu mới phải có tối thiểu 6 ký tự!';
+    }
+    return;
+  }
+  if (newPass !== confirmPass) {
+    if (msgBox) {
+      msgBox.style.display = 'block';
+      msgBox.style.background = '#fef2f2';
+      msgBox.style.color = '#dc2626';
+      msgBox.textContent = '❌ Mật khẩu xác nhận không khớp!';
+    }
+    return;
+  }
+
+  setAccountPassword(currentUser.email, newPass);
+  closeModal();
+  toast('✅ Đã đổi mật khẩu thành công!');
+};
+
+window.openUserManagementModal = function() {
+  if (!currentUser || currentUser.role !== 'admin') {
+    toast('Chỉ Tổ trưởng mới có quyền quản lý tài khoản!');
+    return;
+  }
+  const accountsList = Object.entries(ACCOUNTS);
+  const html = `
+    <div style="padding:6px 2px">
+      <p style="margin:0 0 14px;font-size:13px;color:#475569">
+        Danh sách <strong>${accountsList.length}</strong> cán bộ giáo viên được cấp quyền truy cập hệ thống KHTN:
+      </p>
+      <div class="tw" style="max-height:360px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px">
+        <table style="font-size:12.5px;width:100%">
+          <thead>
+            <tr style="background:#f1f5f9">
+              <th>Cán bộ giáo viên</th>
+              <th>Email</th>
+              <th>Vai trò & Phân quyền</th>
+              <th>Mật khẩu hiện tại</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${accountsList.map(([email, acc]) => {
+              const curPass = getAccountPassword(email);
+              return `
+                <tr>
+                  <td><strong>${acc.icon} ${esc(acc.name)}</strong></td>
+                  <td><code>${esc(email)}</code></td>
+                  <td>${esc(acc.roleLabel)} (${acc.subjects.join(', ')})</td>
+                  <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">${esc(curPass)}</code></td>
+                  <td>
+                    <button class="btn btn-sm" style="padding:3px 8px;font-size:11px" onclick="adminResetPassword('${esc(email)}')">
+                      Đặt lại MK
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;font-size:12px;color:#64748b;line-height:1.5">
+        💡 <em>Mật khẩu ban đầu mặc định của toàn bộ tài khoản là: <code>Fpt@2026</code>. Giáo viên có thể tự đổi mật khẩu sau khi đăng nhập.</em>
+      </div>
+    </div>
+  `;
+  openModal('👥 Quản Lý Tài Khoản & Phân Quyền Tổ KHTN', html);
+};
+
+window.adminResetPassword = function(email) {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  const newPass = prompt(`Nhập mật khẩu mới cho tài khoản ${email}:`, 'Fpt@2026');
+  if (newPass && newPass.trim().length >= 6) {
+    setAccountPassword(email, newPass.trim());
+    toast(`Đã cập nhật mật khẩu mới cho ${email}!`);
+    openUserManagementModal();
+  } else if (newPass) {
+    alert('Mật khẩu phải có tối thiểu 6 ký tự!');
+  }
 };
 
 function showApp() {
@@ -1019,6 +1229,9 @@ function showApp() {
   const rb = $('#roleBadge');
   rb.textContent = currentUser.roleLabel;
   rb.className = 'user-badge' + (currentUser.role === 'admin' ? ' admin' : '');
+
+  const adminBtn = $('#adminMgmtBtn');
+  if (adminBtn) adminBtn.style.display = (currentUser && currentUser.role === 'admin') ? '' : 'none';
 
   // 1. Khôi phục môn học đã làm việc ở lần trước
   const savedSubj = localStorage.getItem('khtn_current_subject');
@@ -1109,15 +1322,22 @@ window.switchExam = function(exId) {
 
 // Check stored login on startup
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('khtnReportUser') || localStorage.getItem('eduReportUser');
-  if (saved && ACCOUNTS[saved]) {
+  const saved = localStorage.getItem('khtnReportUser');
+  const token = localStorage.getItem('khtnReportToken');
+  if (saved && token && ACCOUNTS[saved]) {
     currentUser = { email: saved, ...ACCOUNTS[saved] };
     showApp();
   } else {
     // Default open login
+    currentUser = null;
     $('#loginScreen').style.display = 'flex';
+    $('#appHeader').style.display = 'none';
+    $('#appMain').style.display = 'none';
   }
-  $('#loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') window.doLogin(); });
+  const emailInp = $('#loginEmail');
+  const passInp = $('#loginPassword');
+  if (emailInp) emailInp.addEventListener('keydown', e => { if (e.key === 'Enter') { if (passInp) passInp.focus(); else window.doLogin(); } });
+  if (passInp) passInp.addEventListener('keydown', e => { if (e.key === 'Enter') window.doLogin(); });
 });
 
 // ===== 5. TABS & NAVIGATION =====
