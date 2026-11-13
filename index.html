@@ -2930,19 +2930,19 @@ function buildSubjectReportHTML(sb, forPrint) {
             <div style="font-weight:bold;font-size:9.5pt;color:#004f9e;margin-bottom:6px">Biểu đồ cơ cấu 4 tầng học sinh toàn khối:</div>
             <table style="width:100%;border-collapse:collapse;height:24px;border:1px solid #cbd5e1">
               <tr>
-                ${sStats.c.gioi > 0 ? `<td style="width:${Math.round(sStats.c.gioi/sStats.n*100)}%;background:#00904b;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Giỏi ${Math.round(sStats.c.gioi/sStats.n*100)}%</td>` : ''}
-                ${sStats.c.kha > 0 ? `<td style="width:${Math.round(sStats.c.kha/sStats.n*100)}%;background:#0054a6;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Khá ${Math.round(sStats.c.kha/sStats.n*100)}%</td>` : ''}
-                ${sStats.c.tb > 0 ? `<td style="width:${Math.round(sStats.c.tb/sStats.n*100)}%;background:#d97706;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">TB ${Math.round(sStats.c.tb/sStats.n*100)}%</td>` : ''}
-                ${sStats.c.yeu > 0 ? `<td style="width:${Math.round(sStats.c.yeu/sStats.n*100)}%;background:#dc2626;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt">Yếu ${Math.round(sStats.c.yeu/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.gioi > 0 ? `<td bgcolor="#00904b" style="width:${Math.round(sStats.c.gioi/sStats.n*100)}%;background-color:#00904b;background:#00904b;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt;height:24px">Giỏi ${Math.round(sStats.c.gioi/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.kha > 0 ? `<td bgcolor="#0054a6" style="width:${Math.round(sStats.c.kha/sStats.n*100)}%;background-color:#0054a6;background:#0054a6;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt;height:24px">Khá ${Math.round(sStats.c.kha/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.tb > 0 ? `<td bgcolor="#d97706" style="width:${Math.round(sStats.c.tb/sStats.n*100)}%;background-color:#d97706;background:#d97706;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt;height:24px">TB ${Math.round(sStats.c.tb/sStats.n*100)}%</td>` : ''}
+                ${sStats.c.yeu > 0 ? `<td bgcolor="#dc2626" style="width:${Math.round(sStats.c.yeu/sStats.n*100)}%;background-color:#dc2626;background:#dc2626;color:#ffffff;text-align:center;font-weight:bold;font-size:9pt;height:24px">Yếu ${Math.round(sStats.c.yeu/sStats.n*100)}%</td>` : ''}
               </tr>
             </table>
           </td>
         </tr>
       </table>
 
-      <!-- PHẦN III: PHÂN TÍCH CHẤT LƯỢNG THEO LỚP, MÔN HỌC, CHỦ ĐỀ & MA TRẬN ĐỀ -->
+      <!-- PHẦN III: PHÂN TÍCH CHẤT LƯỢNG THEO LỚP VÀ MÔN HỌC -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
-        III. Phân tích chất lượng theo lớp, môn học, chủ đề & ma trận đề
+        III. Phân tích chất lượng theo lớp và môn học
       </h3>
       <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Bảng phân tích chi tiết các lớp:</h4>
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
@@ -3018,7 +3018,7 @@ function buildSubjectReportHTML(sb, forPrint) {
               <td style="text-align:left;padding:3px 8px">
                 <table style="width:100%;border-collapse:collapse;border:none">
                   <tr>
-                    <td style="width:${barPct}%;background:${barColor};height:15px;border-radius:2px;border:none"></td>
+                    <td bgcolor="${barColor}" width="${barPct}%" height="15" style="width:${barPct}%;background-color:${barColor};background:${barColor};height:15px;font-size:1px;line-height:15px;border-radius:2px;border:none">&nbsp;</td>
                     <td style="width:${100 - barPct}%;border:none;padding-left:6px;font-size:8.5pt;color:#64748b">
                       ${cnt > 0 ? `<strong>${cnt} HS</strong> (${pc(cnt / sStats.n)})` : '0'}
                     </td>
@@ -3052,46 +3052,6 @@ function buildSubjectReportHTML(sb, forPrint) {
           </td>
         </tr>
       </table>` : ''}
-
-      <!-- 3. MA TRẬN ĐỀ KIỂM TRA & CHỦ ĐỀ KIẾN THỨC -->
-      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">3. Phân tích ma trận đề kiểm tra & độ khó thực nghiệm:</h4>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:12px">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th style="width:25%">Mức độ đánh giá</th>
-          <th style="width:15%">Tỷ lệ ma trận (%)</th>
-          <th style="width:15%">Số câu hỏi</th>
-          <th style="width:20%">Độ khó thực nghiệm (p)</th>
-          <th style="width:25%">Đánh giá đo lường</th>
-        </tr>
-        <tr>
-          <td><strong>1. Nhận biết</strong></td>
-          <td style="text-align:center">35%</td>
-          <td style="text-align:center;font-weight:bold">18 câu</td>
-          <td style="text-align:center;color:#00904b;font-weight:bold">p = 0.84 (84% đúng)</td>
-          <td>Đạt chuẩn, kiểm tra kiến thức cốt lõi</td>
-        </tr>
-        <tr>
-          <td><strong>2. Thông hiểu</strong></td>
-          <td style="text-align:center">30%</td>
-          <td style="text-align:center;font-weight:bold">15 câu</td>
-          <td style="text-align:center;color:#0054a6;font-weight:bold">p = 0.69 (69% đúng)</td>
-          <td>Phân hóa tốt, hiểu bản chất định lý/khái niệm</td>
-        </tr>
-        <tr>
-          <td><strong>3. Vận dụng</strong></td>
-          <td style="text-align:center">25%</td>
-          <td style="text-align:center;font-weight:bold">12 câu</td>
-          <td style="text-align:center;color:#d97706;font-weight:bold">p = 0.49 (49% đúng)</td>
-          <td>Độ phân biệt cao (D ≥ 0.42), phân loại học sinh Khá</td>
-        </tr>
-        <tr>
-          <td><strong>4. Vận dụng cao (VDC)</strong></td>
-          <td style="text-align:center">10%</td>
-          <td style="text-align:center;font-weight:bold">5 câu</td>
-          <td style="text-align:center;color:#dc2626;font-weight:bold">p = 0.26 (26% đúng)</td>
-          <td>Phân hóa mạnh mẽ nhóm học sinh Giỏi & Xuất sắc</td>
-        </tr>
-      </table>
 
       <!-- PHẦN IV: SO SÁNH VÀ ĐỐI CHIẾU KẾT QUẢ -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
@@ -3211,11 +3171,15 @@ function buildSubjectReportHTML(sb, forPrint) {
             const barHeightPx = Math.max(8, Math.min(155, Math.round((cs.mean / 10) * 155)));
             const barColor = isAbove ? '#00904b' : '#0054a6';
             return `
-              <td style="vertical-align:bottom;text-align:center;padding:0 4px;height:190px">
-                <div style="font-size:8.5pt;font-weight:bold;color:${barColor};margin-bottom:2px">${fm(cs.mean)}</div>
-                <div style="height:${barHeightPx}px;background:${barColor};width:34px;margin:0 auto;border-radius:3px 3px 0 0"></div>
-                <div style="border-top:1.5px solid #475569;padding-top:4px;font-weight:bold;font-size:9pt">${c}</div>
-                <div style="font-size:7.5pt;color:${isAbove ? '#00904b' : '#c0392b'};font-weight:bold">${isAbove ? '+' : ''}${fm(cs.mean - sStats.mean)}</div>
+              <td valign="bottom" align="center" height="190" style="vertical-align:bottom;text-align:center;padding:0 4px;height:190px">
+                <div style="font-size:8.5pt;font-weight:bold;color:${barColor};margin:0 0 2px;line-height:12pt">${fm(cs.mean)}</div>
+                <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;width:34px;border-collapse:collapse;border:none">
+                  <tr height="${barHeightPx}" style="height:${barHeightPx}px">
+                    <td bgcolor="${barColor}" width="34" height="${barHeightPx}" style="background-color:${barColor};background:${barColor};width:34px;height:${barHeightPx}px;min-height:${barHeightPx}px;line-height:${barHeightPx}px;font-size:1px;padding:0;margin:0;border:none;border-radius:3px 3px 0 0">&nbsp;</td>
+                  </tr>
+                </table>
+                <div style="border-top:1.5px solid #475569;margin:0;padding-top:4px;font-weight:bold;font-size:9pt;line-height:12pt">${c}</div>
+                <div style="font-size:7.5pt;color:${isAbove ? '#00904b' : '#c0392b'};font-weight:bold;margin:0;line-height:11pt">${isAbove ? '+' : ''}${fm(cs.mean - sStats.mean)}</div>
               </td>
             `;
           }).join('')}
@@ -3259,7 +3223,7 @@ function buildSubjectReportHTML(sb, forPrint) {
               <td style="padding:4px 8px;text-align:left">
                 <table style="width:100%;border-collapse:collapse;border:none">
                   <tr>
-                    <td style="width:${barPct}%;background:${barColor};height:16px;border-radius:3px;border:none"></td>
+                    <td bgcolor="${barColor}" width="${barPct}%" height="16" style="width:${barPct}%;background-color:${barColor};background:${barColor};height:16px;font-size:1px;line-height:16px;border-radius:3px;border:none">&nbsp;</td>
                     <td style="width:${100 - barPct}%;border:none;padding-left:8px;font-size:8.5pt;font-weight:bold;color:${barColor}">
                       ${fm(cs.mean)} điểm
                     </td>
@@ -3279,7 +3243,7 @@ function buildSubjectReportHTML(sb, forPrint) {
           <td style="padding:4px 8px;text-align:left">
             <table style="width:100%;border-collapse:collapse;border:none">
               <tr>
-                <td style="width:${Math.round((sStats.mean / 10) * 100)}%;background:#d97706;height:16px;border-radius:3px;border:none"></td>
+                <td bgcolor="#d97706" width="${Math.round((sStats.mean / 10) * 100)}%" height="16" style="width:${Math.round((sStats.mean / 10) * 100)}%;background-color:#d97706;background:#d97706;height:16px;font-size:1px;line-height:16px;border-radius:3px;border:none">&nbsp;</td>
                 <td style="width:${100 - Math.round((sStats.mean / 10) * 100)}%;border:none;padding-left:8px;font-size:8.5pt;font-weight:bold;color:#d97706">
                   ${fm(sStats.mean)} điểm (Chuẩn toàn khối)
                 </td>
@@ -3312,10 +3276,10 @@ function buildSubjectReportHTML(sb, forPrint) {
               <td style="padding:4px 6px">
                 <table style="width:100%;border-collapse:collapse;border:none">
                   <tr>
-                    ${pGioi > 0 ? `<td style="width:${pGioi}%;background:#00904b;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Giỏi: ${cs.c.gioi} HS (${pGioi}%)">${pGioi >= 8 ? pGioi + '%' : ''}</td>` : ''}
-                    ${pKha > 0 ? `<td style="width:${pKha}%;background:#0054a6;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Khá: ${cs.c.kha} HS (${pKha}%)">${pKha >= 8 ? pKha + '%' : ''}</td>` : ''}
-                    ${pTb > 0 ? `<td style="width:${pTb}%;background:#d97706;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="TB: ${cs.c.tb} HS (${pTb}%)">${pTb >= 8 ? pTb + '%' : ''}</td>` : ''}
-                    ${pYeu > 0 ? `<td style="width:${pYeu}%;background:#dc2626;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Yếu: ${cs.c.yeu} HS (${pYeu}%)">${pYeu >= 8 ? pYeu + '%' : ''}</td>` : ''}
+                    ${pGioi > 0 ? `<td bgcolor="#00904b" width="${pGioi}%" height="16" style="width:${pGioi}%;background-color:#00904b;background:#00904b;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Giỏi: ${cs.c.gioi} HS (${pGioi}%)">${pGioi >= 8 ? pGioi + '%' : '&nbsp;'}</td>` : ''}
+                    ${pKha > 0 ? `<td bgcolor="#0054a6" width="${pKha}%" height="16" style="width:${pKha}%;background-color:#0054a6;background:#0054a6;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Khá: ${cs.c.kha} HS (${pKha}%)">${pKha >= 8 ? pKha + '%' : '&nbsp;'}</td>` : ''}
+                    ${pTb > 0 ? `<td bgcolor="#d97706" width="${pTb}%" height="16" style="width:${pTb}%;background-color:#d97706;background:#d97706;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="TB: ${cs.c.tb} HS (${pTb}%)">${pTb >= 8 ? pTb + '%' : '&nbsp;'}</td>` : ''}
+                    ${pYeu > 0 ? `<td bgcolor="#dc2626" width="${pYeu}%" height="16" style="width:${pYeu}%;background-color:#dc2626;background:#dc2626;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Yếu: ${cs.c.yeu} HS (${pYeu}%)">${pYeu >= 8 ? pYeu + '%' : '&nbsp;'}</td>` : ''}
                   </tr>
                 </table>
               </td>
