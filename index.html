@@ -3034,7 +3034,8 @@ function buildSubjectReportHTML(sb, forPrint) {
         • <strong>Đặc trưng phổ điểm:</strong> Đỉnh phổ điểm rơi vào khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
       </p>
 
-      <!-- KHUNG ĐỒ THỊ VECTOR SVG (HIỂN THỊ ĐẦY ĐỦ TRÊN WORD, PDF VÀ XEM TRƯỚC) -->
+      ${forPrint ? `
+      <!-- KHUNG ĐỒ THỊ VECTOR SVG (CHỈ RENDER TRÊN TRÌNH DUYỆT / PDF IN, KHÔNG XUẤT RA WORD ĐỂ TRÁNH NỐI CHUỖI) -->
       <table style="width:100%;border:none;margin:14px 0;page-break-inside:avoid">
         <tr>
           <td style="width:50%;padding:4px;vertical-align:top;border:none">
@@ -3050,7 +3051,7 @@ function buildSubjectReportHTML(sb, forPrint) {
             </div>
           </td>
         </tr>
-      </table>
+      </table>` : ''}
 
       <!-- 3. MA TRẬN ĐỀ KIỂM TRA & CHỦ ĐỀ KIẾN THỨC -->
       <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">3. Phân tích ma trận đề kiểm tra & độ khó thực nghiệm:</h4>
@@ -3185,13 +3186,57 @@ function buildSubjectReportHTML(sb, forPrint) {
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
         VI. Biểu đồ cột điểm theo lớp
       </h3>
-      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Đồ thị cột so sánh Điểm trung bình các lớp với ĐTB toàn khối (${fm(sStats.mean)} điểm):</h4>
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Biểu đồ cột Điểm trung bình các lớp môn ${sb} (ĐTB Khối: ${fm(sStats.mean)} điểm):</h4>
+
+      <!-- ĐỒ THỊ CỘT DỌC NATIVE HTML TABLE (HIỂN THỊ CHUẨN ĐẸP 100% TRÊN CẢ WORD VÀ IN/PDF) -->
+      <table style="width:100%;border-collapse:collapse;margin:10px 0 14px;background:#ffffff;border:1px solid #cbd5e1">
+        <tr>
+          <td colspan="${clList.length + 1}" style="background:#f1f5f9;padding:8px 12px;font-weight:bold;color:#004f9e;border-bottom:1px solid #cbd5e1;text-align:center;font-size:10pt">
+            ĐỒ THỊ CỘT SO SÁNH ĐIỂM TRUNG BÌNH CÁC LỚP — MÔN ${sb.toUpperCase()}
+          </td>
+        </tr>
+        <tr>
+          <!-- Trục tung thang điểm Y -->
+          <td style="width:45px;height:190px;vertical-align:bottom;padding:0 6px;border-right:1px solid #cbd5e1;text-align:right;font-size:8pt;color:#64748b">
+            <div style="height:38px;border-top:1px dashed #e2e8f0">10.0</div>
+            <div style="height:38px;border-top:1px dashed #e2e8f0">7.5</div>
+            <div style="height:38px;border-top:1px dashed #e2e8f0">5.0</div>
+            <div style="height:38px;border-top:1px dashed #e2e8f0">2.5</div>
+            <div style="height:20px;border-top:1.5px solid #475569">0.0</div>
+          </td>
+          <!-- Các cột điểm theo từng lớp -->
+          ${clList.map((c, i) => {
+            const cs = perList[i] || stats(stList.filter(s => s.cls === c), cfg);
+            const isAbove = cs.mean >= sStats.mean;
+            const barHeightPx = Math.max(8, Math.min(155, Math.round((cs.mean / 10) * 155)));
+            const barColor = isAbove ? '#00904b' : '#0054a6';
+            return `
+              <td style="vertical-align:bottom;text-align:center;padding:0 4px;height:190px">
+                <div style="font-size:8.5pt;font-weight:bold;color:${barColor};margin-bottom:2px">${fm(cs.mean)}</div>
+                <div style="height:${barHeightPx}px;background:${barColor};width:34px;margin:0 auto;border-radius:3px 3px 0 0"></div>
+                <div style="border-top:1.5px solid #475569;padding-top:4px;font-weight:bold;font-size:9pt">${c}</div>
+                <div style="font-size:7.5pt;color:${isAbove ? '#00904b' : '#c0392b'};font-weight:bold">${isAbove ? '+' : ''}${fm(cs.mean - sStats.mean)}</div>
+              </td>
+            `;
+          }).join('')}
+        </tr>
+        <tr>
+          <td colspan="${clList.length + 1}" style="background:#fff9e6;padding:5px 12px;font-size:8.5pt;color:#78350f;border-top:1px solid #fde68a;text-align:center">
+            • <strong>Đường chuẩn ĐTB toàn khối:</strong> <span style="color:#d97706;font-weight:bold">${fm(sStats.mean)} điểm</span> · 
+            <span style="color:#00904b;font-weight:bold">■ Xanh lá</span>: ĐTB ≥ chuẩn khối · 
+            <span style="color:#0054a6;font-weight:bold">■ Xanh dương</span>: ĐTB &lt; chuẩn khối
+          </td>
+        </tr>
+      </table>
+
+      ${forPrint ? `
+      <!-- KHUNG SVG VECTOR DÀNH CHO XEM TRƯỚC / IN PDF -->
       <div style="border:1px solid #cbd5e1;border-radius:6px;padding:12px;background:#ffffff;margin-bottom:14px">
         <div style="font-size:9.5pt;font-weight:bold;margin-bottom:8px;text-align:center;color:#004f9e">
-          ĐỒ THỊ CỘT ĐIỂM TRUNG BÌNH CÁC LỚP MÔN ${sb.toUpperCase()}
+          ĐỒ THỊ CỘT VECTOR SVG ĐIỂM TRUNG BÌNH CÁC LỚP
         </div>
         <div style="height:230px">${getSvgMean(clList, perList, sStats.mean, tColors)}</div>
-      </div>
+      </div>` : ''}
 
       <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:14px;background:#ffffff">
         <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
@@ -3247,12 +3292,56 @@ function buildSubjectReportHTML(sb, forPrint) {
 
       ${clList.length > 1 ? `
       <h4 style="font-size:11pt;color:#0054a6;margin:12px 0 6px">2. Biểu đồ cột phân tầng tỉ lệ 4 nhóm học sinh (Giỏi, Khá, TB, Yếu) theo từng lớp:</h4>
+      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:14px;background:#ffffff">
+        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
+          <th style="width:12%">Lớp</th>
+          <th style="width:10%">Sĩ số</th>
+          <th style="width:62%">Cơ cấu phân tầng 4 nhóm (Biểu đồ cột chồng %)</th>
+          <th style="width:16%">Tỉ lệ Đạt (≥5.0)</th>
+        </tr>
+        ${clList.map((c, i) => {
+          const cs = perList[i] || stats(stList.filter(s => s.cls === c), cfg);
+          const pGioi = Math.round((cs.c.gioi / cs.n) * 100);
+          const pKha = Math.round((cs.c.kha / cs.n) * 100);
+          const pTb = Math.round((cs.c.tb / cs.n) * 100);
+          const pYeu = Math.max(0, 100 - pGioi - pKha - pTb);
+          return `
+            <tr style="text-align:center">
+              <td style="font-weight:bold;padding-left:6px;text-align:left">${c}</td>
+              <td>${cs.n} HS</td>
+              <td style="padding:4px 6px">
+                <table style="width:100%;border-collapse:collapse;border:none">
+                  <tr>
+                    ${pGioi > 0 ? `<td style="width:${pGioi}%;background:#00904b;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Giỏi: ${cs.c.gioi} HS (${pGioi}%)">${pGioi >= 8 ? pGioi + '%' : ''}</td>` : ''}
+                    ${pKha > 0 ? `<td style="width:${pKha}%;background:#0054a6;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Khá: ${cs.c.kha} HS (${pKha}%)">${pKha >= 8 ? pKha + '%' : ''}</td>` : ''}
+                    ${pTb > 0 ? `<td style="width:${pTb}%;background:#d97706;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="TB: ${cs.c.tb} HS (${pTb}%)">${pTb >= 8 ? pTb + '%' : ''}</td>` : ''}
+                    ${pYeu > 0 ? `<td style="width:${pYeu}%;background:#dc2626;height:16px;color:#fff;font-size:7.5pt;font-weight:bold;border:none;text-align:center" title="Yếu: ${cs.c.yeu} HS (${pYeu}%)">${pYeu >= 8 ? pYeu + '%' : ''}</td>` : ''}
+                  </tr>
+                </table>
+              </td>
+              <td style="font-weight:bold;color:#00904b">${pc(cs.pass)}</td>
+            </tr>
+          `;
+        }).join('')}
+        <tr>
+          <td colspan="4" style="background:#f8fafc;padding:6px 10px;font-size:8.5pt;text-align:center">
+            <strong>Chú giải màu sắc:</strong> 
+            <span style="color:#00904b;font-weight:bold">■ Giỏi (≥${f1(cfg.gioi)})</span> &nbsp;|&nbsp; 
+            <span style="color:#0054a6;font-weight:bold">■ Khá (${f1(cfg.kha)}–${f1(cfg.gioi - 0.1)})</span> &nbsp;|&nbsp; 
+            <span style="color:#d97706;font-weight:bold">■ Trung bình (${f1(cfg.tb)}–${f1(cfg.kha - 0.1)})</span> &nbsp;|&nbsp; 
+            <span style="color:#dc2626;font-weight:bold">■ Yếu (&lt;${f1(cfg.tb)})</span>
+          </td>
+        </tr>
+      </table>
+
+      ${forPrint ? `
+      <!-- KHUNG SVG VECTOR DÀNH CHO XEM TRƯỚC / IN PDF -->
       <div style="border:1px solid #cbd5e1;border-radius:6px;padding:12px;background:#ffffff;margin-bottom:14px">
         <div style="font-size:9.5pt;font-weight:bold;margin-bottom:8px;text-align:center;color:#004f9e">
-          CƠ CẤU PHÂN TẦNG TỶ LỆ HỌC SINH THEO TỪNG LỚP
+          CƠ CẤU PHÂN TẦNG TỶ LỆ HỌC SINH THEO TỪNG LỚP (VECTOR)
         </div>
         <div style="height:${Math.max(220, clList.length * 36 + 65)}px">${getSvgStack(clList, perList, tColors)}</div>
-      </div>` : ''}
+      </div>` : ''}` : ''}
 
       <!-- PHẦN VII: KIẾN NGHỊ ĐỐI VỚI TỔ CHUYÊN MÔN, NHÀ TRƯỜNG VÀ CƠ QUAN QUẢN LÝ -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
