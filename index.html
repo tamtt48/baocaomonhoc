@@ -2716,6 +2716,7 @@ function buildSubjectReportHTML(sb, forPrint) {
   if (!sStats) return '';
 
   const clList = [...new Set(stList.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
+  const perList = clList.map(c => stats(stList.filter(s => s.cls === c), cfg));
   const insights = getProfessionalInsights(stList, sStats, cfg, clList);
   const fc = getForecastingData(sb, currentExam);
 
@@ -2994,37 +2995,6 @@ function buildSubjectReportHTML(sb, forPrint) {
         </tr>
       </table>
 
-      <!-- BIỂU ĐỒ 2: SO SÁNH ĐTB CÁC LỚP VỚI ĐTB TOÀN KHỐI -->
-      ${clList.length > 1 ? `
-      <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px;background:#ffffff">
-        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
-          <th colspan="3" style="color:#004f9e;padding:6px">Biểu đồ so sánh Điểm trung bình các lớp với ĐTB toàn khối (${fm(sStats.mean)} điểm)</th>
-        </tr>
-        ${clList.map(c => {
-          const cs = stats(stList.filter(s => s.cls === c), cfg);
-          const barPct = Math.round((cs.mean / 10) * 100);
-          const isAbove = cs.mean >= sStats.mean;
-          return `
-            <tr>
-              <td style="width:14%;font-weight:bold;padding-left:8px;text-align:left">Lớp ${c}</td>
-              <td style="width:72%;padding:4px 8px">
-                <table style="width:100%;border-collapse:collapse;border:none">
-                  <tr>
-                    <td style="width:${barPct}%;background:${isAbove ? '#00904b' : '#0054a6'};height:14px;border-radius:2px;border:none"></td>
-                    <td style="width:${100 - barPct}%;border:none;padding-left:6px;font-size:8.5pt;font-weight:bold;color:${isAbove ? '#00904b' : '#0054a6'}">
-                      ${fm(cs.mean)} điểm
-                    </td>
-                  </tr>
-                </table>
-              </td>
-              <td style="width:14%;text-align:center;font-size:8pt;color:${isAbove ? '#00904b' : '#c0392b'};font-weight:bold">
-                ${isAbove ? `+${fm(cs.mean - sStats.mean)}` : `${fm(cs.mean - sStats.mean)}`}
-              </td>
-            </tr>
-          `;
-        }).join('')}
-      </table>` : ''}
-
       <!-- 2. PHỔ ĐIỂM CHI TIẾT 10 KHOẢNG -->
       <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">2. Bảng phân bố phổ điểm chi tiết (10 khoảng điểm):</h4>
       <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9.5pt;margin-bottom:8px">
@@ -3211,121 +3181,78 @@ function buildSubjectReportHTML(sb, forPrint) {
         `).join('')}
       </table>
 
-      <!-- PHẦN VI: HẠN CHẾ, NGUYÊN NHÂN VÀ HỆ THỐNG GIẢI PHÁP NÂNG CAO CHẤT LƯỢNG (MA TRẬN 7 CỘT) -->
+      <!-- PHẦN VI: BIỂU ĐỒ CỘT ĐIỂM THEO LỚP -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
-        VI. Hạn chế, nguyên nhân và hệ thống giải pháp nâng cao chất lượng
+        VI. Biểu đồ cột điểm theo lớp
       </h3>
-      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Ma trận kế hoạch hành động sư phạm chuẩn 7 cột:</h4>
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:14px">
-        <tr style="background:#0054A6;color:#ffffff;font-weight:bold;text-align:center">
-          <th style="width:5%">STT</th>
-          <th style="width:18%">Vấn đề phát hiện</th>
-          <th style="width:14%">Minh chứng số liệu</th>
-          <th style="width:23%">Biện pháp thực hiện</th>
-          <th style="width:14%">Đối tượng áp dụng</th>
-          <th style="width:14%">Đơn vị / GV phụ trách</th>
-          <th style="width:12%">Chỉ số KPI</th>
-        </tr>
-        <tr>
-          <td style="text-align:center;font-weight:bold">1</td>
-          <td><strong>Học sinh mất gốc căn bản</strong></td>
-          <td>${listKem11.length} HS có điểm &lt; 3.0 (${pc(listKem11.length/sStats.n)})</td>
-          <td>Kèm cặp 1-1 (Đôi bạn cùng tiến + GV kèm riêng 1 buổi/tuần)</td>
-          <td>Nhóm &lt; 3.0 điểm</td>
-          <td>GV bộ môn & GVCN</td>
-          <td style="color:#00904b;font-weight:bold">100% đạt ≥ 4.0 ở kỳ tới</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;font-weight:bold">2</td>
-          <td><strong>Học sinh hổng kiến thức trọng tâm</strong></td>
-          <td>${listVIP.length} HS có điểm 3.0 – &lt; 4.0 (${pc(listVIP.length/sStats.n)})</td>
-          <td>Thành lập Lớp VIP bổ trợ kiến thức nhận biết - thông hiểu</td>
-          <td>Nhóm 3.0 – &lt; 4.0</td>
-          <td>Tổ bộ môn phân công</td>
-          <td style="color:#00904b;font-weight:bold">85% vươn lên nhóm Đạt</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;font-weight:bold">3</td>
-          <td><strong>Học sinh thiếu điểm đạt chuẩn</strong></td>
-          <td>${listPhuDao.length} HS có điểm 4.0 – &lt; 5.0 (${pc(listPhuDao.length/sStats.n)})</td>
-          <td>Phụ đạo tập trung 2 buổi/tuần chiều T3-T5, rèn luyện kỹ năng giải đề</td>
-          <td>Nhóm 4.0 – &lt; 5.0</td>
-          <td>Giáo viên bộ môn</td>
-          <td style="color:#00904b;font-weight:bold">100% vượt ngưỡng 5.0</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;font-weight:bold">4</td>
-          <td><strong>Học sinh trung bình cần bứt phá</strong></td>
-          <td>${listTuHocHuongDan.length} HS có điểm 5.0 – &lt; 7.0</td>
-          <td>Cung cấp hệ thống phiếu tự học có hướng dẫn phương pháp giải</td>
-          <td>Nhóm 5.0 – &lt; 7.0</td>
-          <td>Tổ chuyên môn</td>
-          <td style="color:#00904b;font-weight:bold">Tăng tỷ lệ Khá lên 50%</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;font-weight:bold">5</td>
-          <td><strong>Học sinh có năng lực nổi trội</strong></td>
-          <td>${listTuHoc.length} HS có điểm ≥ 7.0 (Trong đó ${listGioi.length} HS Giỏi)</td>
-          <td>Tự học nâng cao, cấp tài khoản câu hỏi vận dụng cao và đề thi thử thách</td>
-          <td>Nhóm ≥ 7.0 điểm</td>
-          <td>Tổ bộ môn phụ trách</td>
-          <td style="color:#00904b;font-weight:bold">Đạt điểm 9-10 tốt nghiệp</td>
-        </tr>
-      </table>
+      <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Đồ thị cột so sánh Điểm trung bình các lớp với ĐTB toàn khối (${fm(sStats.mean)} điểm):</h4>
+      <div style="border:1px solid #cbd5e1;border-radius:6px;padding:12px;background:#ffffff;margin-bottom:14px">
+        <div style="font-size:9.5pt;font-weight:bold;margin-bottom:8px;text-align:center;color:#004f9e">
+          ĐỒ THỊ CỘT ĐIỂM TRUNG BÌNH CÁC LỚP MÔN ${sb.toUpperCase()}
+        </div>
+        <div style="height:230px">${getSvgMean(clList, perList, sStats.mean, tColors)}</div>
+      </div>
 
-      <!-- 2. BẢNG DANH SÁCH DIỆN CAN THIỆP -->
-      <h4 style="font-size:11pt;color:#dc2626;margin:10px 0 6px">2. Danh sách toàn bộ học sinh diện can thiệp sư phạm (Tổng: ${listCanThiep.length} HS):</h4>
-      ${listCanThiep.length === 0 ? '<p style="font-style:italic">Không có học sinh dưới 5.0 điểm.</p>' : `
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px">
-        <tr style="background:#fee2e2;font-weight:bold;text-align:center">
-          <th style="width:6%">STT</th>
-          <th style="width:28%">Họ và tên</th>
-          <th style="width:12%">Lớp</th>
-          <th style="width:12%">Điểm</th>
-          <th style="width:20%">Phân nhóm giải pháp</th>
-          <th style="width:22%">Mục tiêu can thiệp</th>
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:14px;background:#ffffff">
+        <tr style="background:#f1f5f9;font-weight:bold;text-align:center">
+          <th style="width:14%">Lớp</th>
+          <th style="width:12%">Sĩ số</th>
+          <th style="width:14%">Điểm TB</th>
+          <th style="width:46%">Biểu đồ cột Điểm trung bình (Thang điểm 0–10)</th>
+          <th style="width:14%">So với khối</th>
         </tr>
-        ${listCanThiep.map((s, idx) => {
-          let grp = '', obj = '', clr = '';
-          if (s.score < 3.0) { grp = '👨‍🏫 Kèm 1-1'; obj = 'Khắc phục mất gốc căn bản'; clr = '#dc2626'; }
-          else if (s.score < 4.0) { grp = '⭐ VIP'; obj = 'Nâng hạng lên nhóm Phụ đạo'; clr = '#7c3aed'; }
-          else { grp = '📚 Phụ đạo'; obj = 'Bứt phá đạt chuẩn ≥ 5.0'; clr = '#c2410c'; }
+        ${clList.map((c, i) => {
+          const cs = perList[i] || stats(stList.filter(s => s.cls === c), cfg);
+          const barPct = Math.round((cs.mean / 10) * 100);
+          const isAbove = cs.mean >= sStats.mean;
+          const barColor = isAbove ? '#00904b' : '#0054a6';
           return `
             <tr style="text-align:center">
-              <td>${idx + 1}</td>
-              <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
-              <td>${esc(s.cls)}</td>
-              <td style="color:#c0392b;font-weight:bold">${s.score}</td>
-              <td style="font-weight:bold;color:${clr}">${grp}</td>
-              <td>${obj}</td>
+              <td style="font-weight:bold;padding-left:8px;text-align:left">${c}</td>
+              <td>${cs.n} HS</td>
+              <td style="font-weight:bold;color:${barColor}">${fm(cs.mean)}</td>
+              <td style="padding:4px 8px;text-align:left">
+                <table style="width:100%;border-collapse:collapse;border:none">
+                  <tr>
+                    <td style="width:${barPct}%;background:${barColor};height:16px;border-radius:3px;border:none"></td>
+                    <td style="width:${100 - barPct}%;border:none;padding-left:8px;font-size:8.5pt;font-weight:bold;color:${barColor}">
+                      ${fm(cs.mean)} điểm
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td style="font-weight:bold;color:${isAbove ? '#00904b' : '#c0392b'}">
+                ${isAbove ? `+${fm(cs.mean - sStats.mean)}` : `${fm(cs.mean - sStats.mean)}`}
+              </td>
             </tr>
           `;
         }).join('')}
-      </table>`}
-
-      <!-- 3. BẢNG DANH SÁCH TỰ HỌC TIÊU BIỂU (ĐIỂM GIỎI) -->
-      <h4 style="font-size:11pt;color:#00904b;margin:10px 0 6px">3. Danh sách học sinh nhóm Tự học tiêu biểu (Điểm Giỏi ≥ 8.0 - Tổng: ${listGioi.length} HS):</h4>
-      ${listGioi.length === 0 ? '<p style="font-style:italic">Chưa có học sinh đạt loại Giỏi môn này.</p>' : `
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:12px">
-        <tr style="background:#dcfce7;font-weight:bold;text-align:center">
-          <th style="width:6%">STT</th>
-          <th style="width:30%">Họ và tên</th>
-          <th style="width:14%">Lớp</th>
-          <th style="width:14%">Điểm</th>
-          <th style="width:18%">Phân loại</th>
-          <th style="width:18%">Hình thức tự học</th>
+        <tr style="text-align:center;background:#fff9e6;font-weight:bold">
+          <td style="text-align:left;padding-left:8px">ĐTB Khối</td>
+          <td>${sStats.n} HS</td>
+          <td style="color:#d97706">${fm(sStats.mean)}</td>
+          <td style="padding:4px 8px;text-align:left">
+            <table style="width:100%;border-collapse:collapse;border:none">
+              <tr>
+                <td style="width:${Math.round((sStats.mean / 10) * 100)}%;background:#d97706;height:16px;border-radius:3px;border:none"></td>
+                <td style="width:${100 - Math.round((sStats.mean / 10) * 100)}%;border:none;padding-left:8px;font-size:8.5pt;font-weight:bold;color:#d97706">
+                  ${fm(sStats.mean)} điểm (Chuẩn toàn khối)
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td style="color:#64748b">—</td>
         </tr>
-        ${listGioi.map((s, idx) => `
-          <tr style="text-align:center">
-            <td>${idx + 1}</td>
-            <td style="text-align:left;font-weight:bold;padding-left:6px">${esc(s.name)}</td>
-            <td>${esc(s.cls)}</td>
-            <td style="color:#00904b;font-weight:bold">${s.score}</td>
-            <td style="color:#00904b;font-weight:bold">Loại Giỏi</td>
-            <td>Tự học nâng cao, làm bài tập VDC</td>
-          </tr>
-        `).join('')}
-      </table>`}
+      </table>
+
+      ${clList.length > 1 ? `
+      <h4 style="font-size:11pt;color:#0054a6;margin:12px 0 6px">2. Biểu đồ cột phân tầng tỉ lệ 4 nhóm học sinh (Giỏi, Khá, TB, Yếu) theo từng lớp:</h4>
+      <div style="border:1px solid #cbd5e1;border-radius:6px;padding:12px;background:#ffffff;margin-bottom:14px">
+        <div style="font-size:9.5pt;font-weight:bold;margin-bottom:8px;text-align:center;color:#004f9e">
+          CƠ CẤU PHÂN TẦNG TỶ LỆ HỌC SINH THEO TỪNG LỚP
+        </div>
+        <div style="height:${Math.max(220, clList.length * 36 + 65)}px">${getSvgStack(clList, perList, tColors)}</div>
+      </div>` : ''}
 
       <!-- PHẦN VII: KIẾN NGHỊ ĐỐI VỚI TỔ CHUYÊN MÔN, NHÀ TRƯỜNG VÀ CƠ QUAN QUẢN LÝ -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
