@@ -889,10 +889,20 @@ function persistAllData() {
 window.persistAllData = persistAllData;
 try {
   Object.defineProperty(window, 'allData', { get: () => allData, set: v => { allData = v; }, configurable: true });
-} catch(e) { window.allData = allData; }
+  Object.defineProperty(window, 'currentGrade', { get: () => currentGrade, set: v => { currentGrade = v; }, configurable: true });
+  Object.defineProperty(window, 'currentSubject', { get: () => currentSubject, set: v => { currentSubject = v; }, configurable: true });
+  Object.defineProperty(window, 'currentExam', { get: () => currentExam, set: v => { currentExam = v; }, configurable: true });
+} catch(e) {
+  window.allData = allData;
+  window.currentGrade = currentGrade;
+  window.currentSubject = currentSubject;
+  window.currentExam = currentExam;
+}
 window.parseRows = parseRows;
 window.getCurrentData = getCurrentData;
 window.getGradeFromCls = getGradeFromCls;
+window.addItems = addItems;
+window.sanitizeDataset = sanitizeDataset;
 
 function loadPersistedData() {
   try {
@@ -3213,6 +3223,14 @@ function detectHeaderlessColumns(rows) {
     // Check if Name column: has letters, not email, not numbers, not class, not room
     if (nameCols.length === 0 && colVals.some(v => /[a-zA-Zà-ỹÀ-Ỹ]/.test(v) && !v.includes('@') && !/^(?:10|11|12)[a-zA-Z0-9]+$/.test(v) && !/phòng|room/i.test(v))) {
       nameCols = [c];
+      // Check if next column c+1 is also a name part (e.g. Họ đệm in c, Tên in c+1)
+      if (c + 1 < maxCols) {
+        const nextVals = probe.map(r => String(r[c + 1] == null ? '' : r[c + 1]).trim()).filter(Boolean);
+        const isNextName = nextVals.length > 0 && nextVals.every(v => /^[a-zA-Zà-ỹÀ-Ỹ\s]+$/.test(v) && !/^(10|11|12)/.test(v) && !/phòng|room/i.test(v));
+        if (isNextName) {
+          nameCols.push(c + 1);
+        }
+      }
       continue;
     }
   }
@@ -4108,8 +4126,7 @@ function buildSubjectReportHTML(sb, forPrint) {
         • <strong>Đặc trưng phổ điểm:</strong> Đỉnh phổ điểm rơi vào khoảng <strong>${peakBinLabel} điểm</strong> với <strong>${maxBin} học sinh</strong> (chiếm ${pc(maxBin / sStats.n)} toàn khối).
       </p>
 
-      ${forPrint ? `
-      <!-- KHUNG ĐỒ THỊ VECTOR SVG (CHỈ RENDER TRÊN TRÌNH DUYỆT / PDF IN, KHÔNG XUẤT RA WORD ĐỂ TRÁNH NỐI CHUỖI) -->
+      <!-- KHUNG ĐỒ THỊ VECTOR SVG ĐỘ NÉT CAO (PHỔ ĐIỂM & TỈ LỆ 4 TẦNG) -->
       <table style="width:100%;border:none;margin:14px 0;page-break-inside:avoid">
         <tr>
           <td style="width:50%;padding:4px;vertical-align:top;border:none">
@@ -4125,7 +4142,7 @@ function buildSubjectReportHTML(sb, forPrint) {
             </div>
           </td>
         </tr>
-      </table>` : ''}
+      </table>
 
       <!-- PHẦN IV: SO SÁNH VÀ ĐỐI CHIẾU KẾT QUẢ -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
@@ -4222,16 +4239,15 @@ function buildSubjectReportHTML(sb, forPrint) {
       </h3>
       <h4 style="font-size:11pt;color:#0054a6;margin:10px 0 6px">1. Biểu đồ cột Điểm trung bình các lớp môn ${sb} (ĐTB ${gradeReportLabel}: ${fm(sStats.mean)} điểm):</h4>
 
-      ${forPrint ? `
-      <!-- BIỂU ĐỒ CỘT VECTOR SVG ĐỘ PHÂN GIẢI CAO (XEM TRƯỚC VÀ IN/PDF) -->
+      <!-- BIỂU ĐỒ CỘT VECTOR SVG ĐỘ PHÂN GIẢI CAO (XEM TRƯỚC VÀ IN/PDF/WORD) -->
       <div style="border:1px solid #cbd5e1;border-radius:6px;padding:12px;background:#ffffff;margin-bottom:12px">
         <div style="font-size:10pt;font-weight:bold;margin-bottom:8px;text-align:center;color:#004f9e">
-          ĐỒ THỊ CỘT VECTOR SO SÁNH ĐIỂM TRUNG BÌNH CÁC LỚP — MÔN ${sb.toUpperCase()}
+          ĐỒ THỊ CỘT VECTOR SO SÁNH ĐIỂM TRUNG BÌNH CÁC LỚP — MÔN ${sb.toUpperCase()} ${currentGrade === 'ALL' ? '(TOÀN TRƯỜNG)' : `(KHỐI ${currentGrade})`}
         </div>
         <div style="height:240px">${getSvgMean(clList, perList, sStats.mean, tColors)}</div>
-      </div>` : ''}
+      </div>
 
-      <!-- ĐỒ THỊ CỘT NATIVE TABLE CÓ BARS HÌNH ẢNH BASE64 (TƯƠNG THÍCH 100% MICROSOFT WORD, WEB VÀ BẢN IN, KHÔNG BAO GIỜ BỊ CO RÚT CHIỀU CAO) -->
+      <!-- ĐỒ THỊ CỘT NATIVE TABLE CÓ BARS MÀU CHUẨN (TƯƠNG THÍCH 100% MICROSOFT WORD, WEB VÀ BẢN IN, KHÔNG BAO GIỜ BỊ CO RÚT CHIỀU CAO) -->
       <table style="width:100%;border-collapse:collapse;margin:10px 0 14px;background:#ffffff;border:1px solid #cbd5e1">
         <tr>
           <td colspan="${clList.length + 1}" style="background:#f1f5f9;padding:8px 12px;font-weight:bold;color:#004f9e;border-bottom:1px solid #cbd5e1;text-align:center;font-size:10pt">
@@ -4251,17 +4267,17 @@ function buildSubjectReportHTML(sb, forPrint) {
           ${clList.map((c, i) => {
             const cs = perList[i] || stats(stList.filter(s => s.cls === c), cfg);
             const isAbove = cs.mean >= sStats.mean;
-            const barHeightPx = Math.max(10, Math.min(150, Math.round((cs.mean / 10) * 150)));
+            const barHeightPx = Math.max(12, Math.min(150, Math.round((cs.mean / 10) * 150)));
             const barColor = isAbove ? '#00904b' : '#0054a6';
-            const png1x1 = isAbove
-              ? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgmOANAAFvANzqTSNLAAAAAElFTkSuQmCC'
-              : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgCFkGAAFSAPuTXq6iAAAAAElFTkSuQmCC';
             return `
               <td valign="bottom" align="center" style="vertical-align:bottom;text-align:center;padding:0 3px;height:190px">
                 <div style="font-size:8.5pt;font-weight:bold;color:${barColor};margin:0 0 3px;line-height:12pt">${fm(cs.mean)}</div>
-                <table cellpadding="0" cellspacing="0" border="0" style="width:28px;margin:0 auto;border-collapse:collapse">
-                  <tr><td height="${150 - barHeightPx}" style="height:${150 - barHeightPx}px;font-size:1px;line-height:1px">&nbsp;</td></tr>
-                  <tr><td bgcolor="${barColor}" height="${barHeightPx}" style="height:${barHeightPx}px;background-color:${barColor};background:${barColor};border-radius:3px 3px 0 0;font-size:1px;line-height:1px">&nbsp;</td></tr>
+                <table align="center" cellpadding="0" cellspacing="0" border="0" width="28" height="${barHeightPx}" style="width:28px;height:${barHeightPx}px;margin:0 auto;border-collapse:collapse;border:none">
+                  <tr>
+                    <td bgcolor="${barColor}" width="28" height="${barHeightPx}" style="width:28px;height:${barHeightPx}px;background-color:${barColor};background:${barColor};border-radius:3px 3px 0 0;mso-height-rule:exactly;line-height:${barHeightPx}px;font-size:1px;padding:0;overflow:hidden">
+                      <div style="width:28px;height:${barHeightPx}px;background-color:${barColor};background:${barColor};border-radius:3px 3px 0 0;line-height:${barHeightPx}px;font-size:1px">&nbsp;</div>
+                    </td>
+                  </tr>
                 </table>
                 <div style="border-top:1.5px solid #475569;margin:0;padding-top:4px;font-weight:bold;font-size:9pt;line-height:12pt">${c}</div>
                 <div style="font-size:7.5pt;color:${isAbove ? '#00904b' : '#c0392b'};font-weight:bold;margin:0;line-height:11pt">${isAbove ? '+' : ''}${fm(cs.mean - sStats.mean)}</div>
@@ -4374,14 +4390,13 @@ function buildSubjectReportHTML(sb, forPrint) {
         </tr>
       </table>
 
-      ${forPrint ? `
-      <!-- KHUNG SVG VECTOR DÀNH CHO XEM TRƯỚC / IN PDF -->
+      <!-- KHUNG SVG VECTOR DÀNH CHO XEM TRƯỚC, IN PDF VÀ WORD -->
       <div style="border:1px solid #cbd5e1;border-radius:6px;padding:12px;background:#ffffff;margin-bottom:14px">
         <div style="font-size:9.5pt;font-weight:bold;margin-bottom:8px;text-align:center;color:#004f9e">
           CƠ CẤU PHÂN TẦNG TỶ LỆ HỌC SINH THEO TỪNG LỚP (VECTOR)
         </div>
         <div style="height:${Math.max(220, clList.length * 36 + 65)}px">${getSvgStack(clList, perList, tColors)}</div>
-      </div>` : ''}` : ''}
+      </div>` : ''}
 
       <!-- PHẦN VII: KIẾN NGHỊ ĐỐI VỚI TỔ CHUYÊN MÔN, NHÀ TRƯỜNG VÀ CƠ QUAN QUẢN LÝ -->
       <h3 style="font-size:12.5pt;color:#004f9e;border-left:4px solid #004f9e;padding-left:8px;margin-top:18px">
@@ -4535,7 +4550,7 @@ window.buildFullReportHTML = buildFullReportHTML;
 window.exportWord = function(isAll) {
   if (!requireAuth()) return;
   const cfg = getCfg();
-  const fullContent = buildFullReportHTML(currentSubject, isAll, false);
+  const fullContent = buildFullReportHTML(currentSubject, isAll, true);
   const fullWordHTML = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
