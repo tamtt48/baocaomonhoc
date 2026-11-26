@@ -368,14 +368,14 @@ ul.ins li::before{content:"";position:absolute;left:0;top:.65em;width:7px;height
           <span class="hint">Hỗ trợ .xlsx, .xls, .csv — Yêu cầu có cột Họ tên và cột Điểm</span>
         </label>
         <div class="field" style="margin-top:14px">
-          <label for="impClass">Tên lớp áp dụng (nếu file không có cột Lớp)</label>
-          <input id="impClass" value="12A1" placeholder="VD: 12A1">
+          <label for="impClass">Tên lớp áp dụng (tự động nhận diện từ tên file / sheet / tiêu đề, hoặc nhập lớp mặc định)</label>
+          <input id="impClass" placeholder="VD: 10A1, 11A2, 12T1...">
         </div>
         <p class="hint" style="margin-top:10px">Hệ thống tự động phát hiện tên cột thông minh (Họ và tên, Điểm số, Lớp học). Mỗi sheet trong Excel có thể là một lớp riêng.</p>
       </div>
       <div class="block">
         <h3>📝 Dán nhanh từ Excel / Google Sheets</h3>
-        <div class="field"><label for="pasteClass">Tên lớp</label><input id="pasteClass" placeholder="VD: 12A2"></div>
+        <div class="field"><label for="pasteClass">Tên lớp áp dụng</label><input id="pasteClass" placeholder="VD: 10A1, 11A2, 12T1..."></div>
         <div class="field" style="margin-top:12px">
           <label for="pasteBox">Mỗi dòng: Họ tên [Tab] Điểm</label>
           <textarea id="pasteBox" placeholder="Nguyễn Văn An&#9;8,5&#10;Trần Thị Bích&#9;7,25"></textarea>
@@ -561,11 +561,19 @@ const GRADES = [
 ];
 let currentGrade = '12';
 
+function normalizeClassName(raw) {
+  if (!raw) return '';
+  let s = String(raw).trim();
+  s = s.replace(/^(lớp|lop|khối|khoi)\s*[:.-]?\s*/i, '');
+  return s.trim();
+}
+
 function getGradeFromCls(cls) {
-  if (!cls) return '12';
-  const match = String(cls).trim().match(/^(10|11|12)/);
-  if (match) return match[1];
-  return '12';
+  if (!cls) return (currentGrade && currentGrade !== 'ALL') ? currentGrade : '10';
+  const str = String(cls).trim();
+  const m = str.match(/(?:^|[^\d])(10|11|12)(?:[^\d]|$)/i) || str.match(/(10|11|12)/);
+  if (m) return m[1];
+  return (currentGrade && currentGrade !== 'ALL') ? currentGrade : '10';
 }
 
 // ===== 2. EXAM PERIODS (GK1, CK1, GK2, CK2, TỐT NGHIỆP) =====
@@ -1552,6 +1560,8 @@ window.switchGrade = function(gId) {
   currentGrade = gId;
   localStorage.setItem('khtn_current_grade', gId);
   renderGradeToolbar();
+  const imp = $('#impClass');
+  if (imp) imp.value = (gId !== 'ALL') ? `${gId}A1` : '10A1';
   persistAllData();
   refresh();
   toast(`Đã chọn phân tích: ${gObj.short}`);
@@ -2923,58 +2933,99 @@ document.addEventListener('click', e => {
 
 // ===== 11. DATA INPUT HANDLING =====
 function renderDataInput() {
+  const imp = $('#impClass');
+  if (imp && (!imp.value || imp.value === '12A1' || imp.value === '10A1' || imp.value === '11A1')) {
+    imp.value = (currentGrade && currentGrade !== 'ALL') ? `${currentGrade}A1` : '10A1';
+  }
+  const pst = $('#pasteClass');
+  if (pst && !pst.value) {
+    pst.placeholder = `VD: ${(currentGrade && currentGrade !== 'ALL') ? `${currentGrade}A1` : '10A1'}`;
+  }
   renderLoadedClasses();
 }
 
 function renderLoadedClasses() {
   const el = $('#loaded');
   if (!el) return;
-  const st = S();
-  if (!st.length) {
+  const allStudents = getCurrentData().students || [];
+  if (!allStudents.length) {
     el.innerHTML = '<p class="hint">Chưa có học sinh nào trong môn này.</p>';
     return;
   }
-  const cl = classes(), abs = ABS();
+
   const curExamObj = EXAMS.find(e => e.id === currentExam) || EXAMS[0];
-  el.innerHTML = `
-    <div class="chips">
-      ${cl.map(c => `
-        <span class="chip">
-          ${esc(c)} · ${st.filter(s => s.cls === c).length} HS
-          <button data-rm="${esc(c)}" title="Xóa lớp ${esc(c)}">×</button>
-        </span>
-      `).join('')}
-    </div>
-    <p class="hint" style="margin-top:12px">Tổng cộng: <strong>${st.length}</strong> học sinh trong <strong>${cl.length}</strong> lớp học môn ${esc(currentSubject)} (${esc(curExamObj.short)}).${abs.length ? ` (${abs.length} HS vắng).` : ''}</p>
+  const gList = ['10', '11', '12'];
+  const gIcons = { '10': '🌱 Khối 10', '11': '🌿 Khối 11', '12': '🌳 Khối 12' };
+
+  let html = '';
+  gList.forEach(g => {
+    const gSt = allStudents.filter(s => getGradeFromCls(s.cls) === g);
+    const gCl = [...new Set(gSt.map(s => s.cls))].sort((a,b) => a.localeCompare(b, 'vi', { numeric: true }));
+    const isActive = (currentGrade === g || currentGrade === 'ALL');
+    html += `
+      <div style="margin-bottom:14px;padding:12px 14px;background:${isActive ? '#f8fafc' : '#f1f5f9'};border-radius:8px;border:1.5px solid ${isActive ? '#93c5fd' : '#e2e8f0'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong style="color:#004f9e;font-size:13.5px">${gIcons[g]}</strong>
+          <span style="font-size:12px;color:#64748b">
+            ${gSt.length ? `<strong>${gSt.length}</strong> HS (${gCl.length} lớp)` : '<span style="color:#94a3b8">Chưa nạp điểm</span>'}
+          </span>
+        </div>
+        ${gCl.length ? `
+          <div class="chips">
+            ${gCl.map(c => `
+              <span class="chip">
+                ${esc(c)} · ${gSt.filter(s => s.cls === c).length} HS
+                <button data-rm="${esc(c)}" title="Xóa lớp ${esc(c)}">×</button>
+              </span>
+            `).join('')}
+          </div>
+        ` : `<p class="hint" style="margin:0;font-size:12px">Chưa có lớp nào thuộc Khối ${g}. Kéo thả file Excel hoặc dán điểm để nạp vào.</p>`}
+      </div>
+    `;
+  });
+
+  const abs = ABS();
+  html += `
+    <p class="hint" style="margin-top:10px">
+      Đang chọn phân tích: <strong>${currentGrade === 'ALL' ? 'Toàn trường' : `Khối ${currentGrade}`}</strong> (Hiển thị <strong>${S().length}</strong> / ${allStudents.length} học sinh toàn môn ${esc(currentSubject)} - ${esc(curExamObj.short)}).${abs.length ? ` (${abs.length} HS vắng).` : ''}
+    </p>
     <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-danger" id="clearAll">🗑️ Xóa toàn bộ dữ liệu môn ${esc(currentSubject)} (${esc(curExamObj.short)})</button>
+      <button class="btn btn-danger" id="clearAll">🗑️ Xóa dữ liệu ${currentGrade === 'ALL' ? 'toàn bộ môn' : `Khối ${currentGrade}`} môn ${esc(currentSubject)} (${esc(curExamObj.short)})</button>
       <button class="btn" id="resetDemoBtn" style="border:1px solid #cbd5e1;background:#fff" onclick="resetAllDataToDefault()">🔄 Đặt lại dữ liệu mẫu (Tất cả các kỳ)</button>
     </div>
   `;
+  el.innerHTML = html;
 
   $('#clearAll').addEventListener('click', function() {
     if (this.dataset.arm) {
       const d = getCurrentData();
-      d.students = [];
-      d.absent = [];
+      if (currentGrade === 'ALL') {
+        d.students = [];
+        d.absent = [];
+      } else {
+        d.students = d.students.filter(s => getGradeFromCls(s.cls) !== currentGrade);
+        d.absent = d.absent.filter(a => getGradeFromCls(a.cls) !== currentGrade);
+      }
       persistAllData();
       refresh();
-      toast('Đã xóa dữ liệu môn ' + currentSubject + ' (' + curExamObj.short + ')');
+      toast('Đã xóa dữ liệu ' + (currentGrade === 'ALL' ? 'toàn bộ' : `Khối ${currentGrade}`) + ' môn ' + currentSubject + ' (' + curExamObj.short + ')');
     } else {
       this.dataset.arm = '1';
-      this.textContent = '⚠️ Bấm lần nữa để xác nhận xóa toàn bộ';
+      this.textContent = '⚠️ Bấm lần nữa để xác nhận xóa';
     }
   });
 
   el.querySelectorAll('[data-rm]').forEach(b => {
     b.addEventListener('click', () => {
       const clsName = b.dataset.rm;
-      const d = getCurrentData();
-      d.students = d.students.filter(s => s.cls !== clsName);
-      d.absent = d.absent.filter(a => a.cls !== clsName);
-      persistAllData();
-      refresh();
-      toast(`Đã xóa lớp ${clsName}`);
+      if (confirm('Xóa lớp ' + clsName + '?')) {
+        const d = getCurrentData();
+        d.students = d.students.filter(s => s.cls !== clsName);
+        d.absent = d.absent.filter(a => a.cls !== clsName);
+        persistAllData();
+        refresh();
+        toast(`Đã xóa lớp ${clsName}`);
+      }
     });
   });
 }
@@ -2997,16 +3048,26 @@ $('#file').addEventListener('change', e => {
 
 async function importFile(file) {
   if (typeof XLSX === 'undefined') { toast('Chưa nạp thư viện đọc Excel'); return; }
-  const cls = $('#impClass').value.trim() || '12A1';
+  const defaultClassInput = ($('#impClass') ? $('#impClass').value.trim() : '') || ((currentGrade && currentGrade !== 'ALL') ? `${currentGrade}A1` : '10A1');
+  
+  // Extract potential class from filename (e.g. "Diem_Lop_10A1.xlsx" -> "10A1")
+  const fileNameMatch = file.name.match(/(?:lớp|lop|k|khoi|class)?\s*([10|11|12][a-zA-Z0-9_\-\.\/]+)/i);
+  const fileCls = fileNameMatch ? normalizeClassName(fileNameMatch[1]) : '';
+
   try {
     let wb;
     if (/\.csv$/i.test(file.name)) wb = XLSX.read(await file.text(), { type: 'string' });
     else wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-    const multi = wb.SheetNames.length > 1;
+    
     let items = [], skipped = 0, absent = [];
     wb.SheetNames.forEach(n => {
+      const sheetName = n.trim();
+      const sheetClsMatch = sheetName.match(/(?:lớp|lop|k|khoi|class)?\s*([10|11|12][a-zA-Z0-9_\-\.\/]+)/i);
+      const sheetCls = sheetClsMatch ? normalizeClassName(sheetClsMatch[1]) : (sheetName.length <= 10 && !/^(sheet\d*|trang\d*|data)$/i.test(sheetName) ? normalizeClassName(sheetName) : '');
+      
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
-      const r = parseRows(rows, multi ? n : cls);
+      const fallbackCls = sheetCls || fileCls || defaultClassInput;
+      const r = parseRows(rows, fallbackCls);
       items = items.concat(r.items);
       skipped += r.skipped;
       absent = absent.concat(r.absent);
@@ -3018,30 +3079,92 @@ async function importFile(file) {
 }
 
 function parseRows(rows, defCls) {
-  let h = -1;
-  for (let i = 0; i < Math.min(rows.length, 15); i++) {
-    if (rows[i].some(c => /điểm|diem|score|point/i.test(String(c)))) { h = i; break; }
+  const items = [], absent = [];
+  let skipped = 0;
+  if (!rows || !rows.length) return { items, skipped, absent };
+
+  // 1. Scan first 10 rows for class name in title banner (e.g. "BẢNG ĐIỂM HỌC SINH LỚP 10A1")
+  let titleDetectedCls = '';
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const rowStr = (rows[i] || []).join(' ');
+    const m = rowStr.match(/(?:lớp|lop|class)\s*[:.-]?\s*([10|11|12][a-zA-Z0-9_\-\.\/]+)/i);
+    if (m) {
+      titleDetectedCls = normalizeClassName(m[1]);
+      break;
+    }
   }
+  const effectiveDefCls = titleDetectedCls || defCls || '10A1';
+
+  // 2. Locate the real table header row (skipping titles and metadata)
+  let h = -1;
+  for (let i = 0; i < Math.min(rows.length, 25); i++) {
+    const r = rows[i] || [];
+    const nonEmpties = r.filter(c => String(c).trim() !== '');
+    if (nonEmpties.length < 2) continue; // Skip title banner lines
+
+    const hasScore = r.some(c => {
+      const s = String(c).toLowerCase().trim();
+      return /^(điểm|diem|score|đtb|dtb|tổng điểm|tong diem|kttx|ktdk|thi|gk|ck)$/i.test(s) ||
+             (/(điểm|diem|score|đtb|\bdtb\b)/i.test(s) && !/bảng điểm|bang diem|ghi điểm/i.test(s));
+    });
+    const hasNameOrStt = r.some(c => {
+      const s = String(c).toLowerCase().trim();
+      return /họ|tên|\bten\b|\bname\b|\bho\b|học sinh|hoc sinh|\bstt\b/i.test(s);
+    });
+
+    if (hasScore && hasNameOrStt) {
+      h = i;
+      break;
+    }
+  }
+
+  // Fallback pass: row with >= 2 cells and a clear score header
+  if (h < 0) {
+    for (let i = 0; i < Math.min(rows.length, 25); i++) {
+      const r = rows[i] || [];
+      const nonEmpties = r.filter(c => String(c).trim() !== '');
+      if (nonEmpties.length < 2) continue;
+      if (r.some(c => /^(điểm|diem|score|point|đtb|dtb)$/i.test(String(c).trim()))) {
+        h = i;
+        break;
+      }
+    }
+  }
+
   let nameCols = [], score = -1, cls = -1, start = 0;
+
   if (h >= 0) {
     const hd = rows[h].map(c => String(c).toLowerCase().trim());
     hd.forEach((c, i) => {
-      if (/lớp|lop|class/.test(c)) cls = i;
+      if (/^(lớp|lop|class)$/.test(c) || /^(lớp học|tên lớp)$/.test(c)) cls = i;
       else if (/họ|tên|\bten\b|\bname\b|\bho\b/.test(c)) nameCols.push(i);
     });
-    score = hd.findIndex(c => /điểm|diem|score|point/.test(c));
+
+    // Find score column: prioritize ĐTB, Điểm GK/CK, Điểm thi
+    const scoreIndices = [];
+    hd.forEach((c, i) => {
+      if (/đtb|\bdtb\b|điểm|diem|score|point/i.test(c) && !/bảng điểm|hệ số/i.test(c)) {
+        scoreIndices.push(i);
+      }
+    });
+
+    if (scoreIndices.length > 0) {
+      const dtbIdx = scoreIndices.find(i => /đtb|\bdtb\b|trung bình|tb/i.test(hd[i]));
+      score = (dtbIdx !== undefined) ? dtbIdx : scoreIndices[scoreIndices.length - 1];
+    }
+
     start = h + 1;
     if (!nameCols.length) nameCols = [score === 0 ? 1 : 0];
   } else {
-    const probe = rows.slice(0, 8), w = Math.max(0, ...probe.map(r => r.length));
+    // Headerless sheet: find numeric column from right
+    const probe = rows.slice(0, 10), w = Math.max(0, ...probe.map(r => r.length));
     for (let c = w - 1; c >= 1; c--) {
       if (probe.some(r => isNum(r[c]))) { score = c; break; }
     }
     nameCols = [0];
     start = score > 0 && isNum((rows[0]||[])[score]) ? 0 : 1;
   }
-  const items = [], absent = [];
-  let skipped = 0;
+
   if (score < 0) return { items, skipped, absent };
 
   for (let i = start; i < rows.length; i++) {
@@ -3050,12 +3173,23 @@ function parseRows(rows, defCls) {
     const name = nameCols.map(c => String(r[c] == null ? '' : r[c]).trim()).filter(Boolean).join(' ');
     const raw = r[score];
     if (raw === '' || raw == null || !name) continue;
+    if (/^(stt|họ và tên|tổng cộng|trung bình|người lập|giáo viên)/i.test(name)) continue;
+
     const v = toNum(raw);
-    const c = cls >= 0 && String(r[cls]).trim() ? String(r[cls]).trim() : defCls;
-    if (v === null && /vắng|vang|nghỉ|bỏ thi/i.test(String(raw))) { absent.push({ name, cls: c }); continue; }
-    if (v === null || v < 0 || v > 10) { skipped++; continue; }
+    const rawCls = cls >= 0 && String(r[cls]).trim() ? String(r[cls]).trim() : effectiveDefCls;
+    const c = normalizeClassName(rawCls) || effectiveDefCls;
+
+    if (v === null && /vắng|vang|nghỉ|bỏ thi/i.test(String(raw))) {
+      absent.push({ name, cls: c });
+      continue;
+    }
+    if (v === null || v < 0 || v > 10) {
+      skipped++;
+      continue;
+    }
     items.push({ name, score: Math.round(v * 100) / 100, cls: c });
   }
+
   return { items, skipped, absent };
 }
 
@@ -3068,22 +3202,43 @@ function toNum(x) {
 
 function addItems(items, skipped, absent) {
   absent = absent || [];
-  if (!items.length) { toast('Không tìm thấy dòng điểm hợp lệ'); return false; }
+  if (!items.length) { toast('Không tìm thấy dòng điểm hợp lệ trong file'); return false; }
+  
+  // Normalize all class names
+  items.forEach(i => { i.cls = normalizeClassName(i.cls); });
+  if (absent) absent.forEach(a => { a.cls = normalizeClassName(a.cls); });
+
   const data = getCurrentData();
   const cl = new Set(items.map(i => i.cls));
   data.students = data.students.filter(s => !cl.has(s.cls));
   data.absent = data.absent.filter(a => !cl.has(a.cls));
   absent.forEach(a => data.absent.push(a));
   items.forEach(i => data.students.push({ id: nextId++, name: i.name, score: i.score, cls: i.cls }));
+
+  // Automatically switch to the uploaded grade so the user immediately sees the results!
+  const importedGrades = [...new Set(items.map(i => getGradeFromCls(i.cls)))];
+  if (importedGrades.length === 1) {
+    currentGrade = importedGrades[0];
+    localStorage.setItem('khtn_current_grade', currentGrade);
+    renderGradeToolbar();
+  } else if (importedGrades.length > 1) {
+    currentGrade = 'ALL';
+    localStorage.setItem('khtn_current_grade', currentGrade);
+    renderGradeToolbar();
+  }
+
   persistAllData();
   refresh();
-  toast(`Đã cập nhật ${items.length} học sinh môn ${currentSubject}!`);
+
+  const gradeMsg = importedGrades.length === 1 ? `Khối ${importedGrades[0]}` : 'Nhiều khối';
+  toast(`✅ Đã nạp thành công ${items.length} học sinh ${gradeMsg} môn ${currentSubject}!`);
   return true;
 }
 
 $('#pasteAdd').addEventListener('click', () => {
-  const cls = $('#pasteClass').value.trim();
-  if (!cls) { $('#pasteMsg').textContent = '⚠️ Hãy nhập tên lớp.'; $('#pasteClass').focus(); return; }
+  const rawCls = $('#pasteClass').value.trim();
+  const cls = normalizeClassName(rawCls) || ((currentGrade && currentGrade !== 'ALL') ? `${currentGrade}A1` : '10A1');
+  if (!rawCls && !cls) { $('#pasteMsg').textContent = '⚠️ Hãy nhập tên lớp.'; $('#pasteClass').focus(); return; }
   const items = [];
   let bad = 0;
   $('#pasteBox').value.split(/\r?\n/).forEach(line => {
