@@ -564,8 +564,10 @@ let currentGrade = '12';
 function normalizeClassName(raw) {
   if (!raw) return '';
   let s = String(raw).trim();
-  s = s.replace(/^(lớp|lop|khối|khoi)\s*[:.-]?\s*/i, '');
-  return s.trim();
+  s = s.replace(/^(lớp|lop|khối|khoi)\s*[:.-]?\s*/i, '').trim();
+  // Khối 10, 11, 12 là tên khối chứ không phải tên lớp. Tên lớp phải có hậu tố như 10A1, 10K, 10T1...
+  if (/^(10|11|12)$/.test(s) || /^\d+$/.test(s)) return '';
+  return s;
 }
 
 function getGradeFromCls(cls) {
@@ -599,19 +601,50 @@ let allData = {};
 // Dữ liệu thực tế 306 học sinh Khối 10 môn Toán (Kiểm tra GK1 NH 2026-2027)
 const REAL_GRADE_10_MATH_STUDENTS = [{"id":"FCT33049","name":"LÊ NGỌC THIÊN AN","cls":"10K","score":5.25},{"id":"FCT33208","name":"MÃ TUYẾT ANH","cls":"10K","score":7.5},{"id":"FCT33308","name":"NGUYỄN TRƯƠNG HUỲNH ANH","cls":"10K","score":6},{"id":"FCT33300","name":"PHẠM THỊ HỒNG ANH","cls":"10K","score":4.25},{"id":"FCT33328","name":"VÕ TRÂM ANH","cls":"10K","score":3},{"id":"FCT33160","name":"LÊ BẢO CHÂU","cls":"10K","score":5.75},{"id":"FCT33289","name":"TRƯƠNG HỒ KHÁNH GIANG","cls":"10K","score":5.5},{"id":"FCT33175","name":"PHẠM KHÁNH HÀ","cls":"10K","score":5.75},{"id":"FCT33451","name":"ĐIỀN TRANG HẠ","cls":"10K","score":10},{"id":"FCT33457","name":"NGUYỄN HOÀNG GIA HẢO","cls":"10K","score":5.5},{"id":"FCT33353","name":"LÊ MINH GIA HƯNG","cls":"10K","score":7.25},{"id":"FCT33282","name":"ĐẶNG THIÊN KIM","cls":"10K","score":5.75},{"id":"FCT33060","name":"TRẦN NGUYỄN KHANG","cls":"10K","score":3.5},{"id":"FCT33431","name":"VÕ HOÀNG MAI","cls":"10K","score":7.5},{"id":"FCT33028","name":"BÙI HIỂU MINH","cls":"10K","score":8},{"id":"FCT33279","name":"CAO TIẾN MINH","cls":"10K","score":4.5},{"id":"FCT33427","name":"TRANG THẾ MINH","cls":"10K","score":5.5},{"id":"FCT33117","name":"TRẦN HẢI MY","cls":"10K","score":7},{"id":"FCT33005","name":"TRẦN NGUYỄN HÀ MY","cls":"10K","score":7},{"id":"FCT33487","name":"LÊ NGUYỄN BẢO NGÂN","cls":"10K","score":5.5},{"id":"FCT33092","name":"PHẠM LÊ BẢO NGHI","cls":"10K","score":5.75},{"id":"FCT33485","name":"TRẦN NGUYỄN BẢO NGỌC","cls":"10K","score":6.5},{"id":"FCT33054","name":"TRẦN NGUYỄN KHÔI NGUYÊN","cls":"10K","score":9.25},{"id":"FCT33355","name":"VÕ THANH NHÂN","cls":"10K","score":5.5},{"id":"FCT33204","name":"NGUYỄN NGỌC XUÂN NHƯ","cls":"10K","score":6.25},{"id":"FCT33024","name":"NGUYỄN KHÁNH PHƯƠNG","cls":"10K","score":7},{"id":"FCT33412","name":"HUỲNH KIM QUÂN","cls":"10K","score":5.75},{"id":"FCT33192","name":"NGÔ TẠ NHƯ QUỲNH","cls":"10K","score":7.25},{"id":"FCT33322","name":"TRƯƠNG ĐỨC TOÀN","cls":"10K","score":6.25},{"id":"FCT33199","name":"PHẠM NGỌC ANH TUẤN","cls":"10K","score":5.5},{"id":"FCT33197","name":"TRẦN MINH THƯ","cls":"10K","score":4.25},{"id":"FCT33316","name":"LÊ HOÀNG THẢO VY","cls":"10K","score":6.5},{"id":"FCT33254","name":"PHÒNG BẢO VY","cls":"10K","score":7},{"id":"FCT33277","name":"TRẦN ĐINH THANH VY","cls":"10K","score":9.25},{"id":"FCT33490","name":"HUỲNH PHÚC AN","cls":"10T1","score":6},{"id":"FCT33494","name":"VÕ TẤN THIÊN AN","cls":"10T1","score":6.5},{"id":"FCT33462","name":"LÊ HỒNG ANH","cls":"10T1","score":4.5},{"id":"FCT33109","name":"NGUYỄN ĐỨC ANH","cls":"10T1","score":7.5},{"id":"FCT33446","name":"TRẦN NGỌC TRÂM ANH","cls":"10T1","score":5.5},{"id":"FCT33062","name":"NGUYỄN HOÀNG BÁCH","cls":"10T1","score":7.75},{"id":"FCT33004","name":"LƯƠNG THÁI KINH DƯƠNG","cls":"10T1","score":10},{"id":"FCT33094","name":"TRẦN THIÊN ĐĂNG","cls":"10T1","score":9.5},{"id":"FCT33084","name":"NGUYỄN QUANG HY","cls":"10T1","score":9.75},{"id":"FCT33185","name":"BÙI QUANG KHẢI","cls":"10T1","score":8.25},{"id":"FCT33212","name":"ĐINH NGỌC ĐAN KHANH","cls":"10T1","score":6.75},{"id":"FCT33326","name":"LÊ MỸ KHÁNH","cls":"10T1","score":5},{"id":"FCT33058","name":"TRẦN HOÀNG LONG","cls":"10T1","score":7},{"id":"FCT33202","name":"TRẦN THẾ LONG","cls":"10T1","score":10},{"id":"FCT33434","name":"NGUYỄN CÔNG LÝ","cls":"10T1","score":6.75},{"id":"FCT33114","name":"CHUNG TỬ MINH","cls":"10T1","score":8.5},{"id":"FCT33454","name":"NGUYỄN NHẬT MINH","cls":"10T1","score":7.25},{"id":"FCT33379","name":"VÕ PHƯƠNG NGÂN","cls":"10T1","score":6.75},{"id":"FCT33442","name":"TRẦN ĐÔNG NGUYỄN","cls":"10T1","score":8.5},{"id":"FCT33407","name":"NGUYỄN TRỌNG NHÂN","cls":"10T1","score":8},{"id":"FCT33137","name":"TRỊNH XUYÊN NHI","cls":"10T1","score":7.75},{"id":"FCT33007","name":"VÕ THỊ HOÀNG OANH","cls":"10T1","score":8},{"id":"FCT33147","name":"NGÔ GIA PHÁT","cls":"10T1","score":7},{"id":"FCT33330","name":"NGUYỄN QUỐC PHÁT","cls":"10T1","score":7.75},{"id":"FCT33344","name":"CAO DƯƠNG THÁI PHƯƠNG","cls":"10T1","score":6.75},{"id":"FCT33081","name":"NGUYỄN QUỲNH NAM PHƯƠNG","cls":"10T1","score":9.75},{"id":"FCT33102","name":"TRƯƠNG NGỌC MỸ QUÂN","cls":"10T1","score":5},{"id":"FCT33479","name":"NGUYỄN NGỌC THẢO QUYÊN","cls":"10T1","score":5.75},{"id":"FCT33327","name":"TRẦN HUỲNH QUY TÂM","cls":"10T1","score":7.75},{"id":"FCT33006","name":"LÊ VẠN CÁT TƯỜNG","cls":"10T1","score":7.25},{"id":"FCT33250","name":"TRẦN QUỐC THÀNH","cls":"10T1","score":8.75},{"id":"FCT33040","name":"LÝ HƯNG THỊNH","cls":"10T1","score":5.5},{"id":"FCT33369","name":"TRẦN NGUYỄN MINH THƯ","cls":"10T1","score":5},{"id":"FCT33376","name":"NGUYỄN TRẦN KHÁNH VÂN","cls":"10T1","score":7},{"id":"FCT33130","name":"ĐỖ TƯỜNG VI","cls":"10T1","score":9.25},{"id":"FCT33091","name":"HUỲNH BẢO YẾN","cls":"10T1","score":6.75},{"id":"FCT33036","name":"VÕ PHƯƠNG ANH","cls":"10T2","score":10},{"id":"FCT33354","name":"PHẠM DUY CƯỜNG","cls":"10T2","score":4},{"id":"FCT33023","name":"PHAN NGỌC CHÂU","cls":"10T2","score":8.5},{"id":"FCT33317","name":"TRẦN PHƯỚC ĐẠT","cls":"10T2","score":7},{"id":"FCT33293","name":"HỒ HOÀNG HÀ","cls":"10T2","score":6.25},{"id":"FCT33063","name":"PHAN TRÍ HÀO","cls":"10T2","score":6},{"id":"FCT33397","name":"NGUYỄN TRẦN GIA HÂN","cls":"10T2","score":6.25},{"id":"FCT33017","name":"TẠ QUANG HUY","cls":"10T2","score":8.25},{"id":"FCT33113","name":"NGUYỄN GIA HƯNG","cls":"10T2","score":4.75},{"id":"FCT33346","name":"NGUYỄN LÂM KHÁNH HƯNG","cls":"10T2","score":5.5},{"id":"FCT33377","name":"PHAN GIA HƯNG","cls":"10T2","score":7.75},{"id":"FCT33420","name":"TRẦN PHÚC HƯNG","cls":"10T2","score":6},{"id":"FCT33272","name":"QUÁCH BẢO KHANH","cls":"10T2","score":6},{"id":"FCT33170","name":"TRẦN ĐĂNG KHOA","cls":"10T2","score":7.25},{"id":"FCT33075","name":"NGUYỄN HOÀNG LĨNH","cls":"10T2","score":7.25},{"id":"FCT33281","name":"DƯƠNG TẤN LỘC","cls":"10T2","score":6.5},{"id":"FCT33481","name":"LÊ DƯƠNG THIÊN LÝ","cls":"10T2","score":5.25},{"id":"FCT33150","name":"NGUYỄN BÌNH MINH","cls":"10T2","score":6.75},{"id":"FCT33359","name":"DƯƠNG THÁI KHÁNH MY","cls":"10T2","score":9.25},{"id":"FCT33188","name":"NGUYỄN LÊ TRUNG NGHĨA","cls":"10T2","score":3.25},{"id":"FCT33034","name":"NGUYỄN HOÀNG DIỄM NGỌC","cls":"10T2","score":8.75},{"id":"FCT33189","name":"TRẦN THỊ THẢO NGỌC","cls":"10T2","score":5.5},{"id":"FCT33044","name":"VÕ HUY PHÁT","cls":"10T2","score":4.75},{"id":"FCT33283","name":"HOÀNG NGUYỄN ĐĂNG PHÚC","cls":"10T2","score":3},{"id":"FCT33410","name":"VÕ HOÀNG QUÂN","cls":"10T2","score":3},{"id":"FCT33340","name":"NGUYỄN HỒ TRỌNG SANG","cls":"10T2","score":4},{"id":"FCT33375","name":"TRẦN PHÚC SANG","cls":"10T2","score":6.5},{"id":"FCT33273","name":"NGUYỄN DUY TÂN","cls":"10T2","score":8},{"id":"FCT33339","name":"NGUYỄN QUANG TIẾN","cls":"10T2","score":5.5},{"id":"FCT33085","name":"NGUYỄN XUÂN TÙNG","cls":"10T2","score":9.5},{"id":"FCT33169","name":"LÊ MẠNH TƯỜNG","cls":"10T2","score":7.75},{"id":"FCT33441","name":"TRẦN NGUYỄN CÁT TƯỜNG","cls":"10T2","score":7.75},{"id":"FCT33240","name":"NGÔ PHƯƠNG THẠNH","cls":"10T2","score":3.75},{"id":"FCT33465","name":"NGUYỄN THANH THẢO","cls":"10T2","score":6.25},{"id":"FCT33121","name":"TÔ DƯƠNG AN","cls":"10T3","score":5.75},{"id":"FCT33177","name":"TRẦN TRIỀU AN","cls":"10T3","score":7.25},{"id":"FCT33459","name":"LÊ NGUYỄN QUỐC BẢO","cls":"10T3","score":8.5},{"id":"FCT33055","name":"PHẠM NGỌC MINH CHÂU","cls":"10T3","score":6.75},{"id":"FCT33128","name":"PHẠM NGUYỄN ÁNH DƯƠNG","cls":"10T3","score":6},{"id":"FCT33073","name":"TRẦN ĐẠI DƯƠNG","cls":"10T3","score":6.25},{"id":"FCT33448","name":"ĐOÀN HƯƠNG GIANG","cls":"10T3","score":7.5},{"id":"FCT33139","name":"LÊ THÁI HÀO","cls":"10T3","score":5.25},{"id":"FCT33097","name":"HUỲNH GIA HÂN","cls":"10T3","score":8.75},{"id":"FCT33166","name":"LÝ NHẬT HUY","cls":"10T3","score":6.25},{"id":"FCT33046","name":"VÕ PHÚ HƯNG","cls":"10T3","score":6.75},{"id":"FCT33095","name":"LÊ HOÀNG KHANG","cls":"10T3","score":8.25},{"id":"FCT33492","name":"NGUYỄN NGÔ KHOA KHANH","cls":"10T3","score":7.5},{"id":"FCT33190","name":"NGUYỄN HOÀNG NGỌC KHÁNH","cls":"10T3","score":8},{"id":"FCT33155","name":"LỮ CHÍ LONG","cls":"10T3","score":8.25},{"id":"FCT33268","name":"ĐINH THỊ XUÂN MAI","cls":"10T3","score":7.5},{"id":"FCT33509","name":"NGUYỄN KHÁNH MY","cls":"10T3","score":7.25},{"id":"FCT33132","name":"PHAN HÀ BẢO NGÂN","cls":"10T3","score":6.25},{"id":"FCT33426","name":"BÙI TRỌNG NHÂN","cls":"10T3","score":5},{"id":"FCT33029","name":"NGUYỄN THÀNH NHÂN","cls":"10T3","score":5.5},{"id":"FCT33247","name":"LÝ NGỌC PHÚC","cls":"10T3","score":7.5},{"id":"FCT33142","name":"NGUYỄN BÁ GIA PHÚC","cls":"10T3","score":8.25},{"id":"FCT33286","name":"PHẠM QUỐC QUANG","cls":"10T3","score":5.25},{"id":"FCT33101","name":"LÂM TRƯƠNG NHƯ QUỲNH","cls":"10T3","score":9.5},{"id":"FCT33243","name":"LÊ TRÍ TÍN","cls":"10T3","score":9.75},{"id":"FCT33116","name":"ĐẶNG NGỌC ĐAN THANH","cls":"10T3","score":8.75},{"id":"FCT33453","name":"LÊ CHÂU GIA THỊNH","cls":"10T3","score":7},{"id":"FCT33362","name":"NGUYỄN PHƯƠNG THUÝ","cls":"10T3","score":7.75},{"id":"FCT33065","name":"PHAN BÙI ANH THY","cls":"10T3","score":10},{"id":"FCT33110","name":"PHẠM NGỌC NHÃ UYÊN","cls":"10T3","score":5.25},{"id":"FCT33309","name":"NGUYỄN NGỌC ÁI VY","cls":"10T3","score":6.5},{"id":"FCT33467","name":"NGUYỄN CHÂU ANH","cls":"10T4","score":5.75},{"id":"FCT33196","name":"NGUYỄN CHÂU QUỲNH ANH","cls":"10T4","score":7.5},{"id":"FCT33014","name":"LƯU GIA BẢO","cls":"10T4","score":7.75},{"id":"FCT33403","name":"NGUYỄN HOÀNG THIÊN BẢO","cls":"10T4","score":9.25},{"id":"FCT33323","name":"TRƯƠNG MẠNH CƯỜNG","cls":"10T4","score":6.25},{"id":"FCT33018","name":"PHONG QUÂN BẢO DUY","cls":"10T4","score":9.25},{"id":"FCT33478","name":"HUỲNH TRIỀU DƯƠNG","cls":"10T4","score":7.25},{"id":"FCT33041","name":"HUỲNH QUỐC ĐẠT","cls":"10T4","score":6.5},{"id":"FCT33320","name":"TRƯƠNG TẤN ĐẠT","cls":"10T4","score":8.75},{"id":"FCT33439","name":"VÕ THÀNH ĐẠT","cls":"10T4","score":4.25},{"id":"FCT33436","name":"ĐOÀN MINH HẢI","cls":"10T4","score":5.75},{"id":"FCT33143","name":"NGUYỄN LÊ GIA HÂN","cls":"10T4","score":6.75},{"id":"FCT33253","name":"TRẦN GIA HÂN","cls":"10T4","score":6.25},{"id":"FCT33217","name":"NGUYỄN TRUNG HIẾU","cls":"10T4","score":7.5},{"id":"FCT33057","name":"BÙI QUỐC HUY","cls":"10T4","score":7.75},{"id":"FCT33496","name":"LƯ TRẦN GIA HUY","cls":"10T4","score":6.75},{"id":"FCT33048","name":"VÕ DUY HƯNG","cls":"10T4","score":7.25},{"id":"FCT33284","name":"NGÔ TRỌNG KHANG","cls":"10T4","score":9},{"id":"FCT33393","name":"NGUYỄN TRỌNG KHANG","cls":"10T4","score":5.5},{"id":"FCT33449","name":"TỪ VÕ QUỐC KHANG","cls":"10T4","score":8.5},{"id":"FCT33200","name":"NGUYỄN HOÀNG PHƯỚC NGUYÊN","cls":"10T4","score":9.25},{"id":"FCT33311","name":"TRẦN ĐỖ NGUYÊN","cls":"10T4","score":9},{"id":"FCT33418","name":"NGÔ TÀI PHÁT","cls":"10T4","score":6},{"id":"FCT33495","name":"NGUYỄN TẤN PHÁT","cls":"10T4","score":6.25},{"id":"FCT33307","name":"TRẦN ĐỨC PHÁT","cls":"10T4","score":8.5},{"id":"FCT33099","name":"VÕ THANH PHƯƠNG","cls":"10T4","score":5.75},{"id":"FCT33214","name":"NGUYỄN MINH QUÂN","cls":"10T4","score":6},{"id":"FCT33416","name":"VŨ MINH QUÂN","cls":"10T4","score":5.5},{"id":"FCT33452","name":"TRẦN NGỌC TÙNG","cls":"10T4","score":8.5},{"id":"FCT33236","name":"DƯƠNG THỊNH","cls":"10T4","score":6.75},{"id":"FCT33336","name":"PHAN GIA THỊNH","cls":"10T4","score":6.5},{"id":"FCT33358","name":"THÁI THANH THUẬN","cls":"10T4","score":7},{"id":"FCT33252","name":"BÙI KIÊN TRUNG","cls":"10T4","score":5},{"id":"FCT33402","name":"TRẦN MINH TRUNG","cls":"10T4","score":5},{"id":"FCT33325","name":"NGUYỄN PHƯƠNG UYÊN","cls":"10T4","score":6.75},{"id":"FCT33027","name":"VÕ TƯỜNG VY","cls":"10T4","score":5.5},{"id":"FCT33306","name":"NGUYỄN NGỌC THÚY AN","cls":"10T5","score":5.25},{"id":"FCT33501","name":"HOÀNG BÁCH","cls":"10T5","score":5.5},{"id":"FCT33385","name":"BÙI TIẾN ĐẠT","cls":"10T5","score":8.75},{"id":"FCT33290","name":"HỒNG GIA ĐẠT","cls":"10T5","score":5.5},{"id":"FCT33464","name":"NGUYỄN THÁI GIA HÀO","cls":"10T5","score":5.75},{"id":"FCT33469","name":"NGUYỄN LÊ HOÀNG","cls":"10T5","score":7.5},{"id":"FCT33310","name":"THÁI VIỆT HUỲNH","cls":"10T5","score":5.25},{"id":"FCT33345","name":"LÃ CHẤN HƯNG","cls":"10T5","score":6},{"id":"FCT33470","name":"TRẦM QUỲNH HƯƠNG","cls":"10T5","score":7.75},{"id":"FCT33002","name":"PHAN HOÀNG KHANG","cls":"10T5","score":6.5},{"id":"FCT33195","name":"LÊ DUY KHIÊM","cls":"10T5","score":7.25},{"id":"FCT33042","name":"LAI TRƯƠNG ĐĂNG KHÔI","cls":"10T5","score":6.5},{"id":"FCT33363","name":"TRẦN KHÁNH NGỌC","cls":"10T5","score":5.5},{"id":"FCT33505","name":"ĐỖ NGỌC VĨNH PHÁT","cls":"10T5","score":9},{"id":"FCT33107","name":"HỒ ĐĂNG PHÁT","cls":"10T5","score":6.75},{"id":"FCT33076","name":"PHAN TRẦN TẤN PHÁT","cls":"10T5","score":9},{"id":"FCT33380","name":"NGUYỄN HOÀNG PHÚ","cls":"10T5","score":4.25},{"id":"FCT33497","name":"BÙI GIA PHÚC","cls":"10T5","score":5.25},{"id":"FCT33382","name":"MAI GIA PHƯỚC","cls":"10T5","score":4},{"id":"FCT33045","name":"ĐỖ HỒNG NGỌC QUYÊN","cls":"10T5","score":6.25},{"id":"FCT33064","name":"LÂM QUỐC TÍN","cls":"10T5","score":4.75},{"id":"FCT33238","name":"ĐỖ VIỆT THANH","cls":"10T5","score":6.25},{"id":"FCT33423","name":"HOÀNG HỒNG THANH","cls":"10T5","score":7.75},{"id":"FCT33299","name":"VŨ ĐỨC TRÍ","cls":"10T5","score":5},{"id":"FCT33278","name":"BÙI PHÚ TRỌNG","cls":"10T5","score":4.5},{"id":"FCT33367","name":"HUỲNH CHÂU VĂN","cls":"10T5","score":7},{"id":"FCT33433","name":"TRẦN THẾ VINH","cls":"10T5","score":6.5},{"id":"FCT33016","name":"NGUYỄN NGỌC NHƯ Ý","cls":"10T5","score":6},{"id":"FCT33089","name":"TRẦN GIA AN","cls":"10X1","score":7},{"id":"FCT33499","name":"NGUYỄN HOÀI ÂN","cls":"10X1","score":4.5},{"id":"FCT33421","name":"TRẦN LÂM TÙNG BÁCH","cls":"10X1","score":6},{"id":"FCT33366","name":"LÊ NGỌC KHÁNH BĂNG","cls":"10X1","score":6.75},{"id":"FCT33103","name":"PHẠM LÊ NHÃ BÌNH","cls":"10X1","score":5},{"id":"FCT33443","name":"NGUYỄN THỊ NGỌC DIỆP","cls":"10X1","score":6.25},{"id":"FCT33246","name":"PHAN LÊ THUỲ DƯƠNG","cls":"10X1","score":5.25},{"id":"FCT33390","name":"TIÊU TRẦN TUẤN HÀO","cls":"10X1","score":4.5},{"id":"FCT33458","name":"LÊ NGỌC GIA HÂN","cls":"10X1","score":6},{"id":"FCT33104","name":"LƯ GIA KHANG","cls":"10X1","score":8},{"id":"FCT33038","name":"NGUYỄN PHÚC KHANG","cls":"10X1","score":9.25},{"id":"FCT33241","name":"NGUYỄN NGỌC LAM","cls":"10X1","score":6},{"id":"FCT33503","name":"NGÔ BẢO LỘC","cls":"10X1","score":3.5},{"id":"FCT33502","name":"TRƯƠNG HIẾU MINH","cls":"10X1","score":5.5},{"id":"FCT33456","name":"NGUYỄN NGỌC TRÀ MY","cls":"10X1","score":7.25},{"id":"FCT33483","name":"TRẦN NGUYỄN KHỞI MY","cls":"10X1","score":5.25},{"id":"FCT33008","name":"HUỲNH HOÀNG NGHI","cls":"10X1","score":8.25},{"id":"FCT33047","name":"TRẦN THỊ NHƯ NGỌC","cls":"10X1","score":5.25},{"id":"FCT33498","name":"ĐINH HỮU NHƠN","cls":"10X1","score":2.5},{"id":"FCT33176","name":"NGUYỄN TẤN PHÁT","cls":"10X1","score":8.75},{"id":"FCT33026","name":"TRỊNH QUANG PHÚC","cls":"10X1","score":9},{"id":"FCT33267","name":"NGUYỄN QUẾ PHƯƠNG","cls":"10X1","score":5.75},{"id":"FCT33123","name":"HOÀNG VĨNH QUANG","cls":"10X1","score":6},{"id":"FCT33435","name":"PHẠM NHƯ QUỲNH","cls":"10X1","score":4},{"id":"FCT33133","name":"LỮ GIA TƯỜNG","cls":"10X1","score":6.5},{"id":"FCT33297","name":"HOÀNG ANH THƯ","cls":"10X1","score":6.5},{"id":"FCT33249","name":"NGUYỄN PHÚC SONG THƯ","cls":"10X1","score":6.5},{"id":"FCT33106","name":"ONG TUYẾT TRÂM","cls":"10X1","score":7.75},{"id":"FCT33173","name":"NGUYỄN THÁI DIỄM TRINH","cls":"10X1","score":8.5},{"id":"FCT33372","name":"LÊ NGUYỄN NGỌC UYÊN","cls":"10X1","score":3.75},{"id":"FCT33088","name":"NGUYỄN PHƯỚC AN","cls":"10X2","score":4.75},{"id":"FCT33074","name":"HUỲNH KỲ ANH","cls":"10X2","score":5.75},{"id":"FCT33224","name":"HUỲNH PHÚ CƯỜNG","cls":"10X2","score":5.5},{"id":"FCT33482","name":"NGUYỄN NGỌC BẢO CHÂU","cls":"10X2","score":5.75},{"id":"FCT33010","name":"TRẦN GIA HÂN","cls":"10X2","score":3.25},{"id":"FCT33473","name":"NGUYỄN LÊ HUY","cls":"10X2","score":5},{"id":"FCT33368","name":"TRƯƠNG THỊ ÁNH HƯƠNG","cls":"10X2","score":4},{"id":"FCT33298","name":"THÁI THIÊN KIM","cls":"10X2","score":5.5},{"id":"FCT33009","name":"NGUYỄN HOÀNG KHANG","cls":"10X2","score":6},{"id":"FCT33280","name":"NGUYỄN PHẠM GIA KHANG","cls":"10X2","score":5.25},{"id":"FCT33019","name":"ĐỒNG PHƯƠNG LINH","cls":"10X2","score":5.5},{"id":"FCT33050","name":"NGÔ BẢO NGÂN","cls":"10X2","score":7},{"id":"FCT33319","name":"PHẠM NHỰT PHƯƠNG NGHI","cls":"10X2","score":3},{"id":"FCT33012","name":"LÊ HỒ KHẮC NGUYÊN","cls":"10X2","score":5.25},{"id":"FCT33233","name":"LÂM THÀNH PHÁT","cls":"10X2","score":5},{"id":"FCT33255","name":"LÊ CHÍ PHÚC","cls":"10X2","score":5.25},{"id":"FCT33025","name":"NGUYỄN HOÀI THIÊN PHÚC","cls":"10X2","score":3.75},{"id":"FCT33455","name":"PHẠM NGUYỄN AN PHƯƠNG","cls":"10X2","score":6.25},{"id":"FCT33508","name":"NGUYỄN HOÀNG NGỌC QUÝ","cls":"10X2","score":4.25},{"id":"FCT33033","name":"NGUYỄN TỐ QUYÊN","cls":"10X2","score":6.25},{"id":"FCT33187","name":"TÔ ĐINH HẢI QUYÊN","cls":"10X2","score":2.75},{"id":"FCT33432","name":"BÙI TẤN TÀI","cls":"10X2","score":5.75},{"id":"FCT33288","name":"LÊ KHAI TÂM","cls":"10X2","score":5.5},{"id":"FCT33180","name":"LÊ BẢO TIẾN","cls":"10X2","score":6.5},{"id":"FCT33100","name":"NGUYỄN GIA TƯỜNG","cls":"10X2","score":5},{"id":"FCT33424","name":"LÊ TRẦN THANH THÁI","cls":"10X2","score":6.75},{"id":"FCT33352","name":"TRƯƠNG HOÀNG TRÍ THANH","cls":"10X2","score":3.5},{"id":"FCT33301","name":"NGUYỄN HOÀNG GIA THIỆN","cls":"10X2","score":4},{"id":"FCT33460","name":"NGUYỄN NGỌC BẢO TRANG","cls":"10X2","score":4.25},{"id":"FCT33078","name":"NGUYỄN NGỌC NHƯ Ý","cls":"10X2","score":6.25},{"id":"FCT33439","name":"VÕ THÀNH ĐẠT","cls":"10T4","score":4.25},{"id":"FCT33252","name":"BÙI KIÊN TRUNG","cls":"10T4","score":5},{"id":"FCT33402","name":"TRẦN MINH TRUNG","cls":"10T4","score":5},{"id":"FCT33027","name":"VÕ TƯỜNG VY","cls":"10T4","score":5.5},{"id":"FCT33354","name":"PHẠM DUY CƯỜNG","cls":"10T2","score":4},{"id":"FCT33113","name":"NGUYỄN GIA HƯNG","cls":"10T2","score":4.75},{"id":"FCT33188","name":"NGUYỄN LÊ TRUNG NGHĨA","cls":"10T2","score":3.25},{"id":"FCT33044","name":"VÕ HUY PHÁT","cls":"10T2","score":4.75},{"id":"FCT33283","name":"HOÀNG NGUYỄN ĐĂNG PHÚC","cls":"10T2","score":3},{"id":"FCT33410","name":"VÕ HOÀNG QUÂN","cls":"10T2","score":3},{"id":"FCT33340","name":"NGUYỄN HỒ TRỌNG SANG","cls":"10T2","score":4},{"id":"FCT33240","name":"NGÔ PHƯƠNG THẠNH","cls":"10T2","score":3.75},{"id":"FCT33481","name":"LÊ DƯƠNG THIÊN LÝ","cls":"10T2","score":5.25},{"id":"FCT33272","name":"QUÁCH BẢO KHANH","cls":"10T2","score":6},{"id":"FCT33189","name":"TRẦN THỊ THẢO NGỌC","cls":"10T2","score":5.5},{"id":"FCT33339","name":"NGUYỄN QUANG TIẾN","cls":"10T2","score":5.5},{"id":"FCT33088","name":"NGUYỄN PHƯỚC AN","cls":"10X2","score":4.75},{"id":"FCT33010","name":"TRẦN GIA HÂN","cls":"10X2","score":3.25},{"id":"FCT33368","name":"TRƯƠNG THỊ ÁNH HƯƠNG","cls":"10X2","score":4},{"id":"FCT33319","name":"PHẠM NHỰT PHƯƠNG NGHI","cls":"10X2","score":3},{"id":"FCT33025","name":"NGUYỄN HOÀI THIÊN PHÚC","cls":"10X2","score":3.75},{"id":"FCT33508","name":"NGUYỄN HOÀNG NGỌC QUÝ","cls":"10X2","score":4.25},{"id":"FCT33187","name":"TÔ ĐINH HẢI QUYÊN","cls":"10X2","score":2.75},{"id":"FCT33352","name":"TRƯƠNG HOÀNG TRÍ THANH","cls":"10X2","score":3.5},{"id":"FCT33301","name":"NGUYỄN HOÀNG GIA THIỆN","cls":"10X2","score":4},{"id":"FCT33460","name":"NGUYỄN NGỌC BẢO TRANG","cls":"10X2","score":4.25},{"id":"FCT33473","name":"NGUYỄN LÊ HUY","cls":"10X2","score":5},{"id":"FCT33298","name":"THÁI THIÊN KIM","cls":"10X2","score":5.5},{"id":"FCT33009","name":"NGUYỄN HOÀNG KHANG","cls":"10X2","score":6},{"id":"FCT33012","name":"LÊ HỒ KHẮC NGUYÊN","cls":"10X2","score":5.25},{"id":"FCT33255","name":"LÊ CHÍ PHÚC","cls":"10X2","score":5.25},{"id":"FCT33100","name":"NGUYỄN GIA TƯỜNG","cls":"10X2","score":5},{"id":"FCT33293","name":"HỒ HOÀNG HÀ","cls":"10T2","score":6.25},{"id":"FCT33063","name":"PHAN TRÍ HÀO","cls":"10T2","score":6},{"id":"FCT33397","name":"NGUYỄN TRẦN GIA HÂN","cls":"10T2","score":6.25},{"id":"FCT33346","name":"NGUYỄN LÂM KHÁNH HƯNG","cls":"10T2","score":5.5},{"id":"FCT33420","name":"TRẦN PHÚC HƯNG","cls":"10T2","score":6},{"id":"FCT33467","name":"NGUYỄN CHÂU ANH","cls":"10T4","score":5.75},{"id":"FCT33041","name":"HUỲNH QUỐC ĐẠT","cls":"10T4","score":6.5},{"id":"FCT33436","name":"ĐOÀN MINH HẢI","cls":"10T4","score":5.75},{"id":"FCT33253","name":"TRẦN GIA HÂN","cls":"10T4","score":6.25},{"id":"FCT33393","name":"NGUYỄN TRỌNG KHANG","cls":"10T4","score":5.5},{"id":"FCT33418","name":"NGÔ TÀI PHÁT","cls":"10T4","score":6},{"id":"FCT33495","name":"NGUYỄN TẤN PHÁT","cls":"10T4","score":6.25},{"id":"FCT33099","name":"VÕ THANH PHƯƠNG","cls":"10T4","score":5.75},{"id":"FCT33214","name":"NGUYỄN MINH QUÂN","cls":"10T4","score":6},{"id":"FCT33416","name":"VŨ MINH QUÂN","cls":"10T4","score":5.5}];
 
+
+// Hàm làm sạch dữ liệu: loại bỏ hoàn toàn các lớp ma như '10', '11', '12' hoặc học sinh có tên là số
+function sanitizeDataset(dataset) {
+  if (!dataset || typeof dataset !== 'object') return;
+  const sanitizeStudent = s => {
+    if (!s || typeof s !== 'object') return false;
+    const name = String(s.name == null ? '' : s.name).trim();
+    const cls = String(s.cls == null ? '' : s.cls).trim();
+    if (!name || /^\d+$/.test(name)) return false;
+    if (!cls || /^\d+$/.test(cls) || /^(10|11|12)$/.test(cls)) return false;
+    return true;
+  };
+
+  ['Toán', 'Vật lý', 'Hóa học', 'Sinh học', 'Tin học'].forEach(sb => {
+    const sData = dataset[sb];
+    if (!sData) return;
+    if (Array.isArray(sData.students)) {
+      sData.students = sData.students.filter(sanitizeStudent);
+    }
+    if (sData.exams && typeof sData.exams === 'object') {
+      Object.keys(sData.exams).forEach(exId => {
+        const exD = sData.exams[exId];
+        if (exD && Array.isArray(exD.students)) {
+          exD.students = exD.students.filter(sanitizeStudent);
+        }
+      });
+    }
+  });
+}
+
 function ensureGrade10MathRealData() {
   try {
     if (!allData || !allData['Toán']) return;
+    sanitizeDataset(allData);
     const math = allData['Toán'];
     if (!math.exams) math.exams = {};
     
-    // Check if already has 306 students in GK1
     const gk1 = math.exams['GK1'] || math;
     const curK10 = (gk1.students || []).filter(s => getGradeFromCls(s.cls) === '10');
-    const hasRealCls = curK10.some(s => s.cls === '10K' || s.cls === '10T1' || s.cls === '10X2');
+    const hasPhantomClass = curK10.some(s => s.cls === '10' || /^\d+$/.test(s.cls) || /^\d+$/.test(s.name));
+    const hasAll8RealClasses = ['10K','10T1','10T2','10T3','10T4','10T5','10X1','10X2'].every(c => curK10.some(s => s.cls === c));
     
-    if (curK10.length === 306 && hasRealCls) {
-      return; // Data is already correct
+    if (curK10.length === 306 && hasAll8RealClasses && !hasPhantomClass) {
+      return; // Data is already 100% clean and correct
     }
 
     EXAMS.forEach(ex => {
@@ -626,7 +659,7 @@ function ensureGrade10MathRealData() {
         };
       }
       const exD = math.exams[ex.id];
-      const non10 = (exD.students || []).filter(s => getGradeFromCls(s.cls) !== '10');
+      const non10 = (exD.students || []).filter(s => getGradeFromCls(s.cls) !== '10' && s.cls !== '10');
       const k10Students = REAL_GRADE_10_MATH_STUDENTS.map(st => {
         let sc = st.score;
         if (ex.id !== 'GK1') {
@@ -854,7 +887,9 @@ function persistAllData() {
   }
 }
 window.persistAllData = persistAllData;
-window.allData = allData;
+try {
+  Object.defineProperty(window, 'allData', { get: () => allData, set: v => { allData = v; }, configurable: true });
+} catch(e) { window.allData = allData; }
 window.parseRows = parseRows;
 window.getCurrentData = getCurrentData;
 window.getGradeFromCls = getGradeFromCls;
@@ -866,6 +901,7 @@ function loadPersistedData() {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
         allData = parsed;
+        sanitizeDataset(allData);
         const savedSubj = localStorage.getItem('khtn_current_subject');
         if (savedSubj && allData[savedSubj]) {
           currentSubject = savedSubj;
@@ -3150,6 +3186,56 @@ async function importFile(file) {
   }
 }
 
+
+function detectHeaderlessColumns(rows) {
+  let nameCols = [], cls = -1, score = -1, idCol = -1;
+  const probe = rows.slice(0, 15).filter(r => r && r.length > 2);
+  if (!probe.length) return { nameCols: [0], cls: -1, score: -1 };
+
+  const maxCols = Math.max(...probe.map(r => r.length));
+
+  for (let c = 0; c < maxCols; c++) {
+    const colVals = probe.map(r => String(r[c] == null ? '' : r[c]).trim()).filter(Boolean);
+    if (!colVals.length) continue;
+
+    // Check if class column: matches 10A1, 10T4, 10K, 12T1... (NOT bare '10', '11', '12')
+    if (cls < 0 && colVals.some(v => /^(?:10|11|12)[a-zA-Z0-9_\-\.\/]+$/.test(v) && !/^(10|11|12)$/.test(v))) {
+      cls = c;
+      continue;
+    }
+
+    // Check if ID column: matches FCT..., HS...
+    if (idCol < 0 && colVals.some(v => /^(?:FCT|HS|FPT|[A-Z]{2,4}\d{4,8})$/i.test(v))) {
+      idCol = c;
+      continue;
+    }
+
+    // Check if Name column: has letters, not email, not numbers, not class, not room
+    if (nameCols.length === 0 && colVals.some(v => /[a-zA-Zà-ỹÀ-Ỹ]/.test(v) && !v.includes('@') && !/^(?:10|11|12)[a-zA-Z0-9]+$/.test(v) && !/phòng|room/i.test(v))) {
+      nameCols = [c];
+      continue;
+    }
+  }
+
+  // Find score column: search from rightmost column for numbers in [0, 10]
+  for (let c = maxCols - 1; c >= 0; c--) {
+    if (c === cls || nameCols.includes(c) || c === idCol) continue;
+    const colVals = probe.map(r => r[c]).filter(v => v !== '' && v != null);
+    const numVals = colVals.map(v => {
+      const s = String(v).trim().replace(',', '.');
+      return /^\d+(\.\d+)?$/.test(s) ? parseFloat(s) : null;
+    }).filter(v => v !== null && v >= 0 && v <= 10);
+
+    if (numVals.length >= Math.ceil(colVals.length * 0.5) && numVals.length > 0) {
+      score = c;
+      break;
+    }
+  }
+
+  if (!nameCols.length) nameCols = [0];
+  return { nameCols, cls, score, idCol };
+}
+
 function parseRows(rows, defCls) {
   const items = [], absent = [];
   let skipped = 0;
@@ -3243,13 +3329,12 @@ function parseRows(rows, defCls) {
     start = h + 1;
     if (!nameCols.length) nameCols = [score === 0 ? 1 : 0];
   } else {
-    // Headerless sheet: find numeric column from right
-    const probe = rows.slice(0, 10), w = Math.max(0, ...probe.map(r => r.length));
-    for (let c = w - 1; c >= 1; c--) {
-      if (probe.some(r => isNum(r[c]))) { score = c; break; }
-    }
-    nameCols = [0];
-    start = score > 0 && isNum((rows[0]||[])[score]) ? 0 : 1;
+    // Headerless sheet: smart column detection
+    const detected = detectHeaderlessColumns(rows);
+    nameCols = detected.nameCols;
+    cls = detected.cls;
+    score = detected.score;
+    start = 0;
   }
 
   if (score < 0) return { items, skipped, absent };
@@ -3260,11 +3345,15 @@ function parseRows(rows, defCls) {
     const name = nameCols.map(c => norm(r[c])).filter(Boolean).join(' ');
     const raw = r[score];
     if (raw === '' || raw == null || !name) continue;
+    // Bỏ qua nếu tên là số thuần túy (ví dụ số thứ tự '1', '2', '36')
+    if (/^\d+$/.test(name.trim())) continue;
     if (/^(stt|họ và tên|tổng cộng|trung bình|người lập|giáo viên|tự học|ghi chú)/i.test(name)) continue;
 
     const v = toNum(raw);
     const rawCls = cls >= 0 && norm(r[cls]) ? norm(r[cls]) : effectiveDefCls;
-    const c = normalizeClassName(rawCls) || effectiveDefCls;
+    const c = normalizeClassName(rawCls);
+    // Tuyệt đối không cho phép tạo lớp có tên là số thuần túy hoặc bare grade ('10', '11', '12')
+    if (!c || /^(10|11|12)$/.test(c) || /^\d+$/.test(c)) continue;
 
     if (v === null && /vắng|vang|nghỉ|bỏ thi/i.test(String(raw))) {
       absent.push({ name, cls: c });
@@ -3291,14 +3380,35 @@ function addItems(items, skipped, absent) {
   absent = absent || [];
   if (!items.length) { toast('Không tìm thấy dòng điểm hợp lệ trong file'); return false; }
   
-  // Normalize all class names
-  items.forEach(i => { i.cls = normalizeClassName(i.cls); });
-  if (absent) absent.forEach(a => { a.cls = normalizeClassName(a.cls); });
+  // Normalize and filter out invalid students or phantom classes ('10', '11', '12')
+  items = items.filter(i => {
+    i.cls = normalizeClassName(i.cls);
+    i.name = String(i.name == null ? '' : i.name).trim();
+    if (!i.cls || /^(10|11|12)$/.test(i.cls) || /^\d+$/.test(i.cls)) return false;
+    if (!i.name || /^\d+$/.test(i.name)) return false;
+    return true;
+  });
+  if (absent) absent = absent.filter(a => {
+    a.cls = normalizeClassName(a.cls);
+    return a.cls && !/^(10|11|12)$/.test(a.cls);
+  });
+
+  // Khử trùng lặp học sinh theo (Lớp + Họ tên)
+  const seenKeys = new Set();
+  const uniqueItems = [];
+  items.forEach(it => {
+    const k = it.cls + '___' + it.name.toLowerCase();
+    if (!seenKeys.has(k)) {
+      seenKeys.add(k);
+      uniqueItems.push(it);
+    }
+  });
+  items = uniqueItems;
 
   const data = getCurrentData();
   const cl = new Set(items.map(i => i.cls));
-  data.students = data.students.filter(s => !cl.has(s.cls));
-  data.absent = data.absent.filter(a => !cl.has(a.cls));
+  data.students = (data.students || []).filter(s => !cl.has(s.cls) && s.cls !== '10' && !/^(10|11|12)$/.test(s.cls));
+  data.absent = (data.absent || []).filter(a => !cl.has(a.cls) && a.cls !== '10');
   absent.forEach(a => data.absent.push(a));
   items.forEach(i => data.students.push({ id: nextId++, name: i.name, score: i.score, cls: i.cls }));
 
